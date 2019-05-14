@@ -1,7 +1,9 @@
 #include "edit_latex_dialog.h"
 #include "ui_edit_latex_dialog.h"
 #include <QUrl>
+#include <iostream>
 
+// src=\"https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML\">\n
 
 QString html_template("\
 <html>\n    \
@@ -40,6 +42,8 @@ void EditLaTeXDialog::on_pushButton_clicked()
 {
     QString content = ui->plainTextEdit->toPlainText();
     QString html = html_template;
+    std::cout << html.toUtf8().constData() << std::endl;
     html.replace("CONTENT", content);
-    web->setHtml(html);
+    web->setHtml(html, QUrl("/Users/zhihonglei/tools/"));
+    std::cout << web->url().path().toUtf8().constData() << std::endl;
 }
