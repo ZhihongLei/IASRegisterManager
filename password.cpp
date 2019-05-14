@@ -1,61 +1,32 @@
 #include "password.h"
+#include <QVector>
+#include "database_handler.h"
+#include "global_variables.h"
 #include <iostream>
-#include <sstream>
-#include <fstream>
 
-const std::string FILENAME("/Users/zhihonglei/Projects/userpass/passwords.txt");
-
-
-std::unordered_map<std::string, std::string> read_passwords(const std::string &filename)
+int login(const QString &username, const QString &password)
 {
-    std::unordered_map<std::string, std::string> map;
-    std::ifstream pass_file(filename);
-    std::string line;
-    while (std::getline(pass_file, line))
-    {
-        std::stringstream iss;
-        iss << line;
-        std::string username, password;
-        if (!(iss >> username >> password)) break;
-        map[username] = password;
-    }
-    return map;
-}
-
-void write_password(const std::unordered_map<std::string, std::string>& u2pw, const std::string &filename)
-{
-    std::ofstream outfile(filename);
-    for (auto &x : u2pw)
-    {
-        outfile << x.first << " " << x.second << std::endl;
-    }
-}
-
-int login(const std::string &username, const std::string &password)
-{
-    std::unordered_map<std::string, std::string> u2pw = read_passwords(FILENAME);
-    //for (auto &x : u2pw) std::cout << x.first << std::endl;
-    if (u2pw.find(username) == u2pw.end()) {
-        std::cout << "User does not exist" << std::endl;
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QString> item;
+    dbhandler.show_one_item("global_user", item, {"password"}, "username", username);
+    if (item.empty()) {
         return USER_NOT_EXISTS_ERROR;
     }
-    if (u2pw[username] != password) {
-        std::cout << "Wrong password" << std::endl;
+    if (item[0] != password) {
         return PASSWORD_NOT_CORRECT_ERROR;
     }
-    else std::cout << "Logged in successfully!" << std::endl;
     return 0;
 }
 
-int create_user(const std::string &username, const std::string &password)
+int create_user(const QString &username, const QString &password, int db_role)
 {
-    std::unordered_map<std::string, std::string> u2pw = read_passwords(FILENAME);
-    if (u2pw.find(username) != u2pw.end()) {
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QString> item;
+    dbhandler.show_one_item("global_user", item, {"password"}, "username", username);
+    if (!item.empty()) {
         std::cout << "User already exists" << std::endl;
         return USER_ALREADY_EXISTS_ERROR;
     }
-    u2pw[username] = password;
-    write_password(u2pw, FILENAME);
-    return 0;
+    return dbhandler.insert_item("global_user", {"username", "password", "db_role"}, {username, password, std::to_string(db_role).c_str()});
 }
 
