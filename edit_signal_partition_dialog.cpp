@@ -3,6 +3,8 @@
 #include "global_variables.h"
 #include "database_handler.h"
 #include <QIntValidator>
+#include <QDialogButtonBox>
+#include <QPushButton>
 
 EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
                                                      const QString& reg_sig_id,
@@ -20,6 +22,11 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
     ui(new Ui::EditSignalPartitionDialog)
 {
     ui->setupUi(this);
+    comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
+    comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
+    connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigLSB_currentIndexChanged(int)));
+    connect(comboBoxSigMSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigMSB_currentIndexChanged(int)));
+
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", reg_type_id_}}, items);
@@ -27,18 +34,6 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
     {
         ui->comboBoxReg->addItem(item[0]);
         reg_name2id_[item[0]] = item[1];
-    }
-
-    if (msb_first_)
-    {
-        QRect lsb_geo = ui->comboBoxSigLSB->geometry();
-        QRect msb_geo = ui->comboBoxSigMSB->geometry();
-        ui->comboBoxSigLSB->setGeometry(msb_geo);
-        ui->comboBoxSigMSB->setGeometry(lsb_geo);
-        QRect lsb_label_geo = ui->label_lsb->geometry();
-        QRect msb_label_geo = ui->label_msb->geometry();
-        ui->label_lsb->setGeometry(msb_label_geo);
-        ui->label_msb->setGeometry(lsb_label_geo);
     }
 
     make_occupied_signal_parts();
@@ -64,12 +59,12 @@ void EditSignalPartitionDialog::make_occupied_signal_parts()
 
 QString EditSignalPartitionDialog::get_signal_lsb() const
 {
-    return ui->comboBoxSigLSB->currentText();
+    return comboBoxSigLSB_->currentText();
 }
 
 QString EditSignalPartitionDialog::get_signal_msb() const
 {
-    return ui->comboBoxSigMSB->currentText();
+    return comboBoxSigMSB_->currentText();
 }
 
 QString EditSignalPartitionDialog::get_register_lsb() const
@@ -110,55 +105,56 @@ void EditSignalPartitionDialog::accept()
 
 void EditSignalPartitionDialog::on_comboBoxSigLSB_currentIndexChanged(int index)
 {
-    ui->comboBoxSigLSB->setEnabled(index != -1);
-    //ui->comboBoxSigMSB->setEnabled(index != -1);
+    comboBoxSigLSB_->setEnabled(index != -1);
+    //comboBoxSigMSB_->setEnabled(index != -1);
     ui->comboBoxRegPart->setEnabled(index != -1);
     if (msb_first_)
     {
         display_available_register_parts();
         return;
     }
-    ui->comboBoxSigMSB->blockSignals(true);
-    ui->comboBoxSigMSB->clear();
+    comboBoxSigMSB_->blockSignals(true);
+    comboBoxSigMSB_->clear();
     make_available_signal_ends();
-    for (int i : available_signal_ends_) ui->comboBoxSigMSB->addItem(QString::number(i));
-    ui->comboBoxSigMSB->setCurrentIndex(ui->comboBoxSigMSB->count()-1);
-    ui->comboBoxSigMSB->blockSignals(false);
-    emit(ui->comboBoxSigMSB->currentIndexChanged(ui->comboBoxSigMSB->currentIndex()));
+    for (int i : available_signal_ends_) comboBoxSigMSB_->addItem(QString::number(i));
+    comboBoxSigMSB_->setCurrentIndex(comboBoxSigMSB_->count()-1);
+    comboBoxSigMSB_->blockSignals(false);
+    emit(comboBoxSigMSB_->currentIndexChanged(comboBoxSigMSB_->currentIndex()));
 }
 
 void EditSignalPartitionDialog::on_comboBoxSigMSB_currentIndexChanged(int index)
 {
-    //ui->comboBoxSigLSB->setEnabled(index != -1);
-    ui->comboBoxSigMSB->setEnabled(index != -1);
+    //comboBoxSigLSB_->setEnabled(index != -1);
+    comboBoxSigMSB_->setEnabled(index != -1);
     ui->comboBoxRegPart->setEnabled(index != -1);
     if (!msb_first_)
     {
         display_available_register_parts();
         return;
     }
-    ui->comboBoxSigLSB->blockSignals(true);
-    ui->comboBoxSigLSB->clear();
+    comboBoxSigLSB_->blockSignals(true);
+    comboBoxSigLSB_->clear();
     make_available_signal_starts();
-    for (int i : available_signal_starts_) ui->comboBoxSigLSB->addItem(QString::number(i));
-    ui->comboBoxSigLSB->setCurrentIndex(ui->comboBoxSigLSB->count() > 0 ? 0 : -1);
-    ui->comboBoxSigLSB->blockSignals(false);
-    emit(ui->comboBoxSigLSB->currentIndexChanged(ui->comboBoxSigLSB->currentIndex()));
+    for (int i : available_signal_starts_) comboBoxSigLSB_->addItem(QString::number(i));
+    comboBoxSigLSB_->setCurrentIndex(comboBoxSigLSB_->count() > 0 ? 0 : -1);
+    comboBoxSigLSB_->blockSignals(false);
+    emit(comboBoxSigLSB_->currentIndexChanged(comboBoxSigLSB_->currentIndex()));
 }
 
 
 void EditSignalPartitionDialog::on_comboBoxReg_currentIndexChanged(int index)
 {
     ui->comboBoxReg->setEnabled(index>=0);
-    ui->comboBoxSigLSB->setEnabled(index>=0);
-    ui->comboBoxSigMSB->setEnabled(index>=0);
+    comboBoxSigLSB_->setEnabled(index>=0);
+    comboBoxSigMSB_->setEnabled(index>=0);
     ui->comboBoxRegPart->setEnabled(index>=0);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(index>=0);
     if (index < 0)
     {
-        ui->comboBoxSigLSB->clear();
-        ui->comboBoxSigMSB->clear();
+        comboBoxSigLSB_->clear();
+        comboBoxSigMSB_->clear();
         ui->comboBoxRegPart->clear();
-        if (index < 0) return;
+        return;
     }
 
     make_occupied_register_parts(reg_name2id_[ui->comboBoxReg->currentText()]);
@@ -168,22 +164,22 @@ void EditSignalPartitionDialog::on_comboBoxReg_currentIndexChanged(int index)
     if (!msb_first_)
     {
         make_available_signal_starts();
-        ui->comboBoxSigLSB->blockSignals(true);
-        ui->comboBoxSigLSB->clear();
-        for (int i : available_signal_starts_) ui->comboBoxSigLSB->addItem(QString::number(i));
-        ui->comboBoxSigLSB->setCurrentIndex(ui->comboBoxSigLSB->count() > 0 ? 0: -1);
-        ui->comboBoxSigLSB->blockSignals(false);
-        emit(ui->comboBoxSigLSB->currentIndexChanged(ui->comboBoxSigLSB->currentIndex()));
+        comboBoxSigLSB_->blockSignals(true);
+        comboBoxSigLSB_->clear();
+        for (int i : available_signal_starts_) comboBoxSigLSB_->addItem(QString::number(i));
+        comboBoxSigLSB_->setCurrentIndex(comboBoxSigLSB_->count() > 0 ? 0: -1);
+        comboBoxSigLSB_->blockSignals(false);
+        emit(comboBoxSigLSB_->currentIndexChanged(comboBoxSigLSB_->currentIndex()));
 
     }
     else {
         make_available_signal_ends();
-        ui->comboBoxSigMSB->blockSignals(true);
-        ui->comboBoxSigMSB->clear();
-        for (int i : available_signal_ends_) ui->comboBoxSigMSB->addItem(QString::number(i));
-        ui->comboBoxSigMSB->setCurrentIndex((ui->comboBoxSigMSB->count()-1));
-        ui->comboBoxSigMSB->blockSignals(false);
-        emit(ui->comboBoxSigMSB->currentIndexChanged(ui->comboBoxSigMSB->currentIndex()));
+        comboBoxSigMSB_->blockSignals(true);
+        comboBoxSigMSB_->clear();
+        for (int i : available_signal_ends_) comboBoxSigMSB_->addItem(QString::number(i));
+        comboBoxSigMSB_->setCurrentIndex((comboBoxSigMSB_->count()-1));
+        comboBoxSigMSB_->blockSignals(false);
+        emit(comboBoxSigMSB_->currentIndexChanged(comboBoxSigMSB_->currentIndex()));
     }
 
 }
@@ -193,8 +189,8 @@ void EditSignalPartitionDialog::on_comboBoxReg_currentIndexChanged(int index)
 bool EditSignalPartitionDialog::add_signal_partition()
 {
     std::cout << "haha 0" << std::endl;
-    QString sig_lsb = ui->comboBoxSigLSB->currentText();
-    QString sig_msb = ui->comboBoxSigMSB->currentText();
+    QString sig_lsb = comboBoxSigLSB_->currentText();
+    QString sig_msb = comboBoxSigMSB_->currentText();
     std::cout << "haha 1" << std::endl;
     QString reg_lsb = get_register_lsb();
     QString reg_msb = get_register_msb();
@@ -205,19 +201,18 @@ bool EditSignalPartitionDialog::add_signal_partition()
 
 int EditSignalPartitionDialog::get_current_signal_lsb()
 {
-    if (ui->comboBoxSigLSB->currentIndex() < 0) return -1;
-    return ui->comboBoxSigLSB->currentText().toInt();
+    if (comboBoxSigLSB_->currentIndex() < 0) return -1;
+    return comboBoxSigLSB_->currentText().toInt();
 }
 
 int EditSignalPartitionDialog::get_current_signal_msb()
 {
-    if (ui->comboBoxSigMSB->currentIndex() < 0) return -1;
-    return ui->comboBoxSigMSB->currentText().toInt();
+    if (comboBoxSigMSB_->currentIndex() < 0) return -1;
+    return comboBoxSigMSB_->currentText().toInt();
 }
 
 void EditSignalPartitionDialog::display_available_register_parts()
 {
-    std::cout << "signal partition length: " << get_partition_length() << std::endl;
     const partition_list& parts = get_available_register_parts_by_length(get_partition_length());
     ui->comboBoxRegPart->clear();
     for (const auto& segment : parts)
@@ -227,5 +222,6 @@ void EditSignalPartitionDialog::display_available_register_parts()
         else
             ui->comboBoxRegPart->addItem("<" + QString::number(segment.first) + ":" + QString::number(segment.second) + ">");
     }
-    ui->comboBoxReg->setEnabled(ui->comboBoxSigLSB->count() > 0 || ui->comboBoxSigMSB->count() > 0);
+    ui->comboBoxReg->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
 }

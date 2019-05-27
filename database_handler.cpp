@@ -32,8 +32,6 @@ int DataBaseHandler::execute(const QString &command)
 
     } catch (sql::SQLException &e) {
         _error_message = e.what();
-
-        std::cout << _error_message.toUtf8().constData() << std::endl;
       return 0;
     }
 }
@@ -337,7 +335,6 @@ int DataBaseHandler::show_items_inner_join(const QVector<QString>& ext_fields,
 
     if (constraint != "") command = command.append(" WHERE ").append(constraint);
     if (additional != "") command += (" " + additional);
-    std::cout << command.toUtf8().constData() << std::endl;
     if (execute_query(command))
     {
         while (_res->next())
@@ -400,7 +397,6 @@ int DataBaseHandler::show_one_item(const QString &tablename,
         to_select += (fields[i] + ", ");
     to_select += fields[fields.size()-1];
     QString command = "SELECT " + to_select + " FROM " + _database + "." + tablename + " WHERE " + constraint;
-    std::cout << command.toUtf8().constData() << std::endl;
     if (execute_query(command))
     {
         if (_res->next())

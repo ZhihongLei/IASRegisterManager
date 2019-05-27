@@ -6,7 +6,8 @@
 #include "edit_signal_partition_logic.h"
 #include <QValidator>
 #include <QRegExpValidator>
-#include "global_variables.h"
+#include "data_utils.h"
+#include <QComboBox>
 
 namespace Ui {
 class EditSignalDialog;
@@ -18,7 +19,7 @@ class EditSignalDialog : public QDialog, public EditSignalPartitionLogic
 
 public:
     explicit EditSignalDialog(const QString& block_id, int register_width, bool msb_first=true, QWidget *parent = nullptr);
-    explicit EditSignalDialog(const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first=true, QWidget *parent = nullptr);
+    explicit EditSignalDialog(const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first=true, bool enabled=true, QWidget *parent = nullptr);
     ~EditSignalDialog();
     QString get_signal_name() const;
     QString get_signal_id() const;
@@ -52,6 +53,7 @@ private slots:
 
     void on_pushButtonEditSigParts_clicked();
 
+
 private:
     void make_occupied_signal_parts();
     void make_occupied_register_parts(const QString& reg_id);
@@ -79,11 +81,13 @@ private:
     QHash<QString, QVector<QString>> sig_type2reg_types_;
     const QString block_id_;
     QString signal_id_, reg_sig_id_;
-    const MODE mode_;
+    const DIALOG_MODE mode_;
     QVector<QString> original_sig_part_ids_, original_reg_part_ids_;
     QString original_signal_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
     int last_width_ = -1;
     bool edit_partitions_ = true;
+    QComboBox* comboBoxSigLSB_, *comboBoxSigMSB_;
+    const bool enabled_;
 };
 
 

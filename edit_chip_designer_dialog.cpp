@@ -1,5 +1,5 @@
-#include "add_chip_designer_dialog.h"
-#include "ui_add_chip_designer_dialog.h"
+#include "edit_chip_designer_dialog.h"
+#include "ui_edit_chip_designer_dialog.h"
 #include "global_variables.h"
 #include "database_handler.h"
 #include <QTableWidgetItem>
@@ -7,10 +7,47 @@
 #include <QPushButton>
 #include <QMessageBox>
 
-AddChipDesignerDialog::AddChipDesignerDialog(const QString& chip_id, QWidget *parent) :
+EditChipDesignerDialog::EditChipDesignerDialog(const QString& chip_id, QWidget *parent) :
     QDialog(parent),
+    ui(new Ui::EditChipDesignerDialog),
     chip_id_(chip_id),
-    ui(new Ui::AddChipDesignerDialog)
+    mode_(DIALOG_MODE::ADD),
+    enabled_(true)
+{
+    setup_ui();
+}
+
+
+EditChipDesignerDialog::EditChipDesignerDialog(const QString& chip_id, const QString& chip_designer, const QString& project_role, bool enabled, QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::EditChipDesignerDialog),
+    chip_id_(chip_id),
+    mode_(DIALOG_MODE::EDIT),
+    enabled_(enabled)
+{
+    setup_ui();
+    setWindowTitle("Edit Chip Designer");
+    for (int i = 0; i < ui->tableWidgetUsers->rowCount(); i++)
+        if (ui->tableWidgetUsers->item(i, 1)->text() == chip_designer)
+        {
+            ui->tableWidgetUsers->setCurrentCell(i, 0);
+            break;
+        }
+    for (int i = 0; i < ui->comboBoxProjectRole->count(); i++)
+        if (ui->comboBoxProjectRole->itemText(i) == project_role)
+        {
+            ui->comboBoxProjectRole->setCurrentIndex(i);
+            break;
+        }
+    ui->tableWidgetUsers->setEnabled(false);
+}
+
+EditChipDesignerDialog::~EditChipDesignerDialog()
+{
+    delete ui;
+}
+
+void EditChipDesignerDialog::setup_ui()
 {
     ui->setupUi(this);
     DataBaseHandler dbhandler(gDBHost, gDatabase);
@@ -18,10 +55,10 @@ AddChipDesignerDialog::AddChipDesignerDialog(const QString& chip_id, QWidget *pa
     dbhandler.show_items("global_user", {"user_id", "username"}, items, "", "order by user_id");
     for (const auto& item : items)
     {
-        int row = ui->tableWidget->rowCount();
-        ui->tableWidget->insertRow(row);
-        ui->tableWidget->setItem(row, 0, new QTableWidgetItem(item[0]));
-        ui->tableWidget->setItem(row, 1, new QTableWidgetItem(item[1]));
+        int row = ui->tableWidgetUsers->rowCount();
+        ui->tableWidgetUsers->insertRow(row);
+        ui->tableWidgetUsers->setItem(row, 0, new QTableWidgetItem(item[0]));
+        ui->tableWidgetUsers->setItem(row, 1, new QTableWidgetItem(item[1]));
     }
 
     items.clear();
@@ -29,57 +66,56 @@ AddChipDesignerDialog::AddChipDesignerDialog(const QString& chip_id, QWidget *pa
     for (const auto& item : items)
     {
         project_role_ids_.push_back(item[0]);
-        ui->comboBox->addItem(item[1]);
+        ui->comboBoxProjectRole->addItem(item[1]);
     }
 
-    if (ui->tableWidget->rowCount() == 0 || ui->comboBox->count() == 0)
+    if (ui->tableWidgetUsers->rowCount() == 0 || ui->comboBoxProjectRole->count() == 0)
         ui->buttonBox->button(QDialogButtonBox::StandardButton::Ok)->setEnabled(false);
     else
-        ui->tableWidget->setCurrentCell(0, 0);
+        ui->tableWidgetUsers->setCurrentCell(0, 0);
 
-    ui->tableWidget->setColumnHidden(0, true);
+    ui->tableWidgetUsers->setColumnHidden(0, true);
+
+    ui->comboBoxProjectRole->setEnabled(enabled_);
 }
 
-AddChipDesignerDialog::~AddChipDesignerDialog()
+QString EditChipDesignerDialog::get_username() const
 {
-    delete ui;
+    int row = ui->tableWidgetUsers->currentRow();
+    return ui->tableWidgetUsers->item(row, 1)->text();
 }
 
-QString AddChipDesignerDialog::get_username() const
+QString EditChipDesignerDialog::get_user_id() const
 {
-    int row = ui->tableWidget->currentRow();
-    return ui->tableWidget->item(row, 1)->text();
+    int row = ui->tableWidgetUsers->currentRow();
+    return ui->tableWidgetUsers->item(row, 0)->text();
 }
 
-QString AddChipDesignerDialog::get_user_id() const
+QString EditChipDesignerDialog::get_project_role() const
 {
-    int row = ui->tableWidget->currentRow();
-    return ui->tableWidget->item(row, 0)->text();
+    return ui->comboBoxProjectRole->currentText();
 }
 
-QString AddChipDesignerDialog::get_project_role() const
+QString EditChipDesignerDialog::get_project_role_id() const
 {
-    return ui->comboBox->currentText();
-}
-
-QString AddChipDesignerDialog::get_project_role_id() const
-{
-    int idx = ui->comboBox->currentIndex();
+    int idx = ui->comboBoxProjectRole->currentIndex();
     return project_role_ids_[idx];
 }
 
-QString AddChipDesignerDialog::get_chip_designer_id() const
+QString EditChipDesignerDialog::get_chip_designer_id() const
 {
     return chip_designer_id_;
 }
 
-void AddChipDesignerDialog::accept()
+void EditChipDesignerDialog::accept()
 {
+    if (!enabled_) return QDialog::reject();
     if (sanity_check()) QDialog::accept();
 }
 
-bool AddChipDesignerDialog::sanity_check()
+bool EditChipDesignerDialog::sanity_check()
 {
+    if (mode_ == DIALOG_MODE::EDIT) return true;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("chip_designer", {"chip_designer_id"}, {{"chip_id", chip_id_}, {"user_id", get_user_id()}}, items);
@@ -91,7 +127,7 @@ bool AddChipDesignerDialog::sanity_check()
     return true;
 }
 
-bool AddChipDesignerDialog::add_designer()
+bool EditChipDesignerDialog::add_designer()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
@@ -106,5 +142,14 @@ bool AddChipDesignerDialog::add_designer()
         QMessageBox::warning(this, "Add Designer", QString("Adding designer failed!\nError message: ") + dbhandler.get_error_message());
         return false;
     }
+}
 
+bool EditChipDesignerDialog::edit_designer()
+{
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QString> item;
+    dbhandler.show_one_item("chip_designer", item, {"chip_designer_id"}, {{"chip_id", chip_id_}, {"user_id", get_user_id()}});
+    if (item.size() == 0) return false;
+    chip_designer_id_ = item[0];
+    return dbhandler.update_items("chip_designer", "chip_designer_id", chip_designer_id_, {{"project_role_id", get_project_role_id()}});
 }

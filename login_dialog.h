@@ -16,6 +16,7 @@ public:
     ~LoginDialog();
     QString get_username();
     QString get_password();
+    void clear();
 
 signals:
     void logged_in(QString);

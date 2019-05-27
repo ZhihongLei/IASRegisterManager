@@ -12,7 +12,9 @@ class OpenChipDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit OpenChipDialog(const QString& user_id, QWidget *parent = nullptr);
+    enum DIALOG_MODE {OPEN_CHIP, MANAGE_CHIP};
+    explicit OpenChipDialog(const QString& user_id, bool can_add_chip, QWidget *parent = nullptr);
+    explicit OpenChipDialog(const QString& user_id, QString active_chip_id, QWidget *parent = nullptr);
     ~OpenChipDialog();
     QString get_chip_id() const;
     QString get_chip_name() const;
@@ -23,15 +25,26 @@ public:
     int get_address_width() const;
     bool is_msb_first() const;
 
+private slots:
+    void on_pushButtonAddChip_clicked();
+
+    void on_pushButtonRemoveChip_clicked();
+
+    void on_tableWidgetChip_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
+    void on_tableWidgetChip_cellDoubleClicked(int row, int column);
+
 private:
+    void setup_ui();
     void accept();
     bool sanity_check();
     bool check_project_role();
     Ui::OpenChipDialog *ui;
-    const QString user_id_;
+    const QString user_id_, active_chip_id_;
     QString project_role_id_ = "-1";
     QVector<QString> chip_ids_;
     int address_width_, register_width_;
+    const DIALOG_MODE mode_;
 };
 
 #endif // OPEN_CHIP_DIALOG_H

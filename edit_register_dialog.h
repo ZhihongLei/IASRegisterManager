@@ -2,6 +2,7 @@
 #define EDIT_REGISTER_DIALOG_H
 
 #include <QDialog>
+#include "data_utils.h"
 
 namespace Ui {
 class EditRegisterDialog;
@@ -13,7 +14,7 @@ class EditRegisterDialog : public QDialog
 
 public:
     explicit EditRegisterDialog(const QString& block_id, QWidget *parent = nullptr);
-    explicit EditRegisterDialog(const QString& block_id, const QString& reg_id, QWidget *parent = nullptr);
+    explicit EditRegisterDialog(const QString& block_id, const QString& reg_id, bool enabled = true, QWidget *parent = nullptr);
     ~EditRegisterDialog();
     QString get_reg_name() const;
     QString get_reg_id() const;
@@ -23,13 +24,13 @@ public:
     bool edit_register();
 
 private:
-    enum MODE {NEW, EDIT};
     Ui::EditRegisterDialog *ui;
     QVector<QString> reg_type_ids_;
     const QString block_id_;
     QString reg_id_;
     QString original_register_name_;
-    const MODE mode_;
+    const DIALOG_MODE mode_;
+    const bool enabled_;
     void accept();
     void setup_ui();
     bool sanity_check();

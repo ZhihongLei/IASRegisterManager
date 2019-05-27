@@ -21,6 +21,8 @@ public:
 private slots:
     void on_pushButton_clicked();
 
+    void on_plainTextEdit_textChanged();
+
 private:
     Ui::EditLaTeXDialog *ui;
     QWebEngineView *web;

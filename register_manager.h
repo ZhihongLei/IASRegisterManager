@@ -6,6 +6,8 @@
 #include <QHash>
 #include <QTableWidget>
 #include "authenticator.h"
+#include <QSplitter>
+#include "login_dialog.h"
 
 
 namespace Ui {
@@ -25,11 +27,32 @@ public:
     const QString& get_db_role_id() const;
 
 private slots:
-    void on_treeWidget_itemClicked(QTreeWidgetItem *item, int column);
-    void on_user_management();
-    void on_change_password();
-    void on_new_chip();
-    void on_open_chip();
+    void on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int column);
+    void on_actionUserManagement_triggered();
+    void on_actionChangePassword_triggered();
+    void on_actionLogOut_triggered();
+
+    void on_actionNewChip_triggered();
+    void on_actionOpenChip_triggered();
+    void on_actionCloseChip_triggered();
+    void on_actionChipManagement_triggered();
+
+    void on_actionDocEditorView_triggered();
+    void on_actionBlockEditorView_triggered();
+
+    void on_actionAdd_triggered();
+    void on_actionRemove_triggered();
+    void on_actionEdit_triggered();
+    void on_actionRefresh_triggered();
+
+    void on_treeWidgetDoc_customContextMenuRequested(QPoint pos);
+    void on_tableSignal_customContextMenuRequested(QPoint pos);
+    void on_tableRegister_customContextMenuRequested(QPoint pos);
+    void on_tableSigPart_customContextMenuRequested(QPoint pos);
+    void on_tableRegPart_customContextMenuRequested(QPoint pos);
+    void on_tableSystem_customContextMenuRequested(QPoint pos);
+    void on_tableDesigner_customContextMenuRequested(QPoint pos);
+    void on_tableRegPage_customContextMenuRequested(QPoint pos);
 
     void on_pushButtonAddSys_clicked();
 
@@ -55,16 +78,39 @@ private slots:
 
     void on_tableSignal_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
-    void on_tableReg_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+    void on_tableRegister_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
     void on_tableSignal_cellDoubleClicked(int row, int column);
 
-    void on_tableReg_cellDoubleClicked(int row, int column);
+    void on_tableRegister_cellDoubleClicked(int row, int column);
 
     void on_tableSystem_cellDoubleClicked(int row, int column);
 
+    void on_treeWidgetDoc_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+
+    void on_pushButtonAddDoc_clicked();
+
+    void on_pushButtonRemoveDoc_clicked();
+
+    void on_treeWidgetDoc_itemDoubleClicked(QTreeWidgetItem *item, int column);
+
+    void on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
+    void on_tableSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
+    void on_pushButtonAddRegPage_clicked();
+
+    void on_pushButtonRemoveRegPage_clicked();
+
+    void on_tableRegPage_cellDoubleClicked(int row, int column);
+
+    void on_tableDesigner_cellDoubleClicked(int row, int column);
+
 public slots:
     void on_loggedin(QString);
+
+signals:
+    void contextMenuRequested();
 
 private:
     Ui::RegisterManager *ui;
@@ -75,17 +121,23 @@ private:
     void init_db();
     void clear_db();
     void open_chip();
+    void display_chip_basics();
     void display_system_blocks();
     void display_designers();
     void display_register_pages();
     void display_signals();
     void display_registers();
-    void display_signal_partitions(const QString& reg_sig_id);
-    void display_register_partitions(const QString& reg_id);
+    void display_documents();
+    void display_signal_partitions();
+    void display_register_partitions();
 
     bool eventFilter(QObject *obj, QEvent *eve);
     void table_drop_event_handling(QTableWidget* table, const QString& table_name, const QString& key, int from_row, int to_row);
     bool msb_first_;
+
+    QAction *actionRemove_, *actionEdit_, *actionAdd_, *actionRefresh_;
+    QMenu* context_menu_;
+    LoginDialog login_dialog_;
 };
 
 #endif // REGISTER_MANAGER_H

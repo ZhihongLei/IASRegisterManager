@@ -8,26 +8,33 @@
 #include <QRegExpValidator>
 #include <QRegExp>
 #include <QMessageBox>
+#include "edit_chip_designer_dialog.h"
+#include "global_variables.h"
 
-EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, int address_width, QWidget *parent) :
+EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, int address_width, bool can_add_designer, QWidget *parent) :
     QDialog(parent),
-    chip_id_(chip_id),
     ui(new Ui::EditSystemBlockDialog),
+    chip_id_(chip_id),
     address_width_(address_width),
-    mode_(MODE::NEW)
+    mode_(DIALOG_MODE::ADD),
+    enabled_(true)
 {
     setup_ui();
+    ui->pushButtonAddDesigner->setEnabled(enabled_ && can_add_designer);
 }
 
-EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, const QString& block_id, int address_width, QWidget *parent) :
+EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, const QString& block_id, int address_width, bool can_add_designer, bool enabled, QWidget *parent) :
     QDialog(parent),
-    chip_id_(chip_id),
     ui(new Ui::EditSystemBlockDialog),
+    chip_id_(chip_id),
+    block_id_(block_id),
     address_width_(address_width),
-    mode_(MODE::EDIT),
-    block_id_(block_id)
+    mode_(DIALOG_MODE::EDIT),
+    enabled_(enabled)
 {
     setup_ui();
+    setWindowTitle("Edit System Block");
+    ui->pushButtonAddDesigner->setEnabled(enabled_ && can_add_designer);
     QVector<QVector<QString> > items;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     dbhandler.show_items("block_system_block", {"block_name", "abbreviation", "start_address", "responsible"}, "block_id", get_block_id(), items);
@@ -70,6 +77,9 @@ void EditSystemBlockDialog::setup_ui()
 
     ui->lineEditStartAddr->setValidator(new HexValueValidator(address_width_));
     ui->lineEditStartAddr->setText("0x");
+
+    QVector<QWidget*> widgets = {ui->lineEditName, ui->lineEditAbbr, ui->lineEditStartAddr, ui->comboBoxResponsible, ui->pushButtonAddDesigner};
+    for (QWidget* w : widgets) w->setEnabled(enabled_);
 }
 
 EditSystemBlockDialog::~EditSystemBlockDialog()
@@ -79,6 +89,7 @@ EditSystemBlockDialog::~EditSystemBlockDialog()
 
 void EditSystemBlockDialog::accept()
 {
+    if (!enabled_) return QDialog::reject();
     if (sanity_check()) return QDialog::accept();
 }
 
@@ -114,13 +125,13 @@ QString EditSystemBlockDialog::get_responsible_id() const
 
 bool EditSystemBlockDialog::check_block_name()
 {
-    QString title = mode_ == MODE::NEW ? "Create System Block" : "Edit System Block";
+    QString title = mode_ == DIALOG_MODE::ADD ? "Create System Block" : "Edit System Block";
     if (get_block_name() == "")
     {
         QMessageBox::warning(this, title, "System block name must not be empty!");
         return false;
     }
-    if (mode_ == MODE::EDIT && get_block_name() == original_block_name_) return true;
+    if (mode_ == DIALOG_MODE::EDIT && get_block_name() == original_block_name_) return true;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("block_system_block", {"block_id"}, {{"chip_id", chip_id_}, {"block_name", get_block_name()}}, items);
@@ -135,13 +146,13 @@ bool EditSystemBlockDialog::check_block_name()
 
 bool EditSystemBlockDialog::check_block_abbreviation()
 {
-    QString title = mode_ == MODE::NEW ? "Create System Block" : "Edit System Block";
+    QString title = mode_ == DIALOG_MODE::ADD ? "Create System Block" : "Edit System Block";
     if (get_block_abbr() == "")
     {
         QMessageBox::warning(this, title, "System block abbreviation must not be empty!");
         return false;
     }
-    if (mode_ == MODE::EDIT && get_block_abbr() == original_abbr_) return true;
+    if (mode_ == DIALOG_MODE::EDIT && get_block_abbr() == original_abbr_) return true;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("block_system_block", {"block_id"}, {{"chip_id", chip_id_}, {"abbreviation", get_block_abbr()}}, items);
@@ -156,7 +167,7 @@ bool EditSystemBlockDialog::check_block_abbreviation()
 bool EditSystemBlockDialog::check_start_address()
 {
     // TODO
-    QString title = mode_ == MODE::NEW ? "Create System Block" : "Edit System Block";
+    QString title = mode_ == DIALOG_MODE::ADD ? "Create System Block" : "Edit System Block";
     if (ui->lineEditStartAddr->text() == "")
     {
         QMessageBox::warning(this, title, "Please give a valid start address!");
@@ -203,4 +214,22 @@ bool EditSystemBlockDialog::edit_system_block()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     return dbhandler.update_items("block_system_block", {{"block_id", get_block_id()}}, {{"block_name", get_block_name()}, {"abbreviation", get_block_abbr()}, {"responsible", get_responsible_id()}, {"start_address", get_start_addr()}});
+}
+
+void EditSystemBlockDialog::on_pushButtonAddDesigner_clicked()
+{
+    EditChipDesignerDialog add_designer(chip_id_, this);
+    if (add_designer.exec() == QDialog::Accepted && add_designer.add_designer())
+    {
+        ui->comboBoxResponsible->addItem(add_designer.get_username());
+        ui->comboBoxResponsible->setCurrentIndex(ui->comboBoxResponsible->count() - 1);
+        responsible2user_id_[add_designer.get_username()] = add_designer.get_user_id();
+        designer_added_ = true;
+    }
+}
+
+
+bool EditSystemBlockDialog::designer_added() const
+{
+    return designer_added_;
 }

@@ -52,3 +52,10 @@ void LoginDialog::accept()
         QDialog::accept();
     }
 }
+
+void LoginDialog::clear()
+{
+    ui->lineEdit_user->setFocus();
+    ui->lineEdit_user->clear();
+    ui->lineEdit_password->clear();
+}

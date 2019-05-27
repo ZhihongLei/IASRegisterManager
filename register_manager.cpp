@@ -13,13 +13,16 @@
 #include <QTreeWidgetItem>
 #include <QDialogButtonBox>
 #include <QMessageBox>
-#include "add_chip_designer_dialog.h"
+#include "edit_chip_designer_dialog.h"
 #include "edit_signal_dialog.h"
 #include "edit_register_dialog.h"
 #include "edit_signal_partition_dialog.h"
 #include <assert.h>
 #include <QDropEvent>
 #include <QMimeData>
+#include "edit_document_dialog.h"
+#include "data_utils.h"
+#include "login_dialog.h"
 
 RegisterManager::RegisterManager(QWidget *parent) :
     QMainWindow(parent),
@@ -35,20 +38,176 @@ RegisterManager::RegisterManager(QWidget *parent) :
     ui->tableSignal->setColumnHidden(1, true);
     ui->tableSignal->setColumnHidden(2, true);
     ui->tableSigPart->setColumnHidden(0, true);
-    ui->tableReg->setColumnHidden(0, true);
+    ui->tableRegister->setColumnHidden(0, true);
     ui->tableRegPart->setColumnHidden(0, true);
     //clear_db();
     //init_db();
-    connect(ui->actionUser_Management, SIGNAL(triggered()), this, SLOT(on_user_management()));
-    connect(ui->actionChange_Password, SIGNAL(triggered()), this, SLOT(on_change_password()));
-    connect(ui->actionNew_Chip, SIGNAL(triggered()), this, SLOT(on_new_chip()));
-    connect(ui->actionOpen_Chip, SIGNAL(triggered()), this, SLOT(on_open_chip()));
+
     msb_first_ = true;
     QVector<QWidget*> widgets = {ui->pushButtonAddSys, ui->pushButtonRemoveSys, ui->pushButtonAddReg, ui->pushButtonRemoveReg, ui->pushButtonAddSig, ui->pushButtonRemoveSig, ui->pushButtonAddSigPart,
                                 ui->pushButtonRemoveSigPart, ui->pushButtonAddDesigner, ui->pushButtonRemoveDesigner};
-    for (QWidget* widget : widgets) widget->setVisible(false);
-    for (QAction* action : {ui->actionUser_Management, ui->actionNew_Chip}) action->setVisible(false);
+    for (QWidget* widget : widgets) widget->setEnabled(false);
+    for (QAction* action : {ui->actionUserManagement, ui->actionNewChip}) action->setEnabled(false);
 
+    ui->splitterMain->setSizes({150, 600});
+    ui->splitterMain->setCollapsible(0, false);
+    ui->splitterMain->setCollapsible(1, false);
+
+    ui->splitterWorking->setCollapsible(0, false);
+    ui->splitterWorking->setCollapsible(1, false);
+    ui->splitterWorking->setSizes({INT_MAX, INT_MAX});
+
+
+    actionEdit_ = new QAction("Edit", ui->treeWidgetDoc);
+    actionRemove_ = new QAction("Remove", ui->treeWidgetDoc);
+    actionAdd_ = new QAction("Add", ui->treeWidgetDoc);
+    actionRefresh_ = new QAction("Refresh", ui->treeWidgetDoc);
+
+    context_menu_ = new QMenu(ui->treeWidgetDoc);
+
+    context_menu_->addAction(actionEdit_);
+    context_menu_->addAction(actionRemove_);
+    context_menu_->addAction(actionAdd_);
+    context_menu_->addSeparator();
+    context_menu_->addAction(actionRefresh_);
+
+
+    ui->treeWidgetDoc->setColumnHidden(3, true);
+
+    connect(actionAdd_, SIGNAL(triggered()), this, SLOT(on_actionAdd_triggered()));
+    connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
+    connect(actionRemove_, SIGNAL(triggered()), this, SLOT(on_actionRemove_triggered()));
+    connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(on_actionRefresh_triggered()));
+
+    QObject::connect(&login_dialog_, SIGNAL(logged_in(QString)), this, SLOT(on_loggedin(QString)));
+    login_dialog_.show();
+
+
+}
+
+void RegisterManager::on_actionAdd_triggered()
+{
+    if (ui->tableSystem->hasFocus()) on_pushButtonAddSys_clicked();
+    else if (ui->tableDesigner->hasFocus()) on_pushButtonAddDesigner_clicked();
+    else if (ui->tableRegPage->hasFocus()) on_pushButtonAddRegPage_clicked();
+    else if (ui->tableSignal->hasFocus()) on_pushButtonAddSig_clicked();
+    else if (ui->tableSigPart->hasFocus()) on_pushButtonAddSigPart_clicked();
+    else if (ui->treeWidgetDoc->hasFocus()) on_pushButtonAddDoc_clicked();
+    else if (ui->tableRegister->hasFocus()) on_pushButtonAddReg_clicked();
+    //else if (ui->tableRegPart->hasFocus())
+}
+
+void RegisterManager::on_actionEdit_triggered()
+{
+    if (ui->tableSystem->hasFocus()) on_tableSystem_cellDoubleClicked(ui->tableSystem->currentRow(), ui->tableSystem->currentColumn());
+    else if (ui->tableDesigner->hasFocus()) on_tableDesigner_cellDoubleClicked(ui->tableDesigner->currentRow(), ui->tableDesigner->currentColumn());
+    else if (ui->tableRegPage->hasFocus()) on_tableRegPage_cellDoubleClicked(ui->tableRegPage->currentRow(), ui->tableRegPage->currentColumn());
+    else if (ui->tableSignal->hasFocus()) on_tableSignal_cellDoubleClicked(ui->tableSignal->currentRow(), ui->tableSignal->currentColumn());
+    //else if (ui->tableSigPart->hasFocus()) on_tableSigPart_cellDoubleClicked(ui->tableSigPart->currentRow(), ui->tableSigPart->currentColumn());
+    else if (ui->treeWidgetDoc->hasFocus()) on_treeWidgetDoc_itemDoubleClicked(ui->treeWidgetDoc->currentItem(), 0);
+    else if (ui->tableRegister->hasFocus()) on_tableRegister_cellDoubleClicked(ui->tableRegister->currentRow(), ui->tableRegister->currentColumn());
+    //else if (ui->tableRegPart->hasFocus())
+}
+
+void RegisterManager::on_actionRemove_triggered()
+{
+    if (ui->tableSystem->hasFocus()) on_pushButtonRemoveSys_clicked();
+    else if (ui->tableDesigner->hasFocus()) on_pushButtonRemoveDesigner_clicked();
+    else if (ui->tableRegPage->hasFocus()) on_pushButtonRemoveRegPage_clicked();
+    else if (ui->tableSignal->hasFocus()) on_pushButtonRemoveSig_clicked();
+    else if (ui->tableSigPart->hasFocus()) on_pushButtonRemoveSigPart_clicked();
+    else if (ui->treeWidgetDoc->hasFocus()) on_pushButtonRemoveDoc_clicked();
+    else if (ui->tableRegister->hasFocus()) on_pushButtonRemoveReg_clicked();
+    //else if (ui->tableRegPart->hasFocus())
+}
+
+
+void RegisterManager::on_actionRefresh_triggered()
+{
+    if (ui->tableSystem->hasFocus()) display_system_blocks();
+    else if (ui->tableDesigner->hasFocus()) display_designers();
+    else if (ui->tableRegPage->hasFocus()) display_register_pages();
+    else if (ui->tableSignal->hasFocus()) display_signals();
+    else if (ui->tableSigPart->hasFocus()) display_signal_partitions();
+    else if (ui->treeWidgetDoc->hasFocus()) display_documents();
+    else if (ui->tableRegister->hasFocus()) display_registers();
+    else if (ui->tableRegPart->hasFocus()) display_register_partitions();
+}
+
+
+void RegisterManager::on_treeWidgetDoc_customContextMenuRequested(QPoint pos)
+{
+    QTreeWidgetItem *current = ui->treeWidgetDoc->itemAt(pos);
+    actionEdit_->setEnabled(authenticator_.can_edit_document() && ((current && current->parent() && current->parent() == ui->treeWidgetDoc->topLevelItem(0)) || \
+                               (current && current->parent() && current->parent()->parent())));
+    actionAdd_->setEnabled(current && authenticator_.can_edit_document());
+    actionRemove_->setEnabled(actionEdit_->isEnabled() && authenticator_.can_edit_document());
+    context_menu_->popup(ui->treeWidgetDoc->viewport()->mapToGlobal(pos));
+}
+
+void RegisterManager::on_tableSignal_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableSignal->itemAt(pos);
+    actionEdit_->setEnabled(current && authenticator_.can_add_signal() && authenticator_.can_remove_signal());
+    actionAdd_->setEnabled(authenticator_.can_add_signal());
+    actionRemove_->setEnabled(current && authenticator_.can_remove_signal());
+    context_menu_->popup(ui->tableSignal->viewport()->mapToGlobal(pos));
+}
+
+void RegisterManager::on_tableRegister_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableRegister->itemAt(pos);
+    actionEdit_->setEnabled(current && authenticator_.can_add_register() && authenticator_.can_remove_register());
+    actionAdd_->setEnabled(authenticator_.can_add_register());
+    actionRemove_->setEnabled(current && authenticator_.can_remove_register());
+    context_menu_->popup(ui->tableRegister->viewport()->mapToGlobal(pos));
+}
+
+void RegisterManager::on_tableDesigner_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableDesigner->itemAt(pos);
+    actionEdit_->setEnabled(current && authenticator_.can_add_chip_designer() && authenticator_.can_remove_chip_designer());
+    actionAdd_->setEnabled(authenticator_.can_add_chip_designer());
+    actionRemove_->setEnabled(authenticator_.can_remove_chip_designer());
+    context_menu_->popup(ui->tableDesigner->viewport()->mapToGlobal(pos));
+}
+
+void RegisterManager::on_tableSigPart_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableSigPart->itemAt(pos);
+    actionEdit_->setEnabled(false);
+    actionAdd_->setEnabled(authenticator_.can_edit_signal_partition());
+    actionRemove_->setEnabled(current && authenticator_.can_edit_signal_partition());
+    context_menu_->popup(ui->tableSigPart->viewport()->mapToGlobal(pos));
+}
+
+void RegisterManager::on_tableRegPart_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableRegPart->itemAt(pos);
+    // DO NOTHING
+    /*
+    actionEdit_->setEnabled(current && authenticator_.can_edit_register_partition());
+    actionAdd_->setEnabled(current && authenticator_.can_edit_register_partition());
+    actionRemove_->setEnabled(current && authenticator_.can_edit_register_partition());
+    context_menu_->popup(ui->tableRegPart->viewport()->mapToGlobal(pos));
+    */
+}
+
+
+void RegisterManager::on_tableSystem_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableSystem->itemAt(pos);
+    actionEdit_->setEnabled(current && authenticator_.can_add_block() && ((authenticator_.can_remove_his_block() && ui->tableSystem->item(current->row(), 3)->text() == username_) || authenticator_.can_fully_access_all_blocks()));
+    actionAdd_->setEnabled(authenticator_.can_add_block());
+    actionRemove_->setEnabled(current && ((authenticator_.can_remove_his_block() && ui->tableSystem->item(current->row(), 3)->text() == username_) || authenticator_.can_fully_access_all_blocks()));
+    context_menu_->popup(ui->tableSystem->viewport()->mapToGlobal(pos));
+}
+
+
+void RegisterManager::on_tableRegPage_customContextMenuRequested(QPoint pos)
+{
+    QTableWidgetItem *current = ui->tableRegPage->itemAt(pos);
+    // TODO
 }
 
 void RegisterManager::table_drop_event_handling(QTableWidget* table, const QString& table_name, const QString& key, int from_row, int to_row)
@@ -106,7 +265,7 @@ void RegisterManager::table_drop_event_handling(QTableWidget* table, const QStri
 
 bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
 {
-    if (obj == ui->tableSystem->viewport() or obj == ui->tableReg->viewport() or obj == ui->treeWidget->viewport())
+    if (obj == ui->tableSystem->viewport() or obj == ui->tableRegister->viewport() or obj == ui->treeWidgetBlock->viewport())
     {
         if (eve->type() == QEvent::Drop)
         {
@@ -119,24 +278,24 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
                 int row, col;
                 QMap<int,  QVariant> roleDataMap;
                 stream >> row >> col >> roleDataMap;
-                QTableWidgetItem* pDropItem;
+                QTableWidgetItem* pDropItem = nullptr;
                 if (obj == ui->tableSystem->viewport()) pDropItem = ui->tableSystem->itemAt((static_cast<QDropEvent*>(eve))->pos());
-                if (obj == ui->tableReg->viewport()) pDropItem = ui->tableReg->itemAt((static_cast<QDropEvent*>(eve))->pos());
-                //if (obj == ui->treeWidget->viewport()) pDropItem = ui->treeWidget->childAt((static_cast<QDropEvent*>(eve))->pos());
+                if (obj == ui->tableRegister->viewport()) pDropItem = ui->tableRegister->itemAt((static_cast<QDropEvent*>(eve))->pos());
+                //if (obj == ui->treeWidgetBlock->viewport()) pDropItem = ui->treeWidgetBlock->childAt((static_cast<QDropEvent*>(eve))->pos());
                 if (!pDropItem) return true;
                 if (pDropItem->row() == row) return true;
 
-                if (obj == ui->tableReg->viewport())
+                if (obj == ui->tableRegister->viewport())
                 {
-                    table_drop_event_handling(ui->tableReg, "block_register", "reg_id", row, pDropItem->row());
-                    ui->tableReg->setCurrentCell(pDropItem->row(), 0);
+                    table_drop_event_handling(ui->tableRegister, "block_register", "reg_id", row, pDropItem->row());
+                    ui->tableRegister->setCurrentCell(pDropItem->row(), 0);
                 }
                 if (obj == ui->tableSystem->viewport())
                 {
                     table_drop_event_handling(ui->tableSystem, "block_system_block", "block_id", row, pDropItem->row());
                     ui->tableSystem->setCurrentCell(pDropItem->row(), 0);
 
-                    QTreeWidgetItem *topLevelItem = ui->treeWidget->topLevelItem(0);
+                    QTreeWidgetItem *topLevelItem = ui->treeWidgetBlock->topLevelItem(0);
                     QString block_from = topLevelItem->child(row)->text(0);
                     if (row > pDropItem->row())
                     {
@@ -178,12 +337,18 @@ void RegisterManager::open_chip()
     widget->setDragDropMode(chip_owner_id_ == user_id_ ? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
     widget->setDropIndicatorShown(true);
     ui->stackedWidget->setCurrentIndex(0);
+    display_chip_basics();
     display_system_blocks();
     display_designers();
     display_register_pages();
+
+    ui->pushButtonAddSys->setEnabled(authenticator_.can_add_block());
+    ui->pushButtonAddDesigner->setEnabled(authenticator_.can_add_chip_designer());
+    ui->pushButtonRemoveDesigner->setEnabled(authenticator_.can_remove_chip_designer());
+    // TODO: compile project widget
 }
 
-void RegisterManager::on_treeWidget_itemClicked(QTreeWidgetItem *item, int column)
+void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int column)
 {
     if (!item->parent())
     {
@@ -198,37 +363,36 @@ void RegisterManager::on_treeWidget_itemClicked(QTreeWidgetItem *item, int colum
         block_ = ui->tableSystem->item(row, 1)->text();
 
         QString block_responsible = ui->tableSystem->item(row, 3)->text();
-        authenticator_.set_block_permissions(block_responsible == username_ || user_id_ == chip_owner_id_);
+        authenticator_.set_block_permissions(block_responsible == username_ || authenticator_.can_fully_access_all_blocks());
 
-        ui->pushButtonAddReg->setVisible(authenticator_.can_add_register());
-        ui->pushButtonRemoveReg->setVisible(authenticator_.can_remove_register());
-        ui->pushButtonAddSig->setVisible(authenticator_.can_add_signal());
-        ui->pushButtonRemoveSig->setVisible(authenticator_.can_remove_signal());
-        ui->pushButtonAddSigPart->setVisible(authenticator_.can_add_signal());
-        ui->pushButtonRemoveSigPart->setVisible(authenticator_.can_remove_signal());
+        ui->pushButtonAddReg->setEnabled(authenticator_.can_add_register());
+        ui->pushButtonAddSig->setEnabled(authenticator_.can_add_signal());
 
-        if (authenticator_.can_add_register()) ui->tableReg->viewport()->installEventFilter(this);
-        else ui->tableReg->viewport()->removeEventFilter(this);
-        ui->tableReg->setDragEnabled(authenticator_.can_add_register());
-        ui->tableReg->setAcceptDrops(authenticator_.can_add_register());
-        ui->tableReg->setDragDropMode(authenticator_.can_add_register()? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
-        ui->tableReg->setDropIndicatorShown(true);
+        if (authenticator_.can_add_register()) ui->tableRegister->viewport()->installEventFilter(this);
+        else ui->tableRegister->viewport()->removeEventFilter(this);
+        ui->tableRegister->setDragEnabled(authenticator_.can_add_register());
+        ui->tableRegister->setAcceptDrops(authenticator_.can_add_register());
+        ui->tableRegister->setDragDropMode(authenticator_.can_add_register()? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
+        ui->tableRegister->setDropIndicatorShown(true);
 
         if (ui->tabWidget->currentIndex() == 0) display_signals();
         else display_registers();
+
+        display_documents();
     }
 }
 
 void RegisterManager::on_tableSignal_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
-    if (currentRow == -1 or ui->tableSignal->item(currentRow, 1)->text() == "") ui->tableSigPart->setRowCount(0);
-    else display_signal_partitions(ui->tableSignal->item(currentRow, 1)->text());
+    ui->pushButtonAddSigPart->setEnabled(authenticator_.can_edit_signal_partition() && currentRow >= 0 && ui->tableSignal->item(currentRow, 1)->text() != "");
+    ui->pushButtonRemoveSig->setEnabled(authenticator_.can_remove_signal() && currentRow >= 0);
+    display_signal_partitions();
 }
 
-void RegisterManager::on_tableReg_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+void RegisterManager::on_tableRegister_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
-    if (currentRow == -1) ui->tableRegPart->setRowCount(0);
-    else display_register_partitions(ui->tableReg->item(currentRow, 0)->text());
+    ui->pushButtonRemoveReg->setEnabled(authenticator_.can_remove_register() && currentRow >= 0);
+    display_register_partitions();
 }
 
 
@@ -238,17 +402,29 @@ void RegisterManager::on_tabWidget_currentChanged(int index)
     else if (index == 1) display_registers();
 }
 
+
+void RegisterManager::display_chip_basics()
+{
+    ui->tableChipBasics->setRowCount(0);
+    ui->tableChipBasics->insertRow(0);
+    ui->tableChipBasics->setItem(0, 0, new QTableWidgetItem(chip_));
+    ui->tableChipBasics->setItem(0, 1, new QTableWidgetItem(chip_owner_));
+    ui->tableChipBasics->setItem(0, 2, new QTableWidgetItem(QString::number(register_width_)));
+    ui->tableChipBasics->setItem(0, 3, new QTableWidgetItem(QString::number(address_width_)));
+    ui->tableChipBasics->setItem(0, 4, new QTableWidgetItem(msb_first_ ? "1" : "0"));
+}
+
 void RegisterManager::display_system_blocks()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
 
-    ui->treeWidget->clear();
+    ui->treeWidgetBlock->clear();
 
     ui->tableSystem->setRowCount(0);
 
-    QTreeWidgetItem *topLevelItem = new QTreeWidgetItem(ui->treeWidget);
-    ui->treeWidget->addTopLevelItem(topLevelItem);
+    QTreeWidgetItem *topLevelItem = new QTreeWidgetItem(ui->treeWidgetBlock);
+    ui->treeWidgetBlock->addTopLevelItem(topLevelItem);
     topLevelItem->setText(0, chip_);
     topLevelItem->setSelected(true);
     topLevelItem->setExpanded(true);
@@ -303,6 +479,7 @@ void RegisterManager::display_system_blocks()
         if (next >= items.size()) break;
 
     }
+    if (ui->tableSystem->rowCount() > 0) ui->tableSystem->setCurrentCell(0, 0);
 }
 
 
@@ -327,6 +504,7 @@ void RegisterManager::display_designers()
         ui->tableDesigner->insertRow(row);
         for (int i = 0; i < item.size(); i++) ui->tableDesigner->setItem(row, i, new QTableWidgetItem(item[i]));
     }
+    if (ui->tableDesigner->rowCount() > 0) ui->tableDesigner->setCurrentCell(0, 0);
 }
 
 void RegisterManager::display_register_pages()
@@ -379,44 +557,131 @@ void RegisterManager::display_signals()
 
 void RegisterManager::display_registers()
 {
-    ui->tableReg->setRowCount(0);
+    ui->tableRegister->setRowCount(0);
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items_inner_join({"block_register.reg_id", "block_register.reg_name", "def_register_type.reg_type", "block_register.prev", "block_register.next"},
                                     {{{"block_register", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
                                     items, {{"block_register.block_id", block_id_}});
 
-    QHash<QString, int> reg_id2idx;
-    int start = -1;
-    for (int i = 0; i < items.size(); i++)
+    items  = sort_doubly_linked_list(items);
+    for (const auto& item : items)
     {
-        if (items[i][3] == "-1") start = i;
-        reg_id2idx[items[i][0]] = i;
-    }
-    if (start == -1) return;
+        int row = ui->tableRegister->rowCount();
+        ui->tableRegister->insertRow(row);
+        ui->tableRegister->setItem(row, 0, new QTableWidgetItem(item[0]));
+        ui->tableRegister->setItem(row, 1, new QTableWidgetItem(item[1]));
+        ui->tableRegister->setItem(row, 2, new QTableWidgetItem(item[2]));
 
-    int next = start;
-    while (true)
-    {
-        const auto& item = items[next];
-        int row = ui->tableReg->rowCount();
-        ui->tableReg->insertRow(row);
-        ui->tableReg->setItem(row, 0, new QTableWidgetItem(item[0]));
-        ui->tableReg->setItem(row, 1, new QTableWidgetItem(item[1]));
-        ui->tableReg->setItem(row, 2, new QTableWidgetItem(item[2]));
-
-        if (item[4] == "-1") break;
-        next = reg_id2idx[item[4]];
     }
-    if (ui->tableReg->rowCount() > 0) ui->tableReg->setCurrentCell(0, 0);
+
+    if (ui->tableRegister->rowCount() > 0) ui->tableRegister->setCurrentCell(0, 0);
 }
 
 
-
-void RegisterManager::display_signal_partitions(const QString& reg_sig_id)
+void RegisterManager::display_documents()
 {
-    assert (reg_sig_id != "");
+    ui->treeWidgetDoc->clear();
+
+    QTreeWidgetItem *topLevelItemBlock = new QTreeWidgetItem(ui->treeWidgetDoc);
+    ui->treeWidgetDoc->addTopLevelItem(topLevelItemBlock);
+    topLevelItemBlock->setText(0, block_);
+    topLevelItemBlock->setText(3, block_id_);
+    topLevelItemBlock->setExpanded(true);
+
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QVector<QString> > items;
+
+    dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
+                                    {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                    items, {{"doc_block.block_id", block_id_}});
+
+    items = sort_doubly_linked_list(items);
+
+    for (const auto& item : items)
+    {
+        QTreeWidgetItem *item_block = new QTreeWidgetItem(topLevelItemBlock);
+        item_block->setText(0, QString::number(topLevelItemBlock->childCount()));
+        item_block->setText(1, item[1]);
+        item_block->setText(2, item[2]);
+        item_block->setText(3, item[0]);
+    }
+
+    QVector<QVector<QString> > registers;
+
+    dbhandler.show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id_, registers);
+    registers = sort_doubly_linked_list(registers);
+    for (const auto& reg : registers)
+    {
+        QTreeWidgetItem *topLevelItemReg = new QTreeWidgetItem(ui->treeWidgetDoc);
+        ui->treeWidgetDoc->addTopLevelItem(topLevelItemReg);
+        topLevelItemReg->setText(0, reg[1]);
+        topLevelItemReg->setText(3, reg[0]);
+        topLevelItemReg->setExpanded(true);
+
+        QVector<QVector<QString> > signal_items;
+        QVector<QString> ext_fields = {"block_reg_partition.reg_part_id",
+                                           "block_reg_partition.lsb",
+                                           "block_reg_partition.msb",
+                                            "signal_signal.sig_name",
+                                           "signal_signal.sig_id",
+                                           "signal_reg_sig_partition.lsb",
+                                           "signal_reg_sig_partition.msb"};
+        dbhandler.show_items_inner_join(ext_fields, {{{"block_reg_partition", "reg_sig_part_id"}, {"signal_reg_sig_partition", "reg_sig_part_id"}},
+                                                     {{"signal_reg_sig_partition", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
+                                                     {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, signal_items, {{"block_reg_partition.reg_id", reg[0]}});
+
+        if (msb_first_) qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2] > b[2];});
+        else qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1] < b[1];});
+
+        QSet<QString> signal_set;
+        QVector<QString> signal_ids, signal_names;
+
+        for (const auto& signal_item : signal_items)
+        {
+            QString sig_id = signal_item[4], sig_name = signal_item[3];
+            if (signal_set.contains(sig_id)) continue;
+            signal_set.insert(sig_id);
+            signal_ids.push_back(sig_id);
+            signal_names.push_back(sig_name);
+        }
+
+        for (int i = 0; i < signal_ids.size(); i++)
+        {
+            QString sig_id = signal_ids[i], sig_name = signal_names[i];
+            signal_items.clear();
+            dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
+                                            {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                            signal_items, {{"doc_signal.sig_id", sig_id}});
+
+            QTreeWidgetItem *top_level_item_signal = new QTreeWidgetItem(topLevelItemReg);
+            top_level_item_signal->setText(0, sig_name);
+            top_level_item_signal->setText(3, sig_id);
+            top_level_item_signal->setExpanded(true);
+
+            signal_items = sort_doubly_linked_list(signal_items);
+            for (const auto& signal_item : signal_items)
+            {
+                QTreeWidgetItem *signal = new QTreeWidgetItem(top_level_item_signal);
+                signal->setText(0, QString::number(top_level_item_signal->childCount()));
+                signal->setText(1, signal_item[1]);
+                signal->setText(2, signal_item[2]);
+                signal->setText(3, signal_item[0]);
+            }
+        }
+
+    }
+
+    ui->treeWidgetDoc->setCurrentItem(ui->treeWidgetDoc->topLevelItem(0));
+}
+
+
+void RegisterManager::display_signal_partitions()
+{
     ui->tableSigPart->setRowCount(0);
+    int row = ui->tableSignal->currentRow();
+    if (row < 0 || ui->tableSignal->item(row, 1)->text() == "") return;
+    QString reg_sig_id = ui->tableSignal->item(row, 1)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QString> ext_fields = {"signal_reg_sig_partition.reg_sig_part_id",
                                        "signal_reg_sig_partition.lsb",
@@ -452,13 +717,17 @@ void RegisterManager::display_signal_partitions(const QString& reg_sig_id)
         ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
 
     }
+    if (ui->tableSigPart->rowCount() > 0) ui->tableSigPart->setCurrentCell(0, 0);
 
 }
 
 
-void RegisterManager::display_register_partitions(const QString& reg_id)
+void RegisterManager::display_register_partitions()
 {
+    int row = ui->tableRegister->currentRow();
     ui->tableRegPart->setRowCount(0);
+    if (row < 0) return;
+    QString reg_id = ui->tableRegister->item(row, 0)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QString> ext_fields = {"block_reg_partition.reg_part_id",
                                        "block_reg_partition.lsb",
@@ -490,29 +759,36 @@ void RegisterManager::display_register_partitions(const QString& reg_id)
         }
 
     }
+    if (ui->tableRegPart->rowCount() > 0) ui->tableRegPart->setCurrentCell(0, 0);
 }
 
 void RegisterManager::on_loggedin(QString username)
 {
-    username_ = username;
+
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items_inner_join({"global_user.user_id", "def_db_role.db_role", "def_db_role.db_role_id"},
-                                    {{{"global_user", "db_role_id"}, {"def_db_role", "db_role_id"}}}, items, {{"username", username_}});
+                                    {{{"global_user", "db_role_id"}, {"def_db_role", "db_role_id"}}}, items, {{"username", username}});
+    username_ = username;
     user_id_ = items[0][0];
     db_role_ = items[0][1];
     db_role_id_ = items[0][2];
     authenticator_.set_database_permissions(db_role_id_);
 
-    ui->actionUser_Management->setVisible(authenticator_.is_user_manager());
-    ui->actionNew_Chip->setVisible(authenticator_.can_add_project());
+    ui->actionUserManagement->setEnabled(authenticator_.can_add_user() && authenticator_.can_remove_user());
+    ui->actionNewChip->setEnabled(authenticator_.can_add_project());
+    ui->actionChipManagement->setEnabled(authenticator_.can_add_project() && authenticator_.can_remove_project());
     setWindowTitle("IAS Register Manager - " + username);
+
+    login_dialog_.hide();
+    OpenChipDialog open_dial(user_id_, authenticator_.can_add_project(), this);
     show();
+    on_actionOpenChip_triggered();
 }
 
-void RegisterManager::on_user_management()
+void RegisterManager::on_actionUserManagement_triggered()
 {
-    if (!authenticator_.is_user_manager())
+    if (!authenticator_.can_add_user() || !authenticator_.can_remove_user())
     {
         QMessageBox::warning(this, "User Management", "You do not have access to User Manager!");
         return;
@@ -521,13 +797,25 @@ void RegisterManager::on_user_management()
     user_management.exec();
 }
 
-void RegisterManager::on_change_password()
+void RegisterManager::on_actionChangePassword_triggered()
 {
     ChangePasswordDialog change_password(get_username(), this);
     if (change_password.exec() == QDialog::Accepted) change_password.change_password();
 }
 
-void RegisterManager::on_new_chip()
+void RegisterManager::on_actionLogOut_triggered()
+{
+    hide();
+    on_actionCloseChip_triggered();
+    authenticator_.clear_database_permission();
+    for (QString* s : {&username_, &user_id_, &db_role_, &db_role_id_}) s->clear();
+    for (QAction* action : {ui->actionUserManagement, ui->actionNewChip, ui->actionChipManagement}) action->setEnabled(false);
+
+    login_dialog_.clear();
+    login_dialog_.show();
+}
+
+void RegisterManager::on_actionNewChip_triggered()
 {
     if (!authenticator_.can_add_project())
     {
@@ -556,9 +844,9 @@ void RegisterManager::on_new_chip()
     }
 }
 
-void RegisterManager::on_open_chip()
+void RegisterManager::on_actionOpenChip_triggered()
 {
-    OpenChipDialog open_dial(user_id_, this);
+    OpenChipDialog open_dial(user_id_, authenticator_.can_add_project(), this);
     if (open_dial.exec() == QDialog::Accepted)
     {
         chip_ = open_dial.get_chip_name();
@@ -569,15 +857,54 @@ void RegisterManager::on_open_chip()
         chip_owner_ = open_dial.get_owner();
         chip_owner_id_ = open_dial.get_owner_id();
         authenticator_.set_project_permissions(open_dial.get_project_role_id());
-        ui->pushButtonAddSys->setVisible(authenticator_.can_add_block());
-        ui->pushButtonRemoveSys->setVisible(authenticator_.can_remove_block());
-        ui->pushButtonAddDesigner->setVisible(authenticator_.can_add_chip_designer());
-        ui->pushButtonRemoveDesigner->setVisible(authenticator_.can_remove_chip_designer());
-        // TODO: compile project widget
-
         open_chip();
     }
     //
+}
+
+void RegisterManager::on_actionCloseChip_triggered()
+{
+    QVector<QTableWidget*> tables = {ui->tableChipBasics, ui->tableSystem, ui->tableDesigner, ui->tableRegPage,
+                                     ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart};
+    for (QTableWidget* table : tables) table->setRowCount(0);
+    ui->treeWidgetBlock->clear();
+    ui->treeWidgetDoc->clear();
+
+    QVector<QWidget*> widgets = {ui->pushButtonAddSys, ui->pushButtonRemoveSys, ui->pushButtonAddReg, ui->pushButtonRemoveReg,
+                                 ui->pushButtonAddSig, ui->pushButtonRemoveSig, ui->pushButtonAddSigPart,
+                                ui->pushButtonRemoveSigPart, ui->pushButtonAddDesigner, ui->pushButtonRemoveDesigner};
+    for (QWidget* widget : widgets) widget->setEnabled(false);
+
+    QVector<QString*> variables = {&chip_, &chip_id_, &chip_owner_, &chip_owner_id_};
+    for (QString* &v : variables) v->clear();
+
+    address_width_ = 0;
+    register_width_ = 0;
+    msb_first_ = true;
+
+    authenticator_.clear_project_permission();
+    authenticator_.clear_block_permission();
+}
+
+void RegisterManager::on_actionChipManagement_triggered()
+{
+    if (!authenticator_.can_add_project() || !authenticator_.can_remove_project())
+    {
+        QMessageBox::warning(this, "User Management", "You do not have access to Chip Manager!");
+        return;
+    }
+    OpenChipDialog open_dial(user_id_, chip_id_, this);
+    open_dial.exec();
+}
+
+void RegisterManager::on_actionDocEditorView_triggered()
+{
+    ui->frameDoc->setVisible(ui->actionDocEditorView->isChecked());
+}
+
+void RegisterManager::on_actionBlockEditorView_triggered()
+{
+    ui->frameTab->setVisible(ui->actionBlockEditorView->isChecked());
 }
 
 void RegisterManager::on_pushButtonAddSys_clicked()
@@ -587,42 +914,42 @@ void RegisterManager::on_pushButtonAddSys_clicked()
         QMessageBox::warning(this, "New System Block", "You are not eligible to add system blocks!");
         return;
     }
-    EditSystemBlockDialog new_system(chip_id_, address_width_, this);
+    EditSystemBlockDialog new_system(chip_id_, address_width_, authenticator_.can_add_chip_designer(), this);
     new_system.setWindowTitle("New System Block");
-    if (new_system.exec() == QDialog::Accepted)
+    if (new_system.exec() == QDialog::Accepted && new_system.add_system_block())
     {
-        if (new_system.add_system_block())
-        {
-            int row = ui->tableSystem->rowCount();
-            ui->tableSystem->insertRow(row);
-            //
-            ui->tableSystem->setItem(row, 1, new QTableWidgetItem(new_system.get_block_name()));
-            ui->tableSystem->setItem(row, 2, new QTableWidgetItem(new_system.get_block_abbr()));
-            ui->tableSystem->setItem(row, 3, new QTableWidgetItem(new_system.get_responsible()));
-            ui->tableSystem->setItem(row, 4, new QTableWidgetItem(new_system.get_start_addr()));
-            ui->tableSystem->setItem(row, 5, new QTableWidgetItem("0"));
+        int row = ui->tableSystem->rowCount();
+        ui->tableSystem->insertRow(row);
+        //
+        ui->tableSystem->setItem(row, 1, new QTableWidgetItem(new_system.get_block_name()));
+        ui->tableSystem->setItem(row, 2, new QTableWidgetItem(new_system.get_block_abbr()));
+        ui->tableSystem->setItem(row, 3, new QTableWidgetItem(new_system.get_responsible()));
+        ui->tableSystem->setItem(row, 4, new QTableWidgetItem(new_system.get_start_addr()));
+        ui->tableSystem->setItem(row, 5, new QTableWidgetItem("0"));
 
-            block_id_ = new_system.get_block_id();
-            block_ = new_system.get_block_name();
-            ui->tableSystem->setItem(row, 0, new QTableWidgetItem(block_id_));
+        block_id_ = new_system.get_block_id();
+        block_ = new_system.get_block_name();
+        ui->tableSystem->setItem(row, 0, new QTableWidgetItem(block_id_));
 
-            QTreeWidgetItem *top_level_item = ui->treeWidget->topLevelItem(0);
-            QTreeWidgetItem *tree_item = new QTreeWidgetItem(top_level_item);
-            tree_item->setText(0, new_system.get_block_name());
-            ui->tableSystem->setCurrentCell(row, 0);
-        }
+        QTreeWidgetItem *top_level_item = ui->treeWidgetBlock->topLevelItem(0);
+        QTreeWidgetItem *tree_item = new QTreeWidgetItem(top_level_item);
+        tree_item->setText(0, new_system.get_block_name());
+        ui->tableSystem->setCurrentCell(row, 0);
     }
+    if (new_system.designer_added()) display_designers();
 }
 
 void RegisterManager::on_pushButtonRemoveSys_clicked()
 {
-    if (!authenticator_.can_remove_block())
+    int row = ui->tableSystem->currentRow();
+    if (row < 0) return;
+    QString responsible = ui->tableSystem->item(row, 3)->text();
+    if (!((authenticator_.can_remove_his_block() && responsible == username_) || authenticator_.can_fully_access_all_blocks()))
     {
-        QMessageBox::warning(this, "Remove System Block", "You are not eligible to remove system blocks!");
+        QMessageBox::warning(this, "Remove System Block", "You are not eligible to this system block!");
         return;
     }
-    int row = ui->tableSystem->currentRow();
-    if (row == -1) return;
+
     if (QMessageBox::warning(this,
                          "Remove System Block",
                          "Are you sure you want to remove this blcok?\nThis operation is not reversible!",
@@ -638,7 +965,7 @@ void RegisterManager::on_pushButtonRemoveSys_clicked()
     if (dbhandler.delete_items("block_system_block", "block_id", block_id))
     {
         ui->tableSystem->removeRow(row);
-        QTreeWidgetItem *top_level_item = ui->treeWidget->topLevelItem(0);
+        QTreeWidgetItem *top_level_item = ui->treeWidgetBlock->topLevelItem(0);
         top_level_item->removeChild(top_level_item->child(row));
     }
     else
@@ -652,13 +979,12 @@ void RegisterManager::on_pushButtonAddDesigner_clicked()
         QMessageBox::warning(this, "Add Chip Designer", "You are not eligible to add chip designer!");
         return;
     }
-    AddChipDesignerDialog add_designer(chip_id_, this);
+    EditChipDesignerDialog add_designer(chip_id_, this);
     if (add_designer.exec() == QDialog::Accepted && add_designer.add_designer())
     {
         QString username = add_designer.get_username();
         QString user_id = add_designer.get_user_id();
         QString project_role = add_designer.get_project_role();
-        QString project_role_id = add_designer.get_project_role_id();
         int row = ui->tableDesigner->rowCount();
         ui->tableDesigner->insertRow(row);
         ui->tableDesigner->setItem(row, 0, new QTableWidgetItem(add_designer.get_chip_designer_id()));
@@ -675,7 +1001,7 @@ void RegisterManager::on_pushButtonRemoveDesigner_clicked()
         return;
     }
     int row = ui->tableDesigner->currentRow();
-    if (row == -1) return;
+    if (row < 0) return;
     QString designer_id = ui->tableDesigner->item(row, 0)->text(), username = ui->tableDesigner->item(row, 1)->text();
     if (username == username_)
     {
@@ -689,15 +1015,28 @@ void RegisterManager::on_pushButtonRemoveDesigner_clicked()
     }
     if (QMessageBox::warning(this,
                          "Remove Designer",
-                         "Are you sure you want to remove this designer?\nAll blocks owned by this user will then belong to the admin.",
+                         "Are you sure you want to remove this designer?",
                          QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
+    for (int i = 0; i < ui->tableSystem->rowCount(); i++)
+    {
+        if (ui->tableSystem->item(i, 3)->text() == username)
+        {
+            QString block_id = ui->tableSystem->item(i, 0)->text();
+            if (!dbhandler.update_items("block_system_block", "block_id", block_id, {{"responsible", chip_owner_id_}}))
+            {
+                QMessageBox::critical(this, "Remove Designer", "Removing designer failed!");
+                return;
+            }
+            ui->tableSystem->item(i, 3)->setText(chip_owner_);
+        }
+    }
     if (dbhandler.delete_items("chip_designer", "chip_designer_id", designer_id))
     {
         int row = ui->tableDesigner->currentRow();
         ui->tableDesigner->removeRow(row);
     }
+    else QMessageBox::critical(this, "Remove Designer", "Removing designer failed!");
 }
 
 void RegisterManager::on_pushButtonAddSig_clicked()
@@ -735,7 +1074,7 @@ void RegisterManager::on_pushButtonRemoveSig_clicked()
         return;
     }
     int row = ui->tableSignal->currentRow();
-    if (row == -1) return;
+    if (row < 0) return;
     if (QMessageBox::warning(this,
                              "Remove Signal",
                              "Are you sure you want to remove this signal?",
@@ -759,12 +1098,12 @@ void RegisterManager::on_pushButtonAddReg_clicked()
     EditRegisterDialog new_reg(block_id_, this);
     if (new_reg.exec() == QDialog::Accepted && new_reg.add_register())
     {
-        int row = ui->tableReg->rowCount();
-        ui->tableReg->insertRow(row);
-        ui->tableReg->setItem(row, 0, new QTableWidgetItem(new_reg.get_reg_id()));
-        ui->tableReg->setItem(row, 1, new QTableWidgetItem(new_reg.get_reg_name()));
-        ui->tableReg->setItem(row, 2, new QTableWidgetItem(new_reg.get_reg_type()));
-        ui->tableReg->setCurrentCell(row, 0);
+        int row = ui->tableRegister->rowCount();
+        ui->tableRegister->insertRow(row);
+        ui->tableRegister->setItem(row, 0, new QTableWidgetItem(new_reg.get_reg_id()));
+        ui->tableRegister->setItem(row, 1, new QTableWidgetItem(new_reg.get_reg_name()));
+        ui->tableRegister->setItem(row, 2, new QTableWidgetItem(new_reg.get_reg_type()));
+        ui->tableRegister->setCurrentCell(row, 0);
     }
 }
 
@@ -775,14 +1114,14 @@ void RegisterManager::on_pushButtonRemoveReg_clicked()
         QMessageBox::warning(this, "Remove Signal", "You are not eligible to remove signals!");
         return;
     }
-    int row = ui->tableReg->currentRow();
-    if (row == -1) return;
+    int row = ui->tableRegister->currentRow();
+    if (row < 0) return;
     if (QMessageBox::warning(this,
                              "Remove Register",
                              "Are you sure you want to remove this register?",
                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
-    QString reg_id = ui->tableReg->item(row, 0)->text();
+    QString reg_id = ui->tableRegister->item(row, 0)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QString> item;
     dbhandler.show_one_item("block_register", item, {"prev", "next"}, "reg_id", reg_id);
@@ -790,7 +1129,7 @@ void RegisterManager::on_pushButtonRemoveReg_clicked()
     if (prev != "-1") dbhandler.update_items("block_register", {{"reg_id", prev}}, {{"next", next}});
     if (next != "-1") dbhandler.update_items("block_register", {{"reg_id", next}}, {{"prev", prev}});
     if (dbhandler.delete_items("block_register", "reg_id", reg_id))
-        ui->tableReg->removeRow(row);
+        ui->tableRegister->removeRow(row);
     else
         QMessageBox::warning(this, "Remove Register", QString("Removing register failed\nError message: ") + dbhandler.get_error_message());
 }
@@ -799,7 +1138,7 @@ void RegisterManager::on_pushButtonRemoveReg_clicked()
 void RegisterManager::on_pushButtonAddSigPart_clicked()
 {
     int row = ui->tableSignal->currentRow();
-    if (row == -1 || ui->tableSignal->item(row, 1)->text() == "") return;
+    if (row < 0 || ui->tableSignal->item(row, 1)->text() == "") return;
     QString reg_sig_id = ui->tableSignal->item(row, 1)->text();
     QString reg_type_id = ui->tableSignal->item(row, 2)->text();
     int signal_width = ui->tableSignal->item(row, 4)->text().toInt();
@@ -837,7 +1176,7 @@ void RegisterManager::on_pushButtonAddSigPart_clicked()
 void RegisterManager::on_pushButtonRemoveSigPart_clicked()
 {
     int row = ui->tableSigPart->currentRow();
-    if (row == -1) return;
+    if (row < 0) return;
     if (QMessageBox::warning(this,
                              "Remove Signal Partition",
                              "Are you sure you want to remove this signal partition?",
@@ -868,17 +1207,18 @@ void RegisterManager::init_db()
     dbname = "def_db_role";
     table_define = {{"db_role_id", "int", "not null auto_increment"},
                 {"db_role", "varchar(20)", "not null"},
-                {"is_user_manager", "tinyint(1)", "not null"},
+                {"add_user", "tinyint(1)", "not null"},
+                {"remove_user", "tinyint(1)", "not null"},
                 {"add_project", "tinyint(1)", "not null"},
                 {"remove_project", "tinyint(1)", "not null"}};
     primary_key = "db_role_id";
     unique_keys = {"db_role"};
     dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
 
-    fields = {"db_role", "is_user_manager", "add_project", "remove_project"};
-    values = {"super user", "1", "1", "1"};
+    fields = {"db_role", "add_user", "remove_user", "add_project", "remove_project"};
+    values = {"super user", "1", "1", "1", "1"};
     dbhandler.insert_item(dbname, fields, values);
-    values = {"designer", "0", "1", "0"};
+    values = {"standard user", "0", "0", "1", "0"};
     dbhandler.insert_item(dbname, fields, values);
 
     // def_register_type
@@ -943,19 +1283,22 @@ void RegisterManager::init_db()
     table_define = {{"project_role_id", "int", "not null auto_increment"},
                 {"project_role", "varchar(20)", "not null"},
                 {"add_block", "tinyint(1)", "not null"},
-                {"remove_block", "tinyint(1)", "not null"},
+                {"remove_his_block", "tinyint(1)", "not null"},
                 {"read_all_blocks", "tinyint(1)", "not null"},
                 {"compile_project", "tinyint(1)", "not null"},
                 {"add_chip_designer", "tinyint(1)", "not null"},
-                {"remove_chip_designer", "tinyint(1)", "not null"}};
+                {"remove_chip_designer", "tinyint(1)", "not null"},
+                {"full_access_to_all_blocks", "tinyint(1)", "not null"}};
     primary_key = "project_role_id";
     unique_keys = {"project_role"};
     dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
 
-    fields = {"project_role", "add_block", "remove_block", "read_all_blocks", "compile_project", "add_chip_designer", "remove_chip_designer"};
-    values = {"admin", "1", "1", "1", "1", "1", "1"};
+    fields = {"project_role", "add_block", "remove_his_block", "read_all_blocks", "compile_project", "add_chip_designer", "remove_chip_designer", "full_access_to_all_blocks"};
+    values = {"admin", "1", "1", "1", "1", "1", "1", "1"};
     dbhandler.insert_item(dbname, fields, values);
-    values = {"designer", "0", "0", "1", "1", "0", "0"};
+    values = {"standard designer", "1", "1", "1", "1", "0", "0", "0"};
+    dbhandler.insert_item(dbname, fields, values);
+    values = {"limited designer", "0", "0", "0", "0", "0", "0", "0"};
     dbhandler.insert_item(dbname, fields, values);
 
     // def_doc_type
@@ -965,9 +1308,10 @@ void RegisterManager::init_db()
     primary_key = "doc_type_id";
     unique_keys = {"doc_type"};
     dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-    dbhandler.insert_item(dbname, {"doc_type"}, {"text"});
+    dbhandler.insert_item(dbname, {"doc_type"}, {"Pure Text"});
     dbhandler.insert_item(dbname, {"doc_type"}, {"LaTeX"});
-    dbhandler.insert_item(dbname, {"doc_type"}, {"image"});
+    dbhandler.insert_item(dbname, {"doc_type"}, {"Image"});
+    dbhandler.insert_item(dbname, {"doc_type"}, {"Table"});
 
 
     // global_user
@@ -1164,10 +1508,10 @@ void RegisterManager::clear_db()
 
 void RegisterManager::on_tableSignal_cellDoubleClicked(int row, int column)
 {
-    if (!(authenticator_.can_add_signal() && authenticator_.can_remove_signal())) return;
+    if (row < 0) return;
     QString sig_id = ui->tableSignal->item(row, 0)->text();
     QString reg_sig_id = ui->tableSignal->item(row, 1)->text();
-    EditSignalDialog edit_signal(block_id_, sig_id, reg_sig_id, register_width_, msb_first_, this);
+    EditSignalDialog edit_signal(block_id_, sig_id, reg_sig_id, register_width_, msb_first_, authenticator_.can_add_signal() && authenticator_.can_remove_signal(), this);
     if (edit_signal.exec() == QDialog::Accepted && edit_signal.edit_signal())
     {
         ui->tableSignal->item(row, 1)->setText(edit_signal.get_reg_sig_id());
@@ -1182,32 +1526,219 @@ void RegisterManager::on_tableSignal_cellDoubleClicked(int row, int column)
     emit(ui->tableSignal->currentCellChanged(row, column, row, column));
 }
 
-void RegisterManager::on_tableReg_cellDoubleClicked(int row, int column)
+void RegisterManager::on_tableRegister_cellDoubleClicked(int row, int column)
 {
-    if (!(authenticator_.can_add_register() && authenticator_.can_remove_register())) return;
-    QString reg_id = ui->tableReg->item(row, 0)->text();
-    EditRegisterDialog edit_reg(block_id_, reg_id, this);
+    if (row < 0) return;
+    QString reg_id = ui->tableRegister->item(row, 0)->text();
+    EditRegisterDialog edit_reg(block_id_, reg_id, authenticator_.can_add_register() && authenticator_.can_remove_register(), this);
     if (edit_reg.exec() == QDialog::Accepted && edit_reg.edit_register())
     {
-        ui->tableReg->item(row, 1)->setText(edit_reg.get_reg_name());
+        ui->tableRegister->item(row, 1)->setText(edit_reg.get_reg_name());
     }
 }
 
 void RegisterManager::on_tableSystem_cellDoubleClicked(int row, int column)
 {
-    if (!(authenticator_.can_add_block() && authenticator_.can_remove_block())) return;
+    if (row < 0) return;
+    QString responsible = ui->tableSystem->item(row, 3)->text();
+    bool enabled = authenticator_.can_add_block() && ((authenticator_.can_remove_his_block() && responsible == username_) || authenticator_.can_fully_access_all_blocks());
     QString block_id = ui->tableSystem->item(row, 0)->text();
     QString old_block_name = ui->tableSystem->item(row, 1)->text();
-    EditSystemBlockDialog edit_sys(chip_id_, block_id, address_width_, this);
+    EditSystemBlockDialog edit_sys(chip_id_, block_id, address_width_, authenticator_.can_add_chip_designer(), enabled, this);
     if (edit_sys.exec() == QDialog::Accepted && edit_sys.edit_system_block())
     {
         ui->tableSystem->item(row, 1)->setText(edit_sys.get_block_name());
         ui->tableSystem->item(row, 2)->setText(edit_sys.get_block_abbr());
         ui->tableSystem->item(row, 3)->setText(edit_sys.get_responsible());
         ui->tableSystem->item(row, 4)->setText(edit_sys.get_start_addr());
-        QTreeWidgetItem* top = ui->treeWidget->topLevelItem(0);
+        QTreeWidgetItem* top = ui->treeWidgetBlock->topLevelItem(0);
         top->child(row)->setText(0, edit_sys.get_block_name());
+    }
+    if (edit_sys.designer_added()) display_designers();
+
+}
+
+void RegisterManager::on_treeWidgetDoc_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
+{
+    ui->pushButtonAddDoc->setEnabled(current && authenticator_.can_edit_document());
+    ui->pushButtonRemoveDoc->setEnabled(authenticator_.can_edit_document() && ((current && current->parent() && current->parent() == ui->treeWidgetDoc->topLevelItem(0)) || \
+                                        (current && current->parent() && current->parent()->parent())));
+}
+
+void RegisterManager::on_pushButtonAddDoc_clicked()
+{
+    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
+    if (!current) return;
+    EditDocumentDialog *add_doc;
+    QTreeWidgetItem *top_item = current;
+    while (top_item->parent()) top_item = top_item->parent();
+    QTreeWidgetItem* parent = nullptr;
+
+    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
+    {
+        add_doc = new EditDocumentDialog(EditDocumentDialog::BLOCK, block_id_, "", "", this);
+        parent = top_item;
+    }
+    else
+    {
+        QString reg_id = top_item->text(3);
+        QString sig_id;
+        if (current == top_item) sig_id = "";
+        else if (current->parent() == top_item)
+        {
+            sig_id = current->text(3);
+            parent = current;
+        }
+        else if (current->parent()->parent() == top_item)
+        {
+            sig_id = current->parent()->text(3);
+            parent = current->parent();
+        }
+        add_doc = new EditDocumentDialog(EditDocumentDialog::SIGNAL, block_id_, reg_id, sig_id, this);
+    }
+
+    if (add_doc && add_doc->exec() == QDialog::Accepted && add_doc->add_document())
+    {
+        QString doc_id = add_doc->get_doc_id();
+        QString content = add_doc->get_content();
+        QString doc_type = add_doc->get_document_type();
+        if (!parent)
+        {
+            QString sig_id = add_doc->get_signal_id();
+            int row = 0;
+            while (row < top_item->childCount() && top_item->child(row)->text(3) != sig_id) row++;
+            if (row < top_item->childCount())
+                parent = top_item->child(row);
+        }
+        if (parent)
+        {
+            QTreeWidgetItem *item = new QTreeWidgetItem(parent);
+            item->setText(0, QString::number(parent->childCount()));
+            item->setText(1, doc_type);
+            item->setText(2, content);
+            item->setText(3, doc_id);
+        }
+
+    }
+
+    delete add_doc;
+}
+
+void RegisterManager::on_pushButtonRemoveDoc_clicked()
+{
+    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
+    if (!current) return;
+
+    QString doc_id = current->text(3);
+    QTreeWidgetItem* top_item = current;
+    while (top_item->parent()) top_item = top_item->parent();
+
+    QString table, doc_id_field;
+    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
+    {
+        table = "doc_block";
+        doc_id_field = "block_doc_id";
+    }
+    else
+    {
+        table = "doc_signal";
+        doc_id_field = "signal_doc_id";
     }
 
 
+    QVector<QString> item;
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    dbhandler.show_one_item(table, item, {"prev", "next"}, doc_id_field, doc_id);
+    QString prev = item[0], next = item[1];
+
+    if (dbhandler.delete_items(table, doc_id_field, doc_id))
+    {
+        if (prev != "-1") dbhandler.update_items(table, {{doc_id_field, prev}}, {{"next", next}});
+        if (next != "-1") dbhandler.update_items(table, {{doc_id_field, next}}, {{"prev", prev}});
+        QTreeWidgetItem *parent = current->parent();
+        int row = parent->indexOfChild(current);
+        parent->removeChild(current);
+        for (int i = row; i < parent->childCount(); i++)
+            parent->child(i)->setText(0, QString::number(parent->child(i)->text(0).toInt() - 1));
+    }
+}
+
+void RegisterManager::on_treeWidgetDoc_itemDoubleClicked(QTreeWidgetItem *item, int column)
+{
+    if (!((item && item->parent() && item->parent() == ui->treeWidgetDoc->topLevelItem(0)) || \
+          (item && item->parent() && item->parent()->parent()))) return;
+    bool enabled = authenticator_.can_edit_document();
+    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
+    if (!current) return;
+    EditDocumentDialog *edit_doc;
+    QTreeWidgetItem *top_item = current;
+    while (top_item->parent()) top_item = top_item->parent();
+    QTreeWidgetItem* parent = nullptr;
+
+    QString doc_type = current->text(1), content = current->text(2), doc_id = current->text(3);
+
+    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
+    {
+        edit_doc = new EditDocumentDialog(EditDocumentDialog::BLOCK, doc_id, doc_type, content, block_id_, "", "", enabled, this);
+        parent = top_item;
+    }
+    else
+    {
+        QString sig_id = current->parent()->text(3), reg_id = top_item->text(3);
+        edit_doc = new EditDocumentDialog(EditDocumentDialog::SIGNAL, doc_id, doc_type, content, block_id_, reg_id, sig_id, enabled, this);
+        parent = current->parent();
+    }
+
+    if (edit_doc && edit_doc->exec() == QDialog::Accepted && edit_doc->edit_document())
+    {
+        current->setText(1, edit_doc->get_document_type());
+        current->setText(2, edit_doc->get_content());
+    }
+
+    delete edit_doc;
+}
+
+void RegisterManager::on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+    if (currentRow < 0) ui->pushButtonRemoveSys->setEnabled(false);
+    else {
+        QString responsible = ui->tableSystem->item(currentRow, 3)->text();
+        ui->pushButtonRemoveSys->setEnabled((authenticator_.can_remove_his_block() && responsible == username_) || authenticator_.can_fully_access_all_blocks());
+    }
+}
+
+void RegisterManager::on_tableSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+    ui->pushButtonRemoveSigPart->setEnabled(authenticator_.can_edit_signal_partition() && currentRow >= 0);
+}
+
+void RegisterManager::on_pushButtonAddRegPage_clicked()
+{
+
+}
+
+void RegisterManager::on_pushButtonRemoveRegPage_clicked()
+{
+
+}
+
+void RegisterManager::on_tableRegPage_cellDoubleClicked(int row, int column)
+{
+    if (row < 0) return;
+    // TODO
+}
+
+void RegisterManager::on_tableDesigner_cellDoubleClicked(int row, int column)
+{
+    if (row < 0) return;
+    QString chip_designer = ui->tableDesigner->item(row, 1)->text(),
+            project_role = ui->tableDesigner->item(row, 2)->text();
+    EditChipDesignerDialog edit_designer(chip_id_, chip_designer, project_role,
+                                         authenticator_.can_remove_chip_designer() && authenticator_.can_add_chip_designer() && \
+                                         username_ != chip_designer && chip_owner_ != chip_designer,
+                                         this);
+    if (edit_designer.exec() == QDialog::Accepted && edit_designer.edit_designer())
+    {
+        ui->tableDesigner->item(row, 2)->setText(edit_designer.get_project_role());
+    }
 }

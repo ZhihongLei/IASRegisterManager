@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QHash>
 #include "edit_signal_partition_logic.h"
+#include <QComboBox>
 
 namespace Ui {
 class EditSignalPartitionDialog;
@@ -51,6 +52,7 @@ private:
     QString signal_lsb_, signal_msb_, reg_lsb_, reg_msb_, reg_name_, reg_id_, reg_sig_part_id_;
     QHash<QString, QString> reg_name2id_;
     QVector<int> available_sig_part_starts_, available_sig_part_ends_;
+    QComboBox *comboBoxSigLSB_, *comboBoxSigMSB_;
 };
 
 #endif // EDIT_SIGNAL_PARTITION_DIALOG_H

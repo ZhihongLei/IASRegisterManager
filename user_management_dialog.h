@@ -18,7 +18,7 @@ private slots:
     void on_pushButtonAddUser_clicked();
     void on_pushButtonRemoveUser_clicked();
 
-    void on_tableWidget_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+    void on_tableWidgetUser_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 private:
     Ui::UserManagementDialog *ui;

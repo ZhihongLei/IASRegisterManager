@@ -2,7 +2,7 @@
 #define EDIT_SYSTEM_BLOCK_DIALOG_H
 
 #include <QDialog>
-#include "global_variables.h"
+#include "data_utils.h"
 
 namespace Ui {
 class EditSystemBlockDialog;
@@ -13,8 +13,8 @@ class EditSystemBlockDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit EditSystemBlockDialog(const QString& chip_id, int address_width, QWidget *parent = nullptr);
-    explicit EditSystemBlockDialog(const QString& chip_id, const QString& block_id, int address_width, QWidget *parent = nullptr);
+    explicit EditSystemBlockDialog(const QString& chip_id, int address_width, bool can_add_designer, QWidget *parent = nullptr);
+    explicit EditSystemBlockDialog(const QString& chip_id, const QString& block_id, int address_width, bool can_add_designer, bool enabled=true, QWidget *parent = nullptr);
     ~EditSystemBlockDialog();
     QString get_block_name() const;
     QString get_block_id() const;
@@ -24,6 +24,10 @@ public:
     QString get_responsible_id() const;
     bool add_system_block();
     bool edit_system_block();
+    bool designer_added() const;
+
+private slots:
+    void on_pushButtonAddDesigner_clicked();
 
 private:
     void setup_ui();
@@ -37,7 +41,9 @@ private:
     const int address_width_;
     QHash<QString, QString> responsible2user_id_;
     QString original_block_name_, original_abbr_;
-    const MODE mode_;
+    const DIALOG_MODE mode_;
+    bool designer_added_ = false;
+    const bool enabled_;
 };
 
 #endif // EDIT_SYSTEM_BLOCK_DIALOG_H

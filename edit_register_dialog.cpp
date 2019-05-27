@@ -8,28 +8,30 @@ EditRegisterDialog::EditRegisterDialog(const QString& block_id, QWidget *parent)
     QDialog(parent),
     block_id_(block_id),
     ui(new Ui::EditRegisterDialog),
-    mode_(MODE::NEW)
+    mode_(DIALOG_MODE::ADD),
+    enabled_(true)
 {
     setup_ui();
-    setWindowTitle("New Register");
+    setWindowTitle("Add Register");
 }
 
-EditRegisterDialog::EditRegisterDialog(const QString& block_id, const QString& reg_id, QWidget* parent):
+EditRegisterDialog::EditRegisterDialog(const QString& block_id, const QString& reg_id, bool enabled, QWidget* parent):
     QDialog (parent),
     block_id_(block_id),
     reg_id_(reg_id),
     ui(new Ui::EditRegisterDialog),
-    mode_(MODE::EDIT)
+    mode_(DIALOG_MODE::EDIT),
+    enabled_(enabled)
 {
      setup_ui();
-     ui->comboBox->setEnabled(false);
+     ui->comboBoxRegType->setEnabled(false);
      setWindowTitle("Edit Register");
 
      DataBaseHandler dbhandler(gDBHost, gDatabase);
      QVector<QVector<QString> > items;
      dbhandler.show_items("block_register", {"reg_name"}, "reg_id", get_reg_id(), items);
      assert (items.size() == 1);
-     ui->lineEdit->setText(items[0][0]);
+     ui->lineEditRegName->setText(items[0][0]);
      original_register_name_ = items[0][0];
 }
 
@@ -41,9 +43,11 @@ void EditRegisterDialog::setup_ui()
     dbhandler.show_items("def_register_type", {"reg_type_id", "reg_type"}, items, "", "order by reg_type_id");
     for (const auto& item : items)
     {
-        ui->comboBox->addItem(item[1]);
+        ui->comboBoxRegType->addItem(item[1]);
         reg_type_ids_.push_back(item[0]);
     }
+    ui->comboBoxRegType->setEnabled(enabled_);
+    ui->lineEditRegName->setEnabled(enabled_);
 }
 
 EditRegisterDialog::~EditRegisterDialog()
@@ -53,7 +57,7 @@ EditRegisterDialog::~EditRegisterDialog()
 
 QString EditRegisterDialog::get_reg_name() const
 {
-    return ui->lineEdit->text();
+    return ui->lineEditRegName->text();
 }
 
 QString EditRegisterDialog::get_reg_id() const
@@ -63,19 +67,19 @@ QString EditRegisterDialog::get_reg_id() const
 
 QString EditRegisterDialog::get_reg_type() const
 {
-    return ui->comboBox->currentText();
+    return ui->comboBoxRegType->currentText();
 }
 
 QString EditRegisterDialog::get_reg_type_id() const
 {
-    return reg_type_ids_[ui->comboBox->currentIndex()];
+    return reg_type_ids_[ui->comboBoxRegType->currentIndex()];
 }
 
 
 bool EditRegisterDialog::sanity_check()
 {
 
-    QString warning_title = mode_ == MODE::NEW ? "Add Register" : "Edit Register";
+    QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Register" : "Edit Register";
     if (get_reg_name() == "")
     {
         QMessageBox::warning(this, warning_title, "Register name must not be empty!");
@@ -136,5 +140,6 @@ bool EditRegisterDialog::edit_register()
 
 void EditRegisterDialog::accept()
 {
+    if (!enabled_) return QDialog::reject();
     if (sanity_check()) return QDialog::accept();
 }
