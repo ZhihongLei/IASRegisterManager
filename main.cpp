@@ -10,8 +10,6 @@
 #include <edit_latex_dialog.h>
 #include <QFileDevice>
 #include "edit_document_dialog.h"
-#include "dialog.h"
-#include "mainwindow.h"
 
 QString gDatabase, gDBHost, gUser, gPassword, mathjax_root;
 int main(int argc, char *argv[])
