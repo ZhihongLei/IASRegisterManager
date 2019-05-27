@@ -1,0 +1,770 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditDocumentDialog</class>
+ <widget class="QDialog" name="EditDocumentDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>522</width>
+    <height>452</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_4">
+   <property name="spacing">
+    <number>-1</number>
+   </property>
+   <property name="sizeConstraint">
+    <enum>QLayout::SetNoConstraint</enum>
+   </property>
+   <property name="leftMargin">
+    <number>30</number>
+   </property>
+   <property name="topMargin">
+    <number>30</number>
+   </property>
+   <property name="rightMargin">
+    <number>30</number>
+   </property>
+   <property name="bottomMargin">
+    <number>30</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_13">
+     <property name="spacing">
+      <number>-1</number>
+     </property>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_12">
+       <item>
+        <widget class="QLabel" name="labelType">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Type</string>
+         </property>
+         <property name="buddy">
+          <cstring>comboBoxDocType</cstring>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comboBoxDocType">
+         <property name="minimumSize">
+          <size>
+           <width>150</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>200</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QFrame" name="frameSignal">
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="labelSignal">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>40</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>50</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Signal</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBoxSignal</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBoxSignal">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>300</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>350</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Expanding</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>100</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QStackedWidget" name="stackedWidget">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="currentIndex">
+      <number>1</number>
+     </property>
+     <widget class="QWidget" name="pagePureText">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="labelPureTextContent">
+         <property name="text">
+          <string>Content</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="textEditPureText"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="pageLaTex">
+      <layout class="QVBoxLayout" name="verticalLayout_7">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QSplitter" name="splitterLaTeX">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QLabel" name="labelLeTeXContent">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Content</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QTextEdit" name="textEditLaTeX">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="layoutWidget">
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QLabel" name="labelLaTeXPreview">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Preview</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWebEngineView" name="webEngineViewLaTeX" native="true">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>80</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="pageImage">
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>169</height>
+       </size>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <property name="spacing">
+        <number>-1</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <widget class="QLabel" name="labelImageCaption">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Caption</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEditImageCaption"/>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="labelImagePath">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Path</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEditImagePath">
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonSelectImage">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Select</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="pageTable">
+      <layout class="QVBoxLayout" name="verticalLayout_8">
+       <property name="spacing">
+        <number>-1</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <item>
+            <widget class="QLabel" name="labelTableRow">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>30</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Row</string>
+             </property>
+             <property name="buddy">
+              <cstring>lineEditTableRow</cstring>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEditTableRow">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>50</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>50</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>3</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <item>
+            <widget class="QLabel" name="labelTableColumn">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>50</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Column</string>
+             </property>
+             <property name="buddy">
+              <cstring>lineEditTableColumn</cstring>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEditTableColumn">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>50</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>50</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>3</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QLabel" name="labelTableTitle">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>30</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>30</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Title</string>
+           </property>
+           <property name="buddy">
+            <cstring>lineEditTableTitle</cstring>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="lineEditTableTitle"/>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QSplitter" name="splitterTable">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <widget class="QTableWidget" name="tableWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>80</height>
+           </size>
+          </property>
+          <attribute name="horizontalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="horizontalHeaderCascadingSectionResizes">
+           <bool>true</bool>
+          </attribute>
+          <attribute name="horizontalHeaderStretchLastSection">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="verticalHeaderVisible">
+           <bool>false</bool>
+          </attribute>
+          <attribute name="verticalHeaderDefaultSectionSize">
+           <number>24</number>
+          </attribute>
+          <row>
+           <property name="text">
+            <string/>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string/>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string/>
+           </property>
+          </row>
+          <column>
+           <property name="text">
+            <string/>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string/>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string/>
+           </property>
+          </column>
+         </widget>
+         <widget class="QFrame" name="frameTablePreview">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>110</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelTablePreview">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>Preview</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWebEngineView" name="webEngineViewTable" native="true">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>80</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButtonTablePreview">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>120</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>120</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Hide Preview</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QWebEngineView</class>
+   <extends>QWidget</extends>
+   <header>qwebengineview.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>EditDocumentDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>EditDocumentDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
