@@ -38,6 +38,7 @@ protected:
                               const QString& reg_sig_id);
 
     const int register_width_;
+    QString reg_sig_part_id_;
     partition_list occupied_signal_parts_, available_signal_parts_, available_register_parts_;
     QHash<QString, partition_list> reg_id2occupied_register_parts_;
     QVector<int> available_signal_starts_, available_signal_ends_;

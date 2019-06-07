@@ -31,6 +31,7 @@ public:
     QString get_register_type() const;
     QString get_register_type_id() const;
     bool is_register_signal() const;
+    bool add_port() const;
     bool add_signal();
     bool edit_signal();
 

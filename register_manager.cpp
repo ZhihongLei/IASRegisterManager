@@ -20,16 +20,18 @@
 #include <assert.h>
 #include <QDropEvent>
 #include <QMimeData>
-#include "edit_document_dialog.h"
 #include "data_utils.h"
 #include "login_dialog.h"
+#include "document_editor.h"
+#include <QVBoxLayout>
+#include <QDebug>
 
 RegisterManager::RegisterManager(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::RegisterManager)
 {
     ui->setupUi(this);
-    ui->stackedWidget->setCurrentIndex(0);
+    ui->stackedWidgetChipEditor->setCurrentIndex(0);
     ui->tabWidget->setCurrentIndex(0);
     ui->tableSystem->setColumnHidden(0, true);
     ui->tableDesigner->setColumnHidden(0, true);
@@ -38,8 +40,10 @@ RegisterManager::RegisterManager(QWidget *parent) :
     ui->tableSignal->setColumnHidden(1, true);
     ui->tableSignal->setColumnHidden(2, true);
     ui->tableSigPart->setColumnHidden(0, true);
+    ui->tableSigPart->setColumnHidden(3, true);
     ui->tableRegister->setColumnHidden(0, true);
     ui->tableRegPart->setColumnHidden(0, true);
+    ui->tableRegPart->setColumnHidden(3, true);
     //clear_db();
     //init_db();
 
@@ -49,13 +53,11 @@ RegisterManager::RegisterManager(QWidget *parent) :
     for (QWidget* widget : widgets) widget->setEnabled(false);
     for (QAction* action : {ui->actionUserManagement, ui->actionNewChip}) action->setEnabled(false);
 
-    ui->splitterMain->setSizes({150, 600});
+    //ui->splitterMain->setSizes({150, 600});
     ui->splitterMain->setCollapsible(0, false);
     ui->splitterMain->setCollapsible(1, false);
-
     ui->splitterWorking->setCollapsible(0, false);
     ui->splitterWorking->setCollapsible(1, false);
-    ui->splitterWorking->setSizes({INT_MAX, INT_MAX});
 
 
     actionEdit_ = new QAction("Edit", ui->treeWidgetDoc);
@@ -72,7 +74,16 @@ RegisterManager::RegisterManager(QWidget *parent) :
     context_menu_->addAction(actionRefresh_);
 
 
+    ui->treeWidgetDoc->setColumnWidth(0, 200);
     ui->treeWidgetDoc->setColumnHidden(3, true);
+    ui->tableDoc->setColumnHidden(0, true);
+    ui->documentEditor->setVisible(false);
+    ui->stackedWidgetDoc->setCurrentIndex(0);
+    ui->splitterDoc->setCollapsible(0, false);
+    ui->splitterDoc->setCollapsible(1, false);
+
+    connect(ui->documentEditor, SIGNAL(document_edited()), this, SLOT(on_document_edited()));
+    connect(ui->documentEditor, SIGNAL(document_added()), this, SLOT(on_document_added()));
 
     connect(actionAdd_, SIGNAL(triggered()), this, SLOT(on_actionAdd_triggered()));
     connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
@@ -81,8 +92,19 @@ RegisterManager::RegisterManager(QWidget *parent) :
 
     QObject::connect(&login_dialog_, SIGNAL(logged_in(QString)), this, SLOT(on_loggedin(QString)));
     login_dialog_.show();
+    ui->treeWidgetBlock->setColumnHidden(1, true);
 
-
+    // TODO: set naming template, which is dependent of specific chips
+    REGISTER_NAMING.set_naming_template(REGISTER_NAMING_TEMPLATE);
+    SIGNAL_NAMING.set_naming_template(SIGNAL_NAMING_TEMPLATE);
+    //int h = ui->documentEditor->height() + ui->stackedWidgetDoc->height();
+    //ui->splitterDoc->setSizes({h - 100, 100});
+    /*
+    QVector<QTableWidget*> tables = {ui->tableChipBasics, ui->tableSystem, ui->tableDesigner, ui->tableRegPage,
+                                    ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart};
+    for (QTableWidget* table : tables) table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    */
+    ui->tableSignal->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeMode::ResizeToContents);
 }
 
 void RegisterManager::on_actionAdd_triggered()
@@ -92,7 +114,7 @@ void RegisterManager::on_actionAdd_triggered()
     else if (ui->tableRegPage->hasFocus()) on_pushButtonAddRegPage_clicked();
     else if (ui->tableSignal->hasFocus()) on_pushButtonAddSig_clicked();
     else if (ui->tableSigPart->hasFocus()) on_pushButtonAddSigPart_clicked();
-    else if (ui->treeWidgetDoc->hasFocus()) on_pushButtonAddDoc_clicked();
+    else if (ui->tableDoc->hasFocus()) on_pushButtonAddDoc_clicked();
     else if (ui->tableRegister->hasFocus()) on_pushButtonAddReg_clicked();
     //else if (ui->tableRegPart->hasFocus())
 }
@@ -104,7 +126,7 @@ void RegisterManager::on_actionEdit_triggered()
     else if (ui->tableRegPage->hasFocus()) on_tableRegPage_cellDoubleClicked(ui->tableRegPage->currentRow(), ui->tableRegPage->currentColumn());
     else if (ui->tableSignal->hasFocus()) on_tableSignal_cellDoubleClicked(ui->tableSignal->currentRow(), ui->tableSignal->currentColumn());
     //else if (ui->tableSigPart->hasFocus()) on_tableSigPart_cellDoubleClicked(ui->tableSigPart->currentRow(), ui->tableSigPart->currentColumn());
-    else if (ui->treeWidgetDoc->hasFocus()) on_treeWidgetDoc_itemDoubleClicked(ui->treeWidgetDoc->currentItem(), 0);
+    else if (ui->tableDoc->hasFocus()) on_treeWidgetDoc_itemDoubleClicked(ui->treeWidgetDoc->currentItem(), 0);
     else if (ui->tableRegister->hasFocus()) on_tableRegister_cellDoubleClicked(ui->tableRegister->currentRow(), ui->tableRegister->currentColumn());
     //else if (ui->tableRegPart->hasFocus())
 }
@@ -116,7 +138,7 @@ void RegisterManager::on_actionRemove_triggered()
     else if (ui->tableRegPage->hasFocus()) on_pushButtonRemoveRegPage_clicked();
     else if (ui->tableSignal->hasFocus()) on_pushButtonRemoveSig_clicked();
     else if (ui->tableSigPart->hasFocus()) on_pushButtonRemoveSigPart_clicked();
-    else if (ui->treeWidgetDoc->hasFocus()) on_pushButtonRemoveDoc_clicked();
+    else if (ui->tableDoc->hasFocus()) on_pushButtonRemoveDoc_clicked();
     else if (ui->tableRegister->hasFocus()) on_pushButtonRemoveReg_clicked();
     //else if (ui->tableRegPart->hasFocus())
 }
@@ -129,19 +151,18 @@ void RegisterManager::on_actionRefresh_triggered()
     else if (ui->tableRegPage->hasFocus()) display_register_pages();
     else if (ui->tableSignal->hasFocus()) display_signals();
     else if (ui->tableSigPart->hasFocus()) display_signal_partitions();
-    else if (ui->treeWidgetDoc->hasFocus()) display_documents();
+    else if (ui->tableDoc->hasFocus()) display_documents();
     else if (ui->tableRegister->hasFocus()) display_registers();
     else if (ui->tableRegPart->hasFocus()) display_register_partitions();
 }
 
 
-void RegisterManager::on_treeWidgetDoc_customContextMenuRequested(QPoint pos)
+void RegisterManager::on_tableDoc_customContextMenuRequested(QPoint pos)
 {
-    QTreeWidgetItem *current = ui->treeWidgetDoc->itemAt(pos);
-    actionEdit_->setEnabled(authenticator_.can_edit_document() && ((current && current->parent() && current->parent() == ui->treeWidgetDoc->topLevelItem(0)) || \
-                               (current && current->parent() && current->parent()->parent())));
-    actionAdd_->setEnabled(current && authenticator_.can_edit_document());
-    actionRemove_->setEnabled(actionEdit_->isEnabled() && authenticator_.can_edit_document());
+    QTableWidgetItem *current = ui->tableDoc->itemAt(pos);
+    actionEdit_->setEnabled(current && authenticator_.can_edit_document());
+    actionAdd_->setEnabled(authenticator_.can_edit_document());
+    actionRemove_->setEnabled(current && authenticator_.can_edit_document());
     context_menu_->popup(ui->treeWidgetDoc->viewport()->mapToGlobal(pos));
 }
 
@@ -240,32 +261,28 @@ void RegisterManager::table_drop_event_handling(QTableWidget* table, const QStri
 
 
     QVector<QString> from_items;
-    std::cout << from_row << " " << to_row << std::endl;
-    std::cout << "here before" << std::endl;
-    std::cout << "column count " << table->columnCount() << std::endl;
     for (int col = 0; col < table->columnCount(); col++) from_items.push_back(table->item(from_row, col)->text());
-    std::cout << "here after" << std::endl;
     if (to_row < from_row)
         for (int row = from_row; row > to_row; row--)
         {
-            std::cout << "here " <<  row << std::endl;
             for (int col = 0; col < table->columnCount(); col++) table->item(row, col)->setText(table->item(row-1, col)->text());
         }
     else {
         for (int row = from_row; row < to_row; row++)
         {
-            std::cout << "here " <<  row << std::endl;
             for (int col = 0; col < table->columnCount(); col++) table->item(row, col)->setText(table->item(row+1, col)->text());
         }
     }
-    std::cout << "here 3" << std::endl;
     for (int col = 0; col < table->columnCount(); col++) table->item(to_row, col)->setText(from_items[col]);
 }
 
 
 bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
 {
-    if (obj == ui->tableSystem->viewport() or obj == ui->tableRegister->viewport() or obj == ui->treeWidgetBlock->viewport())
+    if (obj == ui->tableSystem->viewport() ||
+            obj == ui->tableRegister->viewport() ||
+            obj == ui->treeWidgetBlock->viewport() ||
+            obj == ui->tableDoc->viewport())
     {
         if (eve->type() == QEvent::Drop)
         {
@@ -281,6 +298,7 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
                 QTableWidgetItem* pDropItem = nullptr;
                 if (obj == ui->tableSystem->viewport()) pDropItem = ui->tableSystem->itemAt((static_cast<QDropEvent*>(eve))->pos());
                 if (obj == ui->tableRegister->viewport()) pDropItem = ui->tableRegister->itemAt((static_cast<QDropEvent*>(eve))->pos());
+                if (obj == ui->tableDoc->viewport()) pDropItem = ui->tableDoc->itemAt((static_cast<QDropEvent*>(eve))->pos());
                 //if (obj == ui->treeWidgetBlock->viewport()) pDropItem = ui->treeWidgetBlock->childAt((static_cast<QDropEvent*>(eve))->pos());
                 if (!pDropItem) return true;
                 if (pDropItem->row() == row) return true;
@@ -296,19 +314,39 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
                     ui->tableSystem->setCurrentCell(pDropItem->row(), 0);
 
                     QTreeWidgetItem *topLevelItem = ui->treeWidgetBlock->topLevelItem(0);
-                    QString block_from = topLevelItem->child(row)->text(0);
+                    QVector<QString> from;
+                    for (int j = 0; j < ui->treeWidgetBlock->columnCount(); j++)
+                        from.push_back(topLevelItem->child(row)->text(j));
                     if (row > pDropItem->row())
                     {
-                        for (int i = row; i > pDropItem->row(); i--) topLevelItem->child(i)->setText(0, topLevelItem->child(i-1)->text(0));
+                        for (int i = row; i > pDropItem->row(); i--)
+                            for (int j = 0; j < ui->treeWidgetBlock->columnCount(); j++)
+                                topLevelItem->child(i)->setText(j, topLevelItem->child(i-1)->text(j));
                     }
                     else {
-                        for (int i = row; i < pDropItem->row(); i++) topLevelItem->child(i)->setText(0, topLevelItem->child(i+1)->text(0));
+                        for (int i = row; i < pDropItem->row(); i++)
+                            for (int j = 0; j < ui->treeWidgetBlock->columnCount(); j++)
+                                topLevelItem->child(i)->setText(j, topLevelItem->child(i+1)->text(j));
                     }
-                    topLevelItem->child(pDropItem->row())->setText(0, block_from);
+                    for (int j = 0; j < ui->treeWidgetBlock->columnCount(); j++)
+                        topLevelItem->child(pDropItem->row())->setText(j, from[j]);
                 }
+                if (obj == ui->tableDoc->viewport())
+                {
+                    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
+                    QTreeWidgetItem* block_item = current;
+                    while (block_item->parent()->parent()) block_item = block_item->parent();
 
+                    if (current->parent() == block_item)   // register
+                        table_drop_event_handling(ui->tableDoc, "doc_register", "register_doc_id", row, pDropItem->row());
+                    else if (current->parent() && current->parent()->parent() == block_item)  // signal
+                        table_drop_event_handling(ui->tableDoc, "doc_signal", "signal_doc_id", row, pDropItem->row());
+                    else // block
+                        table_drop_event_handling(ui->tableDoc, "doc_block", "block_doc_id", row, pDropItem->row());
+                    ui->tableDoc->setCurrentCell(pDropItem->row(), 0);
+                    ui->tableDoc->resizeRowsToContents();
 
-                std::cout << "From " << row << " to " << pDropItem->row() << std::endl;
+                }
                 return true;
             }
         } else return QWidget::eventFilter(obj, eve);
@@ -335,16 +373,16 @@ void RegisterManager::open_chip()
     widget->setDragEnabled(chip_owner_id_ == user_id_);
     widget->setAcceptDrops(chip_owner_id_ == user_id_);
     widget->setDragDropMode(chip_owner_id_ == user_id_ ? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
-    widget->setDropIndicatorShown(true);
-    ui->stackedWidget->setCurrentIndex(0);
+    ui->stackedWidgetChipEditor->setCurrentIndex(0);
+    ui->stackedWidgetDoc->setCurrentIndex(0);
+
+    SIGNAL_NAMING.update_key("{CHIP_NAME}", chip_);
+    REGISTER_NAMING.update_key("{CHIP_NAME}", chip_);
     display_chip_basics();
     display_system_blocks();
     display_designers();
     display_register_pages();
-
-    ui->pushButtonAddSys->setEnabled(authenticator_.can_add_block());
-    ui->pushButtonAddDesigner->setEnabled(authenticator_.can_add_chip_designer());
-    ui->pushButtonRemoveDesigner->setEnabled(authenticator_.can_remove_chip_designer());
+    display_overall_documents();
     // TODO: compile project widget
 }
 
@@ -352,33 +390,87 @@ void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int 
 {
     if (!item->parent())
     {
-        ui->stackedWidget->setCurrentIndex(0);
+        ui->stackedWidgetChipEditor->setCurrentIndex(0);
         block_ = "";
         block_id_ = "-1";
+        ui->stackedWidgetDoc->setCurrentIndex(0);
+        display_overall_documents();
     }
     else {
-        ui->stackedWidget->setCurrentIndex(1);
-        int row = item->parent()->indexOfChild(item);
+        ui->stackedWidgetDoc->setCurrentIndex(1);
+        QString prev_block_id = block_id_;
+        int prev_tab_index = ui->tabWidget->currentIndex(), prev_stack_index = ui->stackedWidgetChipEditor->currentIndex();
+
+        ui->stackedWidgetChipEditor->setCurrentIndex(1);
+        QString block_responsible, reg_id, sig_id;
+        QTreeWidgetItem* block_item = item;
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+
+        int row = ui->treeWidgetBlock->topLevelItem(0)->indexOfChild(block_item);
         block_id_ = ui->tableSystem->item(row, 0)->text();
         block_ = ui->tableSystem->item(row, 1)->text();
+        block_responsible = ui->tableSystem->item(row, 3)->text();
 
-        QString block_responsible = ui->tableSystem->item(row, 3)->text();
+        assert (block_id_ == block_item->text(1) && block_ == block_item->text(0));
+        if (item->parent() == block_item)   // register
+            reg_id = item->text(1);
+        else if (item->parent() && item->parent()->parent() == block_item)  // signal
+            sig_id = item->text(1);
+
         authenticator_.set_block_permissions(block_responsible == username_ || authenticator_.can_fully_access_all_blocks());
 
-        ui->pushButtonAddReg->setEnabled(authenticator_.can_add_register());
-        ui->pushButtonAddSig->setEnabled(authenticator_.can_add_signal());
+        REGISTER_NAMING.update_key("{BLOCK_NAME}", block_);
+        REGISTER_NAMING.update_key("{BLOCK_ABBR}", block_id2abbr_[block_id_]);
+        SIGNAL_NAMING.update_key("{BLOCK_NAME}", block_);
+        SIGNAL_NAMING.update_key("{BLOCK_ABBR}", block_id2abbr_[block_id_]);
 
-        if (authenticator_.can_add_register()) ui->tableRegister->viewport()->installEventFilter(this);
-        else ui->tableRegister->viewport()->removeEventFilter(this);
-        ui->tableRegister->setDragEnabled(authenticator_.can_add_register());
-        ui->tableRegister->setAcceptDrops(authenticator_.can_add_register());
-        ui->tableRegister->setDragDropMode(authenticator_.can_add_register()? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
-        ui->tableRegister->setDropIndicatorShown(true);
 
-        if (ui->tabWidget->currentIndex() == 0) display_signals();
-        else display_registers();
+        QVector<QTableWidget*> tables = {ui->tableRegister, ui->tableDoc};
+        QVector<bool> enables = {authenticator_.can_add_register() && authenticator_.can_remove_register(), authenticator_.can_edit_document()};
+        for(int i = 0; i < 2; i++)
+        {
+            QTableWidget* table = tables[i];
+            bool enabled = enables[i];
+            if (enabled) table->viewport()->installEventFilter(this);
+            else table->viewport()->removeEventFilter(this);
+            table->setDragEnabled(enabled);
+            table->setAcceptDrops(enabled);
+            table->setDragDropMode(enabled ? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
+        }
 
-        display_documents();
+        if (sig_id != "") ui->tabWidget->setCurrentIndex(0);
+        else if (reg_id != "") ui->tabWidget->setCurrentIndex(1);
+        //else ui->tabWidget->setCurrentIndex(0);  // default
+
+        if (ui->tabWidget->currentIndex() == 0)
+        {
+            if (!(prev_stack_index == 1 && prev_tab_index == 0 && block_id_ == prev_block_id))
+            display_signals();
+        }
+        else if (!(prev_stack_index == 1 && prev_tab_index == 1 && block_id_ == prev_block_id))
+        {
+            display_registers();
+        }
+        if (sig_id != "")
+        {
+            for (int row = 0; row < ui->tableSignal->rowCount(); row++)
+                if (sig_id == ui->tableSignal->item(row, 0)->text())
+                {
+                    ui->tableSignal->setCurrentCell(row, 0);
+                    break;
+                }
+        }
+        else if (reg_id != "")
+        {
+            for (int row = 0; row < ui->tableRegister->rowCount(); row++)
+                if (reg_id == ui->tableRegister->item(row, 0)->text())
+                {
+                    ui->tableRegister->setCurrentCell(row, 0);
+                    break;
+                }
+        }
+
+        display_documents(block_id_, reg_id, sig_id);
     }
 }
 
@@ -420,7 +512,6 @@ void RegisterManager::display_system_blocks()
     QVector<QVector<QString> > items;
 
     ui->treeWidgetBlock->clear();
-
     ui->tableSystem->setRowCount(0);
 
     QTreeWidgetItem *topLevelItem = new QTreeWidgetItem(ui->treeWidgetBlock);
@@ -432,7 +523,6 @@ void RegisterManager::display_system_blocks()
     QVector<QPair<QString, QString> > key_value_pairs;
     if (authenticator_.can_read_all_blocks()) key_value_pairs = {{"block_system_block.chip_id", chip_id_}};
     else key_value_pairs = {{"block_system_block.chip_id", chip_id_}, {"block_system_block.responsible", user_id_}};
-    std::cout << user_id_.toUtf8().constData() << std::endl;
     dbhandler.show_items_inner_join({"block_system_block.block_id",
                                      "block_system_block.block_name",
                                      "block_system_block.abbreviation",
@@ -442,182 +532,62 @@ void RegisterManager::display_system_blocks()
                                     items, key_value_pairs,
                                     "order by block_system_block.block_id");
 
-
-    QHash<QString, int> block_id2idx;
-    int start = -1;
-
-    if (authenticator_.can_read_all_blocks())
+    items = sort_doubly_linked_list(items);
+    for (const auto& item : items)
     {
-        for (int i = 0; i < items.size(); i++)
-        {
-            block_id2idx[items[i][0]] = i;
-            if (items[i][5] == "-1") start = i;
-        }
-        block_id2idx["-1"] = items.size();
-    }
-    else start = items.size() > 0 ? 0 : -1;
-    if (start == -1) return;
-
-    int next = start;
-    while (true)
-    {
-        const auto& item = items[next];
         int row = ui->tableSystem->rowCount();
         ui->tableSystem->insertRow(row);
         for (int i = 0; i < item.size() - 2; i++)
             ui->tableSystem->setItem(row, i, new QTableWidgetItem(item[i]));
-        QTreeWidgetItem *tree_item = new QTreeWidgetItem(topLevelItem);
-        tree_item->setText(0, item[1]);
-        blocks_.push_back(item[1]);
 
         QVector<QString> count;
-        dbhandler.show_one_item("block_register", count, {"count(block_register.reg_id)"}, "block_id", item[0]);
-        ui->tableSystem->setItem(row, ui->tableSystem->columnCount() -1, new QTableWidgetItem(count[0]));
-
-        if (authenticator_.can_read_all_blocks()) next = block_id2idx[item[6]];
-        else next += 1;
-        if (next >= items.size()) break;
-
+        dbhandler.show_one_item("block_register", count, {"count(reg_id)"}, "block_id", item[0]);
+        ui->tableSystem->setItem(row, ui->tableSystem->columnCount()-1, new QTableWidgetItem(count[0]));
+        QTreeWidgetItem *block_item = new QTreeWidgetItem(topLevelItem);
+        block_item->setText(0, item[1]);
+        block_item->setText(1, item[0]);
+        blocks_.push_back(item[1]);
+        block_id2abbr_[item[0]] = item[2];
     }
-    if (ui->tableSystem->rowCount() > 0) ui->tableSystem->setCurrentCell(0, 0);
+    for (int i = 0; i < topLevelItem->childCount(); i++)
+        refresh_block(topLevelItem->child(i));
+    ui->pushButtonAddSys->setEnabled(authenticator_.can_add_block());
+    ui->pushButtonRemoveSys->setEnabled(false);
 }
 
 
-void RegisterManager::display_designers()
+void RegisterManager::refresh_block(QTreeWidgetItem *block_item)
 {
-
     DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-
-    ui->tableDesigner->setRowCount(0);
-
-    dbhandler.show_items_inner_join({"chip_designer.chip_designer_id",
-                                     "global_user.username",
-                                     "def_project_role.project_role"},
-                                    {{{"global_user", "user_id"}, {"chip_designer", "user_id"}},
-                                     {{"chip_designer", "project_role_id"}, {"def_project_role", "project_role_id"}}},
-                                    items, {{"chip_designer.chip_id", chip_id_}},
-                                    "order by chip_designer.chip_designer_id");
-    for (const auto& item : items)
-    {
-        int row = ui->tableDesigner->rowCount();
-        ui->tableDesigner->insertRow(row);
-        for (int i = 0; i < item.size(); i++) ui->tableDesigner->setItem(row, i, new QTableWidgetItem(item[i]));
-    }
-    if (ui->tableDesigner->rowCount() > 0) ui->tableDesigner->setCurrentCell(0, 0);
-}
-
-void RegisterManager::display_register_pages()
-{
-    // TODO
-}
-
-void RegisterManager::display_signals()
-{
-    ui->tableSignal->setRowCount(0);
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-    QVector<QString> fields = {"signal_signal.sig_id", "signal_signal.sig_name", "signal_signal.width", "def_signal_type.sig_type"};
-    dbhandler.show_items_inner_join(fields,
-                                    {{{"signal_signal", "sig_type_id"}, {"def_signal_type", "sig_type_id"}}},
-                                    items,
-                                    {{"signal_signal.block_id", block_id_}});
-    for (const auto& item : items)
-    {
-        int row = ui->tableSignal->rowCount();
-        ui->tableSignal->insertRow(row);
-        ui->tableSignal->setItem(row, 0, new QTableWidgetItem(item[0]));
-        ui->tableSignal->setItem(row, 3, new QTableWidgetItem(item[1]));
-        ui->tableSignal->setItem(row, 4, new QTableWidgetItem(item[2]));
-        ui->tableSignal->setItem(row, 5, new QTableWidgetItem(item[3]));
-
-        QVector<QVector<QString> > items_reg_sig;
-        dbhandler.show_items_inner_join({"signal_reg_signal.reg_sig_id", "signal_reg_signal.init_value", "def_register_type.reg_type_id", "def_register_type.reg_type"},
-                                        {{{"signal_reg_signal", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
-                                        items_reg_sig, {{"signal_reg_signal.sig_id", item[0]}});
-
-        if (items_reg_sig.size() == 1)
-        {
-            ui->tableSignal->setItem(row, 1, new QTableWidgetItem(items_reg_sig[0][0]));
-            ui->tableSignal->setItem(row, 2, new QTableWidgetItem(items_reg_sig[0][2]));
-            ui->tableSignal->setItem(row, 6, new QTableWidgetItem(items_reg_sig[0][3]));
-            ui->tableSignal->setItem(row, 7, new QTableWidgetItem(items_reg_sig[0][1]));
-        }
-        else
-        {
-            ui->tableSignal->setItem(row, 1, new QTableWidgetItem(""));
-            ui->tableSignal->setItem(row, 2, new QTableWidgetItem(""));
-            ui->tableSignal->setItem(row, 6, new QTableWidgetItem(""));
-            ui->tableSignal->setItem(row, 7, new QTableWidgetItem(""));
-
-        }
-    }
-    if (ui->tableSignal->rowCount() > 0) ui->tableSignal->setCurrentCell(0, 0);
-}
-
-void RegisterManager::display_registers()
-{
-    ui->tableRegister->setRowCount(0);
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-    dbhandler.show_items_inner_join({"block_register.reg_id", "block_register.reg_name", "def_register_type.reg_type", "block_register.prev", "block_register.next"},
-                                    {{{"block_register", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
-                                    items, {{"block_register.block_id", block_id_}});
-
-    items  = sort_doubly_linked_list(items);
-    for (const auto& item : items)
-    {
-        int row = ui->tableRegister->rowCount();
-        ui->tableRegister->insertRow(row);
-        ui->tableRegister->setItem(row, 0, new QTableWidgetItem(item[0]));
-        ui->tableRegister->setItem(row, 1, new QTableWidgetItem(item[1]));
-        ui->tableRegister->setItem(row, 2, new QTableWidgetItem(item[2]));
-
-    }
-
-    if (ui->tableRegister->rowCount() > 0) ui->tableRegister->setCurrentCell(0, 0);
-}
-
-
-void RegisterManager::display_documents()
-{
-    ui->treeWidgetDoc->clear();
-
-    QTreeWidgetItem *topLevelItemBlock = new QTreeWidgetItem(ui->treeWidgetDoc);
-    ui->treeWidgetDoc->addTopLevelItem(topLevelItemBlock);
-    topLevelItemBlock->setText(0, block_);
-    topLevelItemBlock->setText(3, block_id_);
-    topLevelItemBlock->setExpanded(true);
-
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-
-    dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
-                                    {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                    items, {{"doc_block.block_id", block_id_}});
-
-    items = sort_doubly_linked_list(items);
-
-    for (const auto& item : items)
-    {
-        QTreeWidgetItem *item_block = new QTreeWidgetItem(topLevelItemBlock);
-        item_block->setText(0, QString::number(topLevelItemBlock->childCount()));
-        item_block->setText(1, item[1]);
-        item_block->setText(2, item[2]);
-        item_block->setText(3, item[0]);
-    }
-
+    QVector<QString> item;
     QVector<QVector<QString> > registers;
+    QString block_name = block_item->text(0),
+            block_id = block_item->text(1),
+            block_abbr = block_id2abbr_[block_id];
 
-    dbhandler.show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id_, registers);
+    QHash<QString, bool> reg_id2expanded;
+    QVector<QTreeWidgetItem*> children;
+    for (int i = 0; i < block_item->childCount(); i++) children.push_back(block_item->child(i));
+    for (QTreeWidgetItem* child : children)
+    {
+        reg_id2expanded[child->text(1)] = child->isExpanded();
+        block_item->removeChild(child);
+    }
+
+    dbhandler.show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_item->text(1), registers);
     registers = sort_doubly_linked_list(registers);
+
+    SIGNAL_NAMING.update_key("{BLOCK_NAME}", block_name);
+    REGISTER_NAMING.update_key("{BLOCK_NAME}", block_name);
+    SIGNAL_NAMING.update_key("{BLOCK_ABBR}", block_abbr);
+    REGISTER_NAMING.update_key("{BLOCK_ABBR}", block_abbr);
     for (const auto& reg : registers)
     {
-        QTreeWidgetItem *topLevelItemReg = new QTreeWidgetItem(ui->treeWidgetDoc);
-        ui->treeWidgetDoc->addTopLevelItem(topLevelItemReg);
-        topLevelItemReg->setText(0, reg[1]);
-        topLevelItemReg->setText(3, reg[0]);
-        topLevelItemReg->setExpanded(true);
+        QTreeWidgetItem *topLevelItemReg = new QTreeWidgetItem(block_item);
+        topLevelItemReg->setText(0, REGISTER_NAMING.get_extended_name(reg[1]));
+        topLevelItemReg->setText(1, reg[0]);
+
+        if (reg_id2expanded.contains(reg[0])) topLevelItemReg->setExpanded(reg_id2expanded[reg[0]]);
 
         QVector<QVector<QString> > signal_items;
         QVector<QString> ext_fields = {"block_reg_partition.reg_part_id",
@@ -649,30 +619,302 @@ void RegisterManager::display_documents()
         for (int i = 0; i < signal_ids.size(); i++)
         {
             QString sig_id = signal_ids[i], sig_name = signal_names[i];
-            signal_items.clear();
-            dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
-                                            {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                            signal_items, {{"doc_signal.sig_id", sig_id}});
-
             QTreeWidgetItem *top_level_item_signal = new QTreeWidgetItem(topLevelItemReg);
-            top_level_item_signal->setText(0, sig_name);
-            top_level_item_signal->setText(3, sig_id);
-            top_level_item_signal->setExpanded(true);
+            top_level_item_signal->setText(0, SIGNAL_NAMING.get_extended_name(sig_name));
+            top_level_item_signal->setText(1, sig_id);
+            //top_level_item_signal->setExpanded(true);
+        }
+    }
+}
 
-            signal_items = sort_doubly_linked_list(signal_items);
-            for (const auto& signal_item : signal_items)
+
+void RegisterManager::display_designers()
+{
+
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QVector<QString> > items;
+
+    ui->tableDesigner->setRowCount(0);
+
+    dbhandler.show_items_inner_join({"chip_designer.chip_designer_id",
+                                     "global_user.username",
+                                     "def_project_role.project_role"},
+                                    {{{"global_user", "user_id"}, {"chip_designer", "user_id"}},
+                                     {{"chip_designer", "project_role_id"}, {"def_project_role", "project_role_id"}}},
+                                    items, {{"chip_designer.chip_id", chip_id_}},
+                                    "order by chip_designer.chip_designer_id");
+    for (const auto& item : items)
+    {
+        int row = ui->tableDesigner->rowCount();
+        ui->tableDesigner->insertRow(row);
+        for (int i = 0; i < item.size(); i++) ui->tableDesigner->setItem(row, i, new QTableWidgetItem(item[i]));
+    }
+    ui->pushButtonAddDesigner->setEnabled(authenticator_.can_add_chip_designer());
+    ui->pushButtonRemoveDesigner->setEnabled(false);
+}
+
+void RegisterManager::display_register_pages()
+{
+    // TODO
+}
+
+void RegisterManager::display_signals()
+{
+    ui->tableSignal->setRowCount(0);
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QVector<QString> > items;
+    QVector<QString> fields = {"signal_signal.sig_id", "signal_signal.sig_name", "signal_signal.width", "def_signal_type.sig_type"};
+    dbhandler.show_items_inner_join(fields,
+                                    {{{"signal_signal", "sig_type_id"}, {"def_signal_type", "sig_type_id"}}},
+                                    items,
+                                    {{"signal_signal.block_id", block_id_}});
+    for (const auto& item : items)
+    {
+        int row = ui->tableSignal->rowCount();
+        ui->tableSignal->insertRow(row);
+        QString sig_id = item[0],
+                reg_sig_id, reg_type_id,
+                sig_name = item[1],
+                width = item[2],
+                sig_type = item[3],
+                reg_type, init_value;
+
+        sig_name = SIGNAL_NAMING.get_extended_name(sig_name);
+        ui->tableSignal->setItem(row, 0, new QTableWidgetItem(item[0]));
+        ui->tableSignal->setItem(row, 3, new QTableWidgetItem(item[1]));
+        ui->tableSignal->setItem(row, 4, new QTableWidgetItem(item[2]));
+        ui->tableSignal->setItem(row, 5, new QTableWidgetItem(item[3]));
+
+        QVector<QVector<QString> > items_reg_sig;
+        dbhandler.show_items_inner_join({"signal_reg_signal.reg_sig_id", "def_register_type.reg_type_id", "def_register_type.reg_type", "signal_reg_signal.init_value"},
+                                        {{{"signal_reg_signal", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
+                                        items_reg_sig, {{"signal_reg_signal.sig_id", item[0]}});
+
+        if (items_reg_sig.size() == 1)
+        {
+            reg_sig_id = items_reg_sig[0][0];
+            reg_type_id = items_reg_sig[0][1];
+            reg_type = items_reg_sig[0][2];
+            init_value = items_reg_sig[0][3];
+        }
+        QVector<QString> values = {sig_id, reg_sig_id, reg_type_id, sig_name, width, sig_type, reg_type, init_value};
+        for (int i = 0; i < ui->tableSignal->columnCount(); i++)
+            ui->tableSignal->setItem(row, i, new QTableWidgetItem(values[i]));
+    }
+    ui->pushButtonAddSig->setEnabled(authenticator_.can_add_signal());
+    ui->pushButtonRemoveSig->setEnabled(false);
+}
+
+void RegisterManager::display_registers()
+{
+    ui->tableRegister->setRowCount(0);
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QVector<QString> > items;
+    dbhandler.show_items_inner_join({"block_register.reg_id", "block_register.reg_name", "def_register_type.reg_type", "block_register.prev", "block_register.next"},
+                                    {{{"block_register", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
+                                    items, {{"block_register.block_id", block_id_}});
+
+    items  = sort_doubly_linked_list(items);
+    for (const auto& item : items)
+    {
+        int row = ui->tableRegister->rowCount();
+        QString reg_id = item[0], reg_name = item[1], reg_type = item[2];
+        reg_name = REGISTER_NAMING.get_extended_name(reg_name);
+        ui->tableRegister->insertRow(row);
+        ui->tableRegister->setItem(row, 0, new QTableWidgetItem(reg_id));
+        ui->tableRegister->setItem(row, 1, new QTableWidgetItem(reg_name));
+        ui->tableRegister->setItem(row, 2, new QTableWidgetItem(reg_type));
+
+    }
+    ui->pushButtonAddReg->setEnabled(authenticator_.can_add_register());
+    ui->pushButtonRemoveReg->setEnabled(false);
+}
+
+
+void RegisterManager::display_documents(const QString& block_id, const QString& reg_id, const QString& sig_id)
+{
+    ui->tableDoc->setRowCount(0);
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QVector<QString> > items;
+    if (sig_id != "")
+        dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
+                                        {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                        items, {{"doc_signal.sig_id", sig_id}});
+    else if (reg_id != "")
+        dbhandler.show_items_inner_join({"doc_register.register_doc_id", "def_doc_type.doc_type", "doc_register.content", "doc_register.doc_type_id", "doc_register.prev", "doc_register.next"},
+                                        {{{"doc_register", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                        items, {{"doc_register.reg_id", reg_id}});
+    else if (block_id != "")
+        dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
+                                    {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                    items, {{"doc_block.block_id", block_id}});
+    items = sort_doubly_linked_list(items);
+
+    for (const auto& item : items)
+    {
+        int row = ui->tableDoc->rowCount();
+        ui->tableDoc->insertRow(row);
+        ui->tableDoc->setItem(row, 0, new QTableWidgetItem(item[0]));
+        ui->tableDoc->setItem(row, 1, new QTableWidgetItem(item[1]));
+        ui->tableDoc->setItem(row, 2, new QTableWidgetItem(item[2]));
+    }
+    ui->tableDoc->resizeRowsToContents();
+    ui->pushButtonAddDoc->setEnabled(authenticator_.can_edit_document());
+    ui->pushButtonRemoveDoc->setEnabled(false);
+    ui->documentEditor->clear();
+    ui->documentEditor->setVisible(false);
+}
+
+void RegisterManager::display_documents()
+{
+    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
+    QTreeWidgetItem* block_item = current;
+    while (block_item->parent()->parent()) block_item = block_item->parent();
+
+    QString block_id, reg_id, sig_id;
+    ui->documentEditor->clear();
+    if (current->parent() == block_item)   // register
+        reg_id = current->text(1);
+    else if (current->parent() && current->parent()->parent() == block_item)  // signal
+        sig_id = current->text(1);
+    else // block
+        block_id = current->text(1);
+    display_documents(block_id, reg_id, sig_id);
+}
+
+
+void RegisterManager::display_overall_documents()
+{
+    /*
+    ui->treeWidgetDoc->clear();
+    QTreeWidgetItem *topLevelItem = new QTreeWidgetItem(ui->treeWidgetDoc);
+    ui->treeWidgetDoc->addTopLevelItem(topLevelItem);
+    topLevelItem->setText(0, chip_);
+    topLevelItem->setText(3, chip_id_);
+    topLevelItem->setExpanded(true);
+
+    for (int i = 0; i < ui->treeWidgetBlock->topLevelItem(0)->childCount(); i++)
+    {
+        QString block = ui->treeWidgetBlock->topLevelItem(0)->child(i)->text(0),
+                block_id = ui->treeWidgetBlock->topLevelItem(0)->child(i)->text(1);
+
+        QTreeWidgetItem *topLevelItemBlock = new QTreeWidgetItem(topLevelItem);
+        topLevelItemBlock->setText(0, block);
+        topLevelItemBlock->setText(3, block_id);
+        //topLevelItemBlock->setExpanded(true);
+
+        DataBaseHandler dbhandler(gDBHost, gDatabase);
+        QVector<QVector<QString> > items;
+
+        dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
+                                        {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                        items, {{"doc_block.block_id", block_id}});
+
+        items = sort_doubly_linked_list(items);
+        for (const auto& item : items)
+        {
+            QTreeWidgetItem *item_block = new QTreeWidgetItem(topLevelItemBlock);
+            item_block->setText(0, QString::number(topLevelItemBlock->childCount()));
+            item_block->setText(1, item[1]);
+            item_block->setText(2, item[2]);
+            item_block->setText(3, item[0]);
+        }
+
+        QVector<QVector<QString> > registers;
+        dbhandler.show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id, registers);
+        registers = sort_doubly_linked_list(registers);
+
+        QTreeWidgetItem *topLevelItemRegisters;
+        if (registers.size() > 0)
+        {
+            topLevelItemRegisters = new QTreeWidgetItem(topLevelItemBlock);
+            topLevelItemRegisters->setText(0, "Registers");
+            for (const auto& reg : registers)
             {
-                QTreeWidgetItem *signal = new QTreeWidgetItem(top_level_item_signal);
-                signal->setText(0, QString::number(top_level_item_signal->childCount()));
-                signal->setText(1, signal_item[1]);
-                signal->setText(2, signal_item[2]);
-                signal->setText(3, signal_item[0]);
+                QTreeWidgetItem *topLevelItemReg = new QTreeWidgetItem(topLevelItemRegisters);
+                topLevelItemReg->setText(0, reg[1]);
+                topLevelItemReg->setText(3, reg[0]);
+
+                items.clear();
+                dbhandler.show_items_inner_join({"doc_register.register_doc_id", "def_doc_type.doc_type", "doc_register.content", "doc_register.doc_type_id", "doc_register.prev", "doc_register.next"},
+                                                {{{"doc_register", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                                items, {{"doc_register.reg_id", reg[0]}});
+
+                for (const auto& item : items)
+                {
+                    QTreeWidgetItem *item_reg = new QTreeWidgetItem(topLevelItemReg);
+                    item_reg->setText(0, QString::number(topLevelItemReg->childCount()));
+                    item_reg->setText(1, item[1]);
+                    item_reg->setText(2, item[2]);
+                    item_reg->setText(3, item[0]);
+                }
+
+
+                QVector<QVector<QString> > signal_items;
+                QVector<QString> ext_fields = {"block_reg_partition.reg_part_id",
+                                                   "block_reg_partition.lsb",
+                                                   "block_reg_partition.msb",
+                                                    "signal_signal.sig_name",
+                                                   "signal_signal.sig_id",
+                                                   "signal_reg_sig_partition.lsb",
+                                                   "signal_reg_sig_partition.msb"};
+                dbhandler.show_items_inner_join(ext_fields, {{{"block_reg_partition", "reg_sig_part_id"}, {"signal_reg_sig_partition", "reg_sig_part_id"}},
+                                                             {{"signal_reg_sig_partition", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
+                                                             {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, signal_items, {{"block_reg_partition.reg_id", reg[0]}});
+
+                if (msb_first_) qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2] > b[2];});
+                else qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1] < b[1];});
+
+                QSet<QString> signal_set;
+                QVector<QString> signal_ids, signal_names;
+
+                for (const auto& signal_item : signal_items)
+                {
+                    QString sig_id = signal_item[4], sig_name = signal_item[3];
+                    if (signal_set.contains(sig_id)) continue;
+                    signal_set.insert(sig_id);
+                    signal_ids.push_back(sig_id);
+                    signal_names.push_back(sig_name);
+                }
+
+                QTreeWidgetItem *topLevelItemSignals;
+                if (signal_ids.size() > 0)
+                {
+                    topLevelItemSignals = new QTreeWidgetItem(topLevelItemReg);
+                    topLevelItemSignals->setText(0, "Signals");
+
+                    for (int i = 0; i < signal_ids.size(); i++)
+                    {
+                        QString sig_id = signal_ids[i], sig_name = signal_names[i];
+                        signal_items.clear();
+                        dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
+                                                        {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
+                                                        signal_items, {{"doc_signal.sig_id", sig_id}});
+
+                        QTreeWidgetItem *top_level_item_signal = new QTreeWidgetItem(topLevelItemSignals);
+                        top_level_item_signal->setText(0, sig_name);
+                        top_level_item_signal->setText(3, sig_id);
+                        top_level_item_signal->setExpanded(true);
+
+                        signal_items = sort_doubly_linked_list(signal_items);
+                        for (const auto& signal_item : signal_items)
+                        {
+                            QTreeWidgetItem *signal = new QTreeWidgetItem(top_level_item_signal);
+                            signal->setText(0, QString::number(top_level_item_signal->childCount()));
+                            signal->setText(1, signal_item[1]);
+                            signal->setText(2, signal_item[2]);
+                            signal->setText(3, signal_item[0]);
+                        }
+                    }
+                }
             }
         }
 
-    }
 
+
+        }
     ui->treeWidgetDoc->setCurrentItem(ui->treeWidgetDoc->topLevelItem(0));
+    */
 }
 
 
@@ -688,7 +930,8 @@ void RegisterManager::display_signal_partitions()
                                        "signal_reg_sig_partition.msb",
                                        "block_register.reg_name",
                                        "block_reg_partition.lsb",
-                                       "block_reg_partition.msb"};
+                                       "block_reg_partition.msb",
+                                        "block_reg_partition.reg_part_id"};
 
     QVector<QVector<QString> > items;
     dbhandler.show_items_inner_join(ext_fields, {{{"signal_reg_sig_partition", "reg_sig_part_id"}, {"block_reg_partition", "reg_sig_part_id"}},
@@ -700,25 +943,15 @@ void RegisterManager::display_signal_partitions()
     {
         int row = ui->tableSigPart->rowCount();
         ui->tableSigPart->insertRow(row);
-        QString reg_sig_part_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5];
+        QString reg_sig_part_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5], reg_part_id = item[6];
+        reg_name = REGISTER_NAMING.get_extended_name(reg_name);
         ui->tableSigPart->setItem(row, 0, new QTableWidgetItem(reg_sig_part_id));
-        QString sig_part, reg_part;
-        if (msb_first_)
-        {
-            sig_part = "<" + sig_msb + ":"+ sig_lsb + ">";
-            reg_part = reg_name + "<" + reg_msb + ":"+ reg_lsb +">";
-        }
-        else
-        {
-            sig_part = "<" + sig_lsb + ":"+ sig_msb + ">";
-            reg_part = reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
-        }
+        QString sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">",
+                reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
         ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
         ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
-
+        ui->tableSigPart->setItem(row, 3, new QTableWidgetItem(reg_part_id));
     }
-    if (ui->tableSigPart->rowCount() > 0) ui->tableSigPart->setCurrentCell(0, 0);
-
 }
 
 
@@ -734,7 +967,8 @@ void RegisterManager::display_register_partitions()
                                        "block_reg_partition.msb",
                                        "signal_signal.sig_name",
                                        "signal_reg_sig_partition.lsb",
-                                       "signal_reg_sig_partition.msb"};
+                                       "signal_reg_sig_partition.msb",
+                                       "signal_reg_sig_partition.reg_sig_part_id"};
     QVector<QVector<QString> > items;
     dbhandler.show_items_inner_join(ext_fields, {{{"block_reg_partition", "reg_sig_part_id"}, {"signal_reg_sig_partition", "reg_sig_part_id"}},
                                                  {{"signal_reg_sig_partition", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
@@ -746,20 +980,16 @@ void RegisterManager::display_register_partitions()
     {
         int row = ui->tableRegPart->rowCount();
         ui->tableRegPart->insertRow(row);
-        QString reg_part_id = item[0], reg_lsb = item[1], reg_msb = item[2], sig_name = item[3], sig_lsb = item[4], sig_msb = item[5];
+        QString reg_part_id = item[0], reg_lsb = item[1], reg_msb = item[2], sig_name = item[3], sig_lsb = item[4], sig_msb = item[5], sig_part_id = item[6];
+        sig_name = SIGNAL_NAMING.get_extended_name(sig_name);
         ui->tableRegPart->setItem(row, 0, new QTableWidgetItem(reg_part_id));
-        if (!msb_first_)
-        {
-            ui->tableRegPart->setItem(row, 1, new QTableWidgetItem("<" + reg_lsb + ":"+ reg_msb + ">"));
-            ui->tableRegPart->setItem(row, 2, new QTableWidgetItem(sig_name + "<" + sig_lsb + ":"+ sig_msb +">" ));
-        }
-        else {
-            ui->tableRegPart->setItem(row, 1, new QTableWidgetItem("<" + reg_msb + ":"+ reg_lsb + ">"));
-            ui->tableRegPart->setItem(row, 2, new QTableWidgetItem(sig_name + "<" + sig_msb + ":"+ sig_lsb +">" ));
-        }
+        QString reg_part = msb_first_ ? "<" + reg_msb + ":"+ reg_lsb + ">" : "<" + reg_lsb + ":"+ reg_msb + ">",
+                sig_part = msb_first_ ? sig_name + "<" + sig_msb + ":"+ sig_lsb +">" : sig_name + "<" + sig_lsb + ":"+ sig_msb +">";
 
+        ui->tableRegPart->setItem(row, 1, new QTableWidgetItem(reg_part));
+        ui->tableRegPart->setItem(row, 2, new QTableWidgetItem(sig_part));
+        ui->tableRegPart->setItem(row, 3, new QTableWidgetItem(sig_part_id));
     }
-    if (ui->tableRegPart->rowCount() > 0) ui->tableRegPart->setCurrentCell(0, 0);
 }
 
 void RegisterManager::on_loggedin(QString username)
@@ -865,14 +1095,15 @@ void RegisterManager::on_actionOpenChip_triggered()
 void RegisterManager::on_actionCloseChip_triggered()
 {
     QVector<QTableWidget*> tables = {ui->tableChipBasics, ui->tableSystem, ui->tableDesigner, ui->tableRegPage,
-                                     ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart};
+                                     ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart, ui->tableDoc};
     for (QTableWidget* table : tables) table->setRowCount(0);
     ui->treeWidgetBlock->clear();
     ui->treeWidgetDoc->clear();
 
     QVector<QWidget*> widgets = {ui->pushButtonAddSys, ui->pushButtonRemoveSys, ui->pushButtonAddReg, ui->pushButtonRemoveReg,
                                  ui->pushButtonAddSig, ui->pushButtonRemoveSig, ui->pushButtonAddSigPart,
-                                ui->pushButtonRemoveSigPart, ui->pushButtonAddDesigner, ui->pushButtonRemoveDesigner};
+                                ui->pushButtonRemoveSigPart, ui->pushButtonAddDesigner, ui->pushButtonRemoveDesigner,
+                                ui->pushButtonAddDoc, ui->pushButtonRemoveDoc};
     for (QWidget* widget : widgets) widget->setEnabled(false);
 
     QVector<QString*> variables = {&chip_, &chip_id_, &chip_owner_, &chip_owner_id_};
@@ -884,6 +1115,11 @@ void RegisterManager::on_actionCloseChip_triggered()
 
     authenticator_.clear_project_permission();
     authenticator_.clear_block_permission();
+
+    ui->stackedWidgetDoc->setCurrentIndex(0);
+    ui->stackedWidgetChipEditor->setCurrentIndex(0);
+
+    block_id2abbr_.clear();
 }
 
 void RegisterManager::on_actionChipManagement_triggered()
@@ -902,9 +1138,9 @@ void RegisterManager::on_actionDocEditorView_triggered()
     ui->frameDoc->setVisible(ui->actionDocEditorView->isChecked());
 }
 
-void RegisterManager::on_actionBlockEditorView_triggered()
+void RegisterManager::on_actionChipEditorView_triggered()
 {
-    ui->frameTab->setVisible(ui->actionBlockEditorView->isChecked());
+    ui->stackedWidgetChipEditor->setVisible(ui->actionChipEditorView->isChecked());
 }
 
 void RegisterManager::on_pushButtonAddSys_clicked()
@@ -934,6 +1170,7 @@ void RegisterManager::on_pushButtonAddSys_clicked()
         QTreeWidgetItem *top_level_item = ui->treeWidgetBlock->topLevelItem(0);
         QTreeWidgetItem *tree_item = new QTreeWidgetItem(top_level_item);
         tree_item->setText(0, new_system.get_block_name());
+        tree_item->setText(1, new_system.get_block_id());
         ui->tableSystem->setCurrentCell(row, 0);
     }
     if (new_system.designer_added()) display_designers();
@@ -955,14 +1192,15 @@ void RegisterManager::on_pushButtonRemoveSys_clicked()
                          "Are you sure you want to remove this blcok?\nThis operation is not reversible!",
                          QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
-    QString block_id = ui->tableSystem->item(row, 0)->text();
+    block_id_ = ui->tableSystem->item(row, 0)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QString> item;
-    dbhandler.show_one_item("block_system_block", item, {"prev", "next"}, "block_id", block_id);
+    dbhandler.show_one_item("block_system_block", item, {"prev", "next"}, "block_id", block_id_);
     QString prev = item[0], next = item[1];
     if (prev != "-1") dbhandler.update_items("block_system_block", {{"block_id", prev}}, {{"next", next}});
     if (next != "-1") dbhandler.update_items("block_system_block", {{"block_id", next}}, {{"prev", prev}});
-    if (dbhandler.delete_items("block_system_block", "block_id", block_id))
+
+    if (dbhandler.delete_items("block_system_block", "block_id", block_id_))
     {
         ui->tableSystem->removeRow(row);
         QTreeWidgetItem *top_level_item = ui->treeWidgetBlock->topLevelItem(0);
@@ -1052,16 +1290,30 @@ void RegisterManager::on_pushButtonAddSig_clicked()
         int row = ui->tableSignal->rowCount();
         QVector<QVector<QString> > items;
         ui->tableSignal->insertRow(row);
-        ui->tableSignal->setItem(row, 0, new QTableWidgetItem(new_signal.get_signal_id()));
-        ui->tableSignal->setItem(row, 1, new QTableWidgetItem(new_signal.get_reg_sig_id()));
-        ui->tableSignal->setItem(row, 2, new QTableWidgetItem(new_signal.get_register_type_id()));
-        ui->tableSignal->setItem(row, 3, new QTableWidgetItem(new_signal.get_signal_name()));
-        ui->tableSignal->setItem(row, 4, new QTableWidgetItem(new_signal.get_width()));
-        ui->tableSignal->setItem(row, 5, new QTableWidgetItem(new_signal.get_signal_type()));
-        ui->tableSignal->setItem(row, 6, new QTableWidgetItem(new_signal.get_register_type()));
-        ui->tableSignal->setItem(row, 7, new QTableWidgetItem(new_signal.get_value()));
-
+        QVector<QString> values = {new_signal.get_signal_id(), new_signal.get_reg_sig_id(),
+                                  new_signal.get_register_type_id(), new_signal.get_signal_name(),
+                                  new_signal.get_width(), new_signal.get_signal_type(),
+                                  new_signal.get_register_type(), new_signal.get_value()};
+        for (int i = 0; i < values.size(); i++)
+            ui->tableSignal->setItem(row, i, new QTableWidgetItem(values[i]));
         ui->tableSignal->setCurrentCell(row, 0);
+
+        if (new_signal.is_register_signal())
+        {
+            items.clear();
+            DataBaseHandler dbhandler(gDBHost, gDatabase);
+            dbhandler.show_items_inner_join({"block_register.reg_id", "block_register.reg_name"},
+                                            {{{"signal_reg_sig_partition", "reg_sig_part_id"}, {"block_reg_partition", "reg_sig_part_id"}},
+                                             {{"block_reg_partition", "reg_id"}, {"block_register", "reg_id"}}}, items,
+                                            {{"signal_reg_sig_partition.reg_sig_id", new_signal.get_reg_sig_id()}});
+            if (items.size() == 0) return;
+            QHash<QString, QString> reg_id2name;
+            QSet<QString> existing_reg_ids;
+            for (const auto& item : items) reg_id2name[item[0]] = REGISTER_NAMING.get_extended_name(item[1]);
+            QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+            while (block_item->parent()->parent()) block_item = block_item->parent();
+            refresh_block(block_item);
+        }
     }
 }
 
@@ -1080,10 +1332,34 @@ void RegisterManager::on_pushButtonRemoveSig_clicked()
                              "Are you sure you want to remove this signal?",
                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
-    QString sig_id = ui->tableSignal->item(row, 0)->text();
+    QString sig_id = ui->tableSignal->item(row, 0)->text(),
+            reg_sig_id = ui->tableSignal->item(row, 1)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
+
+    // delete register pages controlled by this signal
+    QVector<QVector<QString> > page_ids;
+    dbhandler.show_items("chip_register_page", {"page_id"}, "ctrl_sig", sig_id, page_ids);
+    for (const auto& page_id : page_ids) dbhandler.delete_items("chip_register_page_content", "page_id", page_id[0]);
+    dbhandler.delete_items("chip_register_page", "ctrl_sig", sig_id);
+    // document
+    dbhandler.delete_items("doc_signal", "sig_id", sig_id);
+
+    if (reg_sig_id != "")
+    {
+        for (int i = 0; i < ui->tableSigPart->rowCount(); i++)
+            dbhandler.delete_items("block_reg_partition", "reg_sig_part_id", ui->tableSigPart->item(i, 3)->text());
+        dbhandler.delete_items("signal_reg_sig_partition", "reg_sig_id", reg_sig_id);
+        dbhandler.delete_items("signal_reg_signal", "sig_id", sig_id);
+        ui->tableSigPart->setRowCount(0);
+    }
+
     if (dbhandler.delete_items("signal_signal", "sig_id", sig_id))
+    {
         ui->tableSignal->removeRow(row);
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        refresh_block(block_item);
+    }
     else
         QMessageBox::warning(this, "Remove Signal", QString("Removing signal failed\nError message: ") + dbhandler.get_error_message());
 }
@@ -1104,6 +1380,12 @@ void RegisterManager::on_pushButtonAddReg_clicked()
         ui->tableRegister->setItem(row, 1, new QTableWidgetItem(new_reg.get_reg_name()));
         ui->tableRegister->setItem(row, 2, new QTableWidgetItem(new_reg.get_reg_type()));
         ui->tableRegister->setCurrentCell(row, 0);
+
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        QTreeWidgetItem* reg_item = new QTreeWidgetItem(block_item);
+        reg_item->setText(0, new_reg.get_reg_name());
+        reg_item->setText(1, new_reg.get_reg_id());
     }
 }
 
@@ -1128,8 +1410,22 @@ void RegisterManager::on_pushButtonRemoveReg_clicked()
     QString prev = item[0], next = item[1];
     if (prev != "-1") dbhandler.update_items("block_register", {{"reg_id", prev}}, {{"next", next}});
     if (next != "-1") dbhandler.update_items("block_register", {{"reg_id", next}}, {{"prev", prev}});
+
+    dbhandler.delete_items("block_reg_partition", "reg_id", reg_id);
+    for (int i = 0; i < ui->tableRegPart->rowCount(); i++)
+        dbhandler.delete_items("signal_reg_sig_partition", "reg_sig_part_id", ui->tableRegPart->item(i, 3)->text());
+
+    ui->tableRegPart->setRowCount(0);
+    dbhandler.delete_items("doc_register", "reg_id", reg_id);
+    dbhandler.delete_items("chip_register_page_content", "reg_id", reg_id);
     if (dbhandler.delete_items("block_register", "reg_id", reg_id))
+    {
         ui->tableRegister->removeRow(row);
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        for (int i = 0; i < block_item->childCount(); i++)
+            if (block_item->child(i)->text(1) == reg_id) block_item->removeChild(block_item->child(i));
+    }
     else
         QMessageBox::warning(this, "Remove Register", QString("Removing register failed\nError message: ") + dbhandler.get_error_message());
 }
@@ -1139,9 +1435,12 @@ void RegisterManager::on_pushButtonAddSigPart_clicked()
 {
     int row = ui->tableSignal->currentRow();
     if (row < 0 || ui->tableSignal->item(row, 1)->text() == "") return;
-    QString reg_sig_id = ui->tableSignal->item(row, 1)->text();
-    QString reg_type_id = ui->tableSignal->item(row, 2)->text();
+    QString reg_sig_id = ui->tableSignal->item(row, 1)->text(),
+            reg_type_id = ui->tableSignal->item(row, 2)->text(),
+            sig_id = ui->tableSignal->item(row, 0)->text(),
+            sig_name = ui->tableSignal->item(row, 3)->text();
     int signal_width = ui->tableSignal->item(row, 4)->text().toInt();
+
     EditSignalPartitionDialog new_sig_part(block_id_, reg_sig_id, reg_type_id, signal_width, register_width_, msb_first_, this);
     if (new_sig_part.exec() == QDialog::Accepted && new_sig_part.add_signal_partition())
     {
@@ -1156,20 +1455,15 @@ void RegisterManager::on_pushButtonAddSigPart_clicked()
         int row = ui->tableSigPart->rowCount();
         ui->tableSigPart->insertRow(row);
         ui->tableSigPart->setItem(row, 0, new QTableWidgetItem(reg_sig_part_id));
-        QString sig_part, reg_part;
-        if (msb_first_)
-        {
-            sig_part = "<" + sig_msb + ":"+ sig_lsb + ">";
-            reg_part = reg_name + "<" + reg_msb + ":"+ reg_lsb +">";
-        }
-        else
-        {
-            sig_part = "<" + sig_lsb + ":"+ sig_msb + ">";
-            reg_part = reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
-        }
+        QString sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">",
+                reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
         ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
         ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
+        //ui->tableSigPart->setItem(row, 3, new QTableWidgetItem(reg_part_id));
 
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        refresh_block(block_item);
     }
 }
 
@@ -1181,10 +1475,17 @@ void RegisterManager::on_pushButtonRemoveSigPart_clicked()
                              "Remove Signal Partition",
                              "Are you sure you want to remove this signal partition?",
                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
-    QString reg_sig_part_id = ui->tableSigPart->item(row, 0)->text();
+    QString sig_part_id = ui->tableSigPart->item(row, 0)->text(),
+            reg_part_id = ui->tableSigPart->item(row, 3)->text();
     DataBaseHandler dbhandler(gDBHost, gDatabase);
-    if (dbhandler.delete_items("signal_reg_sig_partition", "reg_sig_part_id", reg_sig_part_id))
+    if (dbhandler.delete_items("block_reg_partition", "reg_sig_part_id", reg_part_id) &&
+        dbhandler.delete_items("signal_reg_sig_partition", "reg_sig_part_id", sig_part_id))
+    {
         ui->tableSigPart->removeRow(row);
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        refresh_block(block_item);
+    }
     else
         QMessageBox::warning(this, "Remove Signal Partition", "Removing signal partition failed\nError message: "+ dbhandler.get_error_message());
 
@@ -1308,8 +1609,7 @@ void RegisterManager::init_db()
     primary_key = "doc_type_id";
     unique_keys = {"doc_type"};
     dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-    dbhandler.insert_item(dbname, {"doc_type"}, {"Pure Text"});
-    dbhandler.insert_item(dbname, {"doc_type"}, {"LaTeX"});
+    dbhandler.insert_item(dbname, {"doc_type"}, {"Text"});
     dbhandler.insert_item(dbname, {"doc_type"}, {"Image"});
     dbhandler.insert_item(dbname, {"doc_type"}, {"Table"});
 
@@ -1317,8 +1617,8 @@ void RegisterManager::init_db()
     // global_user
     dbname = "global_user";
     table_define = {{"user_id", "int", "not null auto_increment"},
-                {"username", "varchar(20)", "not null"},
-                {"password", "varchar(20)", "not null"},
+                {"username", "varchar(256)", "not null"},
+                {"password", "varchar(256)", "not null"},
                 {"db_role_id", "int", "not null"}};
     primary_key = "user_id";
     foreign_keys = {{"db_role_id", "def_db_role", "db_role_id"}};
@@ -1351,7 +1651,7 @@ void RegisterManager::init_db()
     dbname = "block_system_block";
     table_define = {{"block_id", "int", "not null auto_increment"},
                 {"block_name", "varchar(256)", "not null"},
-                {"abbreviation", "varchar(52)", "not null"},
+                {"abbreviation", "varchar(32)", "not null"},
                 {"chip_id", "int", "not null"},
                 {"responsible", "int", "not null"},
                 {"start_address", "varchar(256)"},
@@ -1369,7 +1669,7 @@ void RegisterManager::init_db()
                 {"block_id", "int", "not null"},
                 {"width", "int", "not null"},
                 {"sig_type_id", "int", "not null"},
-                {"noport", "tinyint(1)"}};
+                {"add_port", "tinyint(1)", "not null"}};
     primary_key = "sig_id";
     foreign_keys = {{"block_id", "block_system_block", "block_id"},
                     {"sig_type_id", "def_signal_type", "sig_type_id"}};
@@ -1408,8 +1708,6 @@ void RegisterManager::init_db()
                     {"reg_id", "block_register", "reg_id"}};
     dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
 
-
-
     dbname = "signal_reg_signal";
     table_define = {{"reg_sig_id", "int", "not null auto_increment"},
                 {"sig_id", "int", "not null"},
@@ -1442,6 +1740,20 @@ void RegisterManager::init_db()
     dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
 
 
+    dbname = "block_sig_reg_partition_mapping";
+    table_define = {{"sig_reg_part_mapping_id", "int", "not null auto_increment"},
+                {"reg_sig_id", "int", "not null"},
+                {"sig_lsb", "int", "not null"},
+                {"sig_msb", "int", "not null"},
+                {"reg_id", "int", "not null"},
+                {"reg_lsb", "int", "not null"},
+                {"reg_msb", "int", "not null"}};
+    primary_key = "sig_reg_part_mapping_id";
+    foreign_keys = {{"reg_sig_id", "signal_reg_signal", "reg_sig_id"},
+                    {"reg_id", "block_register", "reg_id"}};
+    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
+
+
     dbname = "doc_chip";
     table_define = {{"chip_doc_id", "int", "not null auto_increment"},
                 {"chip_id", "int", "not null"},
@@ -1463,6 +1775,18 @@ void RegisterManager::init_db()
                 {"next", "int", "not null"}};
     primary_key = "block_doc_id";
     foreign_keys = {{"block_id", "block_system_block", "block_id"},
+                    {"doc_type_id", "def_doc_type", "doc_type_id"}};
+    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
+
+    dbname = "doc_register";
+    table_define = {{"register_doc_id", "int", "not null auto_increment"},
+                {"reg_id", "int", "not null"},
+                {"doc_type_id", "int", "not null"},
+                {"content", "text", "not null"},
+                {"prev", "int", "not null"},
+                {"next", "int", "not null"}};
+    primary_key = "register_doc_id";
+    foreign_keys = {{"reg_id", "block_register", "reg_id"},
                     {"doc_type_id", "def_doc_type", "doc_type_id"}};
     dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
 
@@ -1514,13 +1838,14 @@ void RegisterManager::on_tableSignal_cellDoubleClicked(int row, int column)
     EditSignalDialog edit_signal(block_id_, sig_id, reg_sig_id, register_width_, msb_first_, authenticator_.can_add_signal() && authenticator_.can_remove_signal(), this);
     if (edit_signal.exec() == QDialog::Accepted && edit_signal.edit_signal())
     {
-        ui->tableSignal->item(row, 1)->setText(edit_signal.get_reg_sig_id());
-        ui->tableSignal->item(row, 2)->setText(edit_signal.get_register_type_id());
-        ui->tableSignal->item(row, 3)->setText(edit_signal.get_signal_name());
-        ui->tableSignal->item(row, 4)->setText(edit_signal.get_width());
-        ui->tableSignal->item(row, 5)->setText(edit_signal.get_signal_type());
-        ui->tableSignal->item(row, 6)->setText(edit_signal.get_register_type());
-        ui->tableSignal->item(row, 7)->setText(edit_signal.get_value());
+        QVector<QString> values = {ui->tableSignal->item(row, 0)->text(), edit_signal.get_reg_sig_id(),
+                                   edit_signal.get_register_type_id(), edit_signal.get_signal_name(),
+                                   edit_signal.get_width(), edit_signal.get_signal_type(),
+                                   edit_signal.get_register_type(), edit_signal.get_value()};
+        for (int i = 0; i < values.size(); i++) ui->tableSignal->item(row, i)->setText(values[i]);
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        refresh_block(block_item);
 
     }
     emit(ui->tableSignal->currentCellChanged(row, column, row, column));
@@ -1534,6 +1859,9 @@ void RegisterManager::on_tableRegister_cellDoubleClicked(int row, int column)
     if (edit_reg.exec() == QDialog::Accepted && edit_reg.edit_register())
     {
         ui->tableRegister->item(row, 1)->setText(edit_reg.get_reg_name());
+        QTreeWidgetItem* block_item = ui->treeWidgetBlock->currentItem();
+        while (block_item->parent()->parent()) block_item = block_item->parent();
+        refresh_block(block_item);
     }
 }
 
@@ -1566,136 +1894,81 @@ void RegisterManager::on_treeWidgetDoc_currentItemChanged(QTreeWidgetItem *curre
 }
 
 void RegisterManager::on_pushButtonAddDoc_clicked()
-{
-    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
-    if (!current) return;
-    EditDocumentDialog *add_doc;
-    QTreeWidgetItem *top_item = current;
-    while (top_item->parent()) top_item = top_item->parent();
-    QTreeWidgetItem* parent = nullptr;
+{    
+    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
+    QTreeWidgetItem* block_item = current;
+    while (block_item->parent()->parent()) block_item = block_item->parent();
 
-    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
+    ui->documentEditor->clear();
+    QString block_id, reg_id, sig_id;
+    DocumentEditor::DOCUMENT_LEVEL level;
+    if (current->parent() == block_item)   // register
     {
-        add_doc = new EditDocumentDialog(EditDocumentDialog::BLOCK, block_id_, "", "", this);
-        parent = top_item;
+        level = DocumentEditor::REGISTER;
+        ui->documentEditor->set_register_id(current->text(1));
     }
-    else
+    else if (current->parent() && current->parent()->parent() == block_item)  // signal
     {
-        QString reg_id = top_item->text(3);
-        QString sig_id;
-        if (current == top_item) sig_id = "";
-        else if (current->parent() == top_item)
-        {
-            sig_id = current->text(3);
-            parent = current;
-        }
-        else if (current->parent()->parent() == top_item)
-        {
-            sig_id = current->parent()->text(3);
-            parent = current->parent();
-        }
-        add_doc = new EditDocumentDialog(EditDocumentDialog::SIGNAL, block_id_, reg_id, sig_id, this);
+        level = DocumentEditor::SIGNAL;
+        ui->documentEditor->set_signal_id(current->text(1));
     }
-
-    if (add_doc && add_doc->exec() == QDialog::Accepted && add_doc->add_document())
+    else // block
     {
-        QString doc_id = add_doc->get_doc_id();
-        QString content = add_doc->get_content();
-        QString doc_type = add_doc->get_document_type();
-        if (!parent)
-        {
-            QString sig_id = add_doc->get_signal_id();
-            int row = 0;
-            while (row < top_item->childCount() && top_item->child(row)->text(3) != sig_id) row++;
-            if (row < top_item->childCount())
-                parent = top_item->child(row);
-        }
-        if (parent)
-        {
-            QTreeWidgetItem *item = new QTreeWidgetItem(parent);
-            item->setText(0, QString::number(parent->childCount()));
-            item->setText(1, doc_type);
-            item->setText(2, content);
-            item->setText(3, doc_id);
-        }
-
+        level = DocumentEditor::BLOCK;
+        ui->documentEditor->set_block_id(current->text(1));
     }
+    ui->documentEditor->set_level(level);
+    ui->documentEditor->set_mode(DIALOG_MODE::ADD);
+    ui->documentEditor->setVisible(true);
 
-    delete add_doc;
 }
 
 void RegisterManager::on_pushButtonRemoveDoc_clicked()
 {
-    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
-    if (!current) return;
+    int row = ui->tableDoc->currentRow();
+    if (row < 0) return;
+    if (QMessageBox::warning(this,
+                             "Remove Document",
+                             "Are you sure you want to remove this document?",
+                             QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
+    QString doc_id = ui->tableDoc->item(row, 0)->text();
 
-    QString doc_id = current->text(3);
-    QTreeWidgetItem* top_item = current;
-    while (top_item->parent()) top_item = top_item->parent();
+    QString table, id_field;
+    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
+    QTreeWidgetItem* block_item = current;
+    while (block_item->parent()->parent()) block_item = block_item->parent();
 
-    QString table, doc_id_field;
-    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+
+    if (current->parent() == block_item)   // register
     {
-        table = "doc_block";
-        doc_id_field = "block_doc_id";
+        table = "doc_register";
+        id_field = "register_doc_id";
     }
-    else
+    else if (current->parent() && current->parent()->parent() == block_item)  // signal
     {
         table = "doc_signal";
-        doc_id_field = "signal_doc_id";
+        id_field = "signal_doc_id";
+    }
+    else // block
+    {
+        table = "doc_block";
+        id_field = "block_doc_id";
     }
 
-
-    QVector<QString> item;
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    dbhandler.show_one_item(table, item, {"prev", "next"}, doc_id_field, doc_id);
-    QString prev = item[0], next = item[1];
-
-    if (dbhandler.delete_items(table, doc_id_field, doc_id))
+    QVector<QVector<QString> > items;
+    if (dbhandler.show_items(table, {"prev", "next"}, id_field, doc_id, items) && dbhandler.delete_items(table, id_field, doc_id) )
     {
-        if (prev != "-1") dbhandler.update_items(table, {{doc_id_field, prev}}, {{"next", next}});
-        if (next != "-1") dbhandler.update_items(table, {{doc_id_field, next}}, {{"prev", prev}});
-        QTreeWidgetItem *parent = current->parent();
-        int row = parent->indexOfChild(current);
-        parent->removeChild(current);
-        for (int i = row; i < parent->childCount(); i++)
-            parent->child(i)->setText(0, QString::number(parent->child(i)->text(0).toInt() - 1));
+        QString prev = items[0][0], next = items[0][1];
+        if (prev != "-1") dbhandler.update_items(table, {{id_field, prev}}, {{"next", next}});
+        if (next != "-1") dbhandler.update_items(table, {{id_field, next}}, {{"prev", prev}});
+        ui->tableDoc->removeRow(row);
     }
 }
 
 void RegisterManager::on_treeWidgetDoc_itemDoubleClicked(QTreeWidgetItem *item, int column)
 {
-    if (!((item && item->parent() && item->parent() == ui->treeWidgetDoc->topLevelItem(0)) || \
-          (item && item->parent() && item->parent()->parent()))) return;
-    bool enabled = authenticator_.can_edit_document();
-    QTreeWidgetItem *current = ui->treeWidgetDoc->currentItem();
-    if (!current) return;
-    EditDocumentDialog *edit_doc;
-    QTreeWidgetItem *top_item = current;
-    while (top_item->parent()) top_item = top_item->parent();
-    QTreeWidgetItem* parent = nullptr;
 
-    QString doc_type = current->text(1), content = current->text(2), doc_id = current->text(3);
-
-    if (top_item == ui->treeWidgetDoc->topLevelItem(0))
-    {
-        edit_doc = new EditDocumentDialog(EditDocumentDialog::BLOCK, doc_id, doc_type, content, block_id_, "", "", enabled, this);
-        parent = top_item;
-    }
-    else
-    {
-        QString sig_id = current->parent()->text(3), reg_id = top_item->text(3);
-        edit_doc = new EditDocumentDialog(EditDocumentDialog::SIGNAL, doc_id, doc_type, content, block_id_, reg_id, sig_id, enabled, this);
-        parent = current->parent();
-    }
-
-    if (edit_doc && edit_doc->exec() == QDialog::Accepted && edit_doc->edit_document())
-    {
-        current->setText(1, edit_doc->get_document_type());
-        current->setText(2, edit_doc->get_content());
-    }
-
-    delete edit_doc;
 }
 
 void RegisterManager::on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
@@ -1741,4 +2014,87 @@ void RegisterManager::on_tableDesigner_cellDoubleClicked(int row, int column)
     {
         ui->tableDesigner->item(row, 2)->setText(edit_designer.get_project_role());
     }
+}
+
+bool RegisterManager::search(QTreeWidgetItem* item, const QString &s, bool visible)
+{
+    if (!item) return false;
+    visible |= item->text(0).contains(s);
+    bool res = false;
+    for (int i = 0; i < item->childCount(); i++)
+    {
+        res |= search(item->child(i), s, visible);
+    }
+    item->setHidden(!res && !visible);
+    item->setExpanded(res && s != "");
+    return res || item->text(0).contains(s);
+}
+
+void RegisterManager::on_lineEditSearch_editingFinished()
+{
+    search(ui->treeWidgetBlock->topLevelItem(0), ui->lineEditSearch->text(), false);
+    ui->treeWidgetBlock->topLevelItem(0)->setExpanded(true);
+}
+
+void RegisterManager::on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+    if (ui->stackedWidgetDoc->currentIndex() == 0 || currentRow < 0) return;
+    ui->pushButtonRemoveDoc->setEnabled(authenticator_.can_edit_document() && currentRow>=0);
+}
+
+void RegisterManager::on_tableDoc_cellDoubleClicked(int row, int column)
+{
+    if (row < 0) return;
+    ui->documentEditor->clear();
+    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
+    QTreeWidgetItem* block_item = current;
+    while (block_item->parent()->parent()) block_item = block_item->parent();
+
+    DocumentEditor::DOCUMENT_LEVEL level;
+    ui->documentEditor->clear();
+    if (current->parent() == block_item)   // register
+        level = DocumentEditor::REGISTER;
+    else if (current->parent() && current->parent()->parent() == block_item)  // signal
+        level = DocumentEditor::SIGNAL;
+    else // block
+        level = DocumentEditor::BLOCK;
+
+    ui->documentEditor->set_level(level);
+    ui->documentEditor->set_mode(DIALOG_MODE::EDIT);
+    ui->documentEditor->setEnabled(authenticator_.can_edit_document());
+    ui->documentEditor->setVisible(true);
+
+    QString doc_id = ui->tableDoc->item(row, 0)->text(),
+            type = ui->tableDoc->item(row, 1)->text(),
+            content = ui->tableDoc->item(row, 2)->text();
+    ui->documentEditor->set_content(doc_id, type, content);
+}
+
+void RegisterManager::on_stackedWidgetDoc_currentChanged(int index)
+{
+    if (index == 1) ui->pushButtonRemoveDoc->setEnabled(false);
+}
+
+
+void RegisterManager::on_document_added()
+{
+    int row = ui->tableDoc->rowCount();
+    ui->tableDoc->insertRow(row);
+    ui->tableDoc->setItem(row, 0, new QTableWidgetItem(ui->documentEditor->get_doc_id()));
+    ui->tableDoc->setItem(row, 1, new QTableWidgetItem(ui->documentEditor->get_document_type()));
+    ui->tableDoc->setItem(row, 2, new QTableWidgetItem(ui->documentEditor->get_content()));
+    ui->tableDoc->resizeRowToContents(row);
+}
+
+void RegisterManager::on_document_edited()
+{
+    int row = ui->tableDoc->currentRow();
+    ui->tableDoc->item(row, 1)->setText(ui->documentEditor->get_document_type());
+    ui->tableDoc->item(row, 2)->setText(ui->documentEditor->get_content());
+    ui->tableDoc->resizeRowToContents(row);
+}
+
+void RegisterManager::on_tableDesigner_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+    ui->pushButtonRemoveDesigner->setEnabled(currentRow >= 0 && authenticator_.can_remove_chip_designer());
 }

@@ -10,6 +10,7 @@
 #include <QDialogButtonBox>
 #include <QtMath>
 #include "data_utils.h"
+#include <QDebug>
 
 
 EditSignalDialog::EditSignalDialog(const QString& block_id, int register_width, bool msb_first, QWidget *parent) :
@@ -37,17 +38,17 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
     setup_ui();
     setWindowTitle("Edit Signal");
 
-    std::cout << "Constructing" << std::endl;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("signal_signal", {"sig_name", "width", "sig_type_id"}, "sig_id", get_signal_id(), items);
+    dbhandler.show_items("signal_signal", {"sig_name", "width", "sig_type_id", "add_port"}, "sig_id", get_signal_id(), items);
     assert (items.size() == 1);
 
-    ui->lineEditSigName->setText(items[0][0]);
+    ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(items[0][0]));
     ui->lineEditWidth->setText(items[0][1]);
+    ui->checkBoxAddPort->setChecked(items[0][3] == "1");
     emit(ui->lineEditWidth->editingFinished());
 
-    original_signal_name_ = items[0][0];
+    original_signal_name_ = SIGNAL_NAMING.get_extended_name(items[0][0]);
     original_width_ = items[0][1];
     original_sig_type_id_ = items[0][2];
 
@@ -99,17 +100,10 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
             int row = ui->tableWidgetSigPart->rowCount();
             ui->tableWidgetSigPart->insertRow(row);
             QString reg_sig_part_id = item[0], reg_part_id = item[1], sig_lsb = item[2], sig_msb = item[3], reg_name = item[4], reg_lsb = item[5], reg_msb = item[6];
+            reg_name = REGISTER_NAMING.get_extended_name(reg_name);
             QString sig_part, reg_part;
-            if (msb_first_)
-            {
-                sig_part = "<" + sig_msb + ":"+ sig_lsb + ">";
-                reg_part = reg_name + "<" + reg_msb + ":"+ reg_lsb +">";
-            }
-            else
-            {
-                sig_part = "<" + sig_lsb + ":"+ sig_msb + ">";
-                reg_part = reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
-            }
+            sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">";
+            reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
             ui->tableWidgetSigPart->setItem(row, 0, new QTableWidgetItem(sig_part));
             ui->tableWidgetSigPart->setItem(row, 1, new QTableWidgetItem(reg_part));
             original_sig_part_ids_.append(reg_sig_part_id);
@@ -148,18 +142,16 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
 
         }
     }
-
-
-
-    //ui->lineEditWidth->setEnabled(false);
-    //ui->comboBoxSigType->setEnabled(false);
-    //ui->comboBoxRegType->setEnabled(false);
-
 }
 
 void EditSignalDialog::setup_ui()
 {
     ui->setupUi(this);
+    ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+    qDebug() << SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?");
+    ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
+    ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+
     comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
     comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
     connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigLSB_currentIndexChanged(int)));
@@ -201,16 +193,9 @@ void EditSignalDialog::setup_ui()
     ui->lineEditWidth->setText("1");
     if (is_register_signal() && ui->lineEditValue->text() == "") ui->lineEditValue->setText("0x");
 
-    if (msb_first_)
-    {
-        comboBoxSigLSB_ = ui->comboBoxSigRight;
-        comboBoxSigMSB_ = ui->comboBoxSigLeft;
-    }
-    else
-    {
-        comboBoxSigLSB_ = ui->comboBoxSigLeft;
-        comboBoxSigMSB_ = ui->comboBoxSigRight;
-    }
+    comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
+    comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
+
     emit(ui->lineEditWidth->editingFinished());
     emit(ui->comboBoxSigType->currentIndexChanged(ui->comboBoxSigType->currentIndex()));
     emit(ui->tableWidgetSigPart->currentCellChanged(-1, -1, -1, -1));
@@ -229,6 +214,11 @@ EditSignalDialog::~EditSignalDialog()
 QString EditSignalDialog::get_signal_name() const
 {
     return ui->lineEditSigName->text();
+}
+
+bool EditSignalDialog::add_port() const
+{
+    return ui->checkBoxAddPort->isChecked();
 }
 
 QString EditSignalDialog::get_signal_id() const
@@ -436,7 +426,6 @@ void EditSignalDialog::on_comboBoxSigType_currentIndexChanged(int index)
 
 void EditSignalDialog::on_comboBoxRegType_currentIndexChanged(int index)
 {
-    std::cout << "hah regtype" << std::endl;
     ui->comboBoxRegType->setEnabled(enabled_ && index>=0);
     int row_count = ui->tableWidgetSigPart->rowCount();
     while (row_count > 0)
@@ -461,10 +450,8 @@ void EditSignalDialog::on_comboBoxRegType_currentIndexChanged(int index)
         dbhandler.show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", get_register_type_id()}}, items);
         for (const auto& item : items)
         {
-            std::cout << item[0].toUtf8().constData() <<std::endl;
-            reg_name2id_[item[0]] = item[1];
-            ui->comboBoxReg->addItem(item[0]);
-            std::cout << "reg id: " << item[1].toUtf8().constData() << std::endl;
+            reg_name2id_[REGISTER_NAMING.get_extended_name(item[0])] = item[1];
+            ui->comboBoxReg->addItem(REGISTER_NAMING.get_extended_name(item[0]));
         }
     }
     ui->comboBoxReg->blockSignals(false);
@@ -634,15 +621,17 @@ bool EditSignalDialog::sanity_check()
 bool EditSignalDialog::check_name()
 {
     QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Signal" : "Edit Signal";
-    if (get_signal_name() == "")
+    QRegularExpression re(SIGNAL_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
+    QRegularExpressionMatch match = re.match(get_signal_name());
+    if (!match.hasMatch())
     {
-        QMessageBox::warning(this, warning_title, "Signal name must not be empty!");
+        QMessageBox::warning(this, warning_title, "Signal name must match "+  SIGNAL_NAMING.get_extended_name("${NAME}") + " format!");
         return false;
     }
     if (mode_ == EDIT && get_signal_name() == original_signal_name_) return true;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", get_signal_name()}}, items);
+    dbhandler.show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())}}, items);
     if (items.size() > 0)
     {
         QMessageBox::warning(this, warning_title, "Signal " + get_signal_name() + " already exists!");
@@ -695,8 +684,10 @@ bool EditSignalDialog::add_signal()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    if (dbhandler.insert_item("signal_signal", {"sig_name", "block_id", "width", "sig_type_id"}, {get_signal_name(), block_id_, get_width(), get_signal_type_id()}) && \
-            dbhandler.show_items("signal_signal", {"sig_id"}, {{"sig_name", get_signal_name()}, {"block_id", block_id_}}, items))
+    QVector<QString> fields = {"sig_name", "block_id", "width", "sig_type_id", "add_port"},
+                     values = {SIGNAL_NAMING.get_shortened_name(get_signal_name()), block_id_, get_width(), get_signal_type_id(), add_port() ? "1" : "0"};
+    if (dbhandler.insert_item("signal_signal", fields, values) && \
+            dbhandler.show_items("signal_signal", {"sig_id"}, {{"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())}, {"block_id", block_id_}}, items))
     {
         signal_id_ = items[0][0];
         if (is_register_signal())
@@ -746,14 +737,13 @@ bool EditSignalDialog::add_signal()
 
 bool EditSignalDialog::edit_signal()
 {
-    // TODO
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     if (!dbhandler.update_items("signal_signal", "sig_id", get_signal_id(),
-                                {{"sig_name", get_signal_name()}, {"width", get_width()}, {"sig_type_id", get_signal_type_id()}})) return false;
+                                {{"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())},
+                                {"width", get_width()}, {"sig_type_id", get_signal_type_id()}, {"add_port", add_port() ? "1" : "0"}})) return false;
 
 
     bool originally_register_signal = (original_reg_type_id_ != "");
-
     if (!originally_register_signal && !is_register_signal()) return true;
 
     for (const QString& reg_part_id : original_reg_part_ids_)

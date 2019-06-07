@@ -9,9 +9,10 @@
 #include <QDialog>
 #include <edit_latex_dialog.h>
 #include <QFileDevice>
-#include "edit_document_dialog.h"
+#include "document_editor.h"
 
 QString gDatabase, gDBHost, gUser, gPassword, mathjax_root;
+QHash<QString, QString> NamingKey2Value;
 int main(int argc, char *argv[])
 {
     gDatabase = "ias";
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
     //EditLaTeXDialog dialog;
     //dialog.show();
     RegisterManager register_manager;
+    //EditDocumentDialog e(EditDocumentDialog::BLOCK, "1");
     //LoginDialog login;
     //QObject::connect(&login, SIGNAL(logged_in(QString)), &register_manager, SLOT(on_loggedin(QString)));
     //login.show();

@@ -20,8 +20,8 @@ public:
         REMOVE_HIS_BLOCK = 1 << 1,
         READ_ALL_BLOCKS = 1 << 2,
         COMPILE_PROJECT = 1 << 3,
-        ADD_PROJECT_USER = 1 << 4,
-        REMOVE_PROJECT_USER = 1 << 5,
+        ADD_CHIP_DESIGNER = 1 << 4,
+        REMOVE_CHIP_DESIGNER = 1 << 5,
         FULL_ACCESS_TO_ALL_BLOCKS = 1 << 6
     };
 

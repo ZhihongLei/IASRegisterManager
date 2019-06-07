@@ -37,8 +37,8 @@ void Authenticator::set_project_permissions(const QString& project_role_id)
     if (item[1] == "1") project_permissions_ |= PROJECT_PERMISSIONS::REMOVE_HIS_BLOCK;
     if (item[2] == "1") project_permissions_ |= PROJECT_PERMISSIONS::READ_ALL_BLOCKS;
     if (item[3] == "1") project_permissions_ |= PROJECT_PERMISSIONS::COMPILE_PROJECT;
-    if (item[4] == "1") project_permissions_ |= PROJECT_PERMISSIONS::ADD_PROJECT_USER;
-    if (item[5] == "1") project_permissions_ |= PROJECT_PERMISSIONS::REMOVE_PROJECT_USER;
+    if (item[4] == "1") project_permissions_ |= PROJECT_PERMISSIONS::ADD_CHIP_DESIGNER;
+    if (item[5] == "1") project_permissions_ |= PROJECT_PERMISSIONS::REMOVE_CHIP_DESIGNER;
     if (item[6] == "1") project_permissions_ |= PROJECT_PERMISSIONS::FULL_ACCESS_TO_ALL_BLOCKS;
 }
 
@@ -99,12 +99,12 @@ bool Authenticator::can_compile_project() const
 
 bool Authenticator::can_add_chip_designer() const
 {
-    return (project_permissions_ & PROJECT_PERMISSIONS::ADD_PROJECT_USER) != 0;
+    return (project_permissions_ & PROJECT_PERMISSIONS::ADD_CHIP_DESIGNER) != 0;
 }
 
 bool Authenticator::can_remove_chip_designer() const
 {
-    return (project_permissions_ & PROJECT_PERMISSIONS::REMOVE_PROJECT_USER) != 0;
+    return (project_permissions_ & PROJECT_PERMISSIONS::REMOVE_CHIP_DESIGNER) != 0;
 }
 
 bool Authenticator::can_fully_access_all_blocks() const

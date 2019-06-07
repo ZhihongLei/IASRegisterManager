@@ -175,10 +175,10 @@ bool EditSignalPartitionLogic::add_signal_partition(const QString& sig_lsb,
     if (dbhandler.insert_item("signal_reg_sig_partition", {"reg_sig_id", "lsb", "msb"}, {reg_sig_id, sig_lsb, sig_msb}) && \
             dbhandler.show_items("signal_reg_sig_partition", {"reg_sig_part_id"}, {{"reg_sig_id", reg_sig_id}, {"lsb", sig_lsb}, {"msb", sig_msb}}, items))
     {
-        QString reg_sig_part_id = items[0][0];
+        reg_sig_part_id_ = items[0][0];
         items.clear();
-        dbhandler.insert_item("block_reg_partition", {"reg_id", "lsb", "msb", "reg_sig_part_id"}, {reg_id, reg_lsb, reg_msb, reg_sig_part_id});
-        dbhandler.show_items("block_reg_partition", {"reg_part_id"}, {{"reg_id", reg_id}, {"lsb", reg_lsb}, {"msb", reg_msb}, {"reg_sig_part_id", reg_sig_part_id}}, items);
+        dbhandler.insert_item("block_reg_partition", {"reg_id", "lsb", "msb", "reg_sig_part_id"}, {reg_id, reg_lsb, reg_msb, reg_sig_part_id_});
+        dbhandler.show_items("block_reg_partition", {"reg_part_id"}, {{"reg_id", reg_id}, {"lsb", reg_lsb}, {"msb", reg_msb}, {"reg_sig_part_id", reg_sig_part_id_}}, items);
         return true;
     }
     return false;

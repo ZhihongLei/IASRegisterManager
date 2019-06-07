@@ -5,6 +5,8 @@
 #include <QIntValidator>
 #include <QDialogButtonBox>
 #include <QPushButton>
+#include "data_utils.h"
+#include <QDebug>
 
 EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
                                                      const QString& reg_sig_id,
@@ -32,8 +34,8 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
     dbhandler.show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", reg_type_id_}}, items);
     for (const auto& item : items)
     {
-        ui->comboBoxReg->addItem(item[0]);
-        reg_name2id_[item[0]] = item[1];
+        ui->comboBoxReg->addItem(REGISTER_NAMING.get_extended_name(item[0]));
+        reg_name2id_[REGISTER_NAMING.get_extended_name(item[0])] = item[1];
     }
 
     make_occupied_signal_parts();
@@ -188,13 +190,10 @@ void EditSignalPartitionDialog::on_comboBoxReg_currentIndexChanged(int index)
 
 bool EditSignalPartitionDialog::add_signal_partition()
 {
-    std::cout << "haha 0" << std::endl;
-    QString sig_lsb = comboBoxSigLSB_->currentText();
-    QString sig_msb = comboBoxSigMSB_->currentText();
-    std::cout << "haha 1" << std::endl;
-    QString reg_lsb = get_register_lsb();
-    QString reg_msb = get_register_msb();
-    std::cout << "haha 2" << std::endl;
+    QString sig_lsb = comboBoxSigLSB_->currentText(),
+            sig_msb = comboBoxSigMSB_->currentText();
+    QString reg_lsb = get_register_lsb(),
+            reg_msb = get_register_msb();
     return EditSignalPartitionLogic::add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, get_register_id(), reg_sig_id_);
 
 }

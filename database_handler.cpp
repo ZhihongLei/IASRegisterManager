@@ -2,7 +2,7 @@
 //#include <boost/range/combine.hpp>
 #include <QString>
 #include <unordered_set>
-#include <iostream>
+#include <QDebug>
 #include "global_variables.h"
 
 const QString DataBaseHandler::_root_password = "lzh931229";
@@ -94,7 +94,6 @@ int DataBaseHandler::create_table(const QString &tablename,
     if (prikey != "") datadef += (", PRIMARY KEY (" + prikey + ")");
     datadef = "(" + datadef + ")";
     QString command = QString("CREATE TABLE IF NOT EXISTS ").append(_database + "."+ tablename + " ").append(datadef);
-    //std::cout << command << std::endl;
 
     return execute(command);
 }
@@ -105,7 +104,6 @@ int DataBaseHandler::create_table(const QString &tablename,
                  const QVector<QVector<QString> > *foreign_key_defs,
                  const QVector<QString> *unique_keys)
 {
-    // The fist column must be primary key auto increment
     QString datadef = "";
     for (size_t i = 0; i < table_define.size(); i++)
     {
@@ -120,7 +118,7 @@ int DataBaseHandler::create_table(const QString &tablename,
         for (const QVector<QString>& foreign_key : *foreign_key_defs)
         {
             const QString col = foreign_key[0], ref_table = foreign_key[1], ref_col = foreign_key[2];
-            datadef += (", FOREIGN KEY (" + col + ") REFERENCES " + ref_table + "(" + ref_col + ") ON DELETE CASCADE ON UPDATE CASCADE");
+            datadef += (", FOREIGN KEY (" + col + ") REFERENCES " + ref_table + "(" + ref_col + ") ON DELETE RESTRICT ON UPDATE CASCADE");
         }
     if (unique_keys)
         for (QString unique_key : *unique_keys)
@@ -129,7 +127,6 @@ int DataBaseHandler::create_table(const QString &tablename,
         }
     datadef = "(" + datadef + ") CHARSET=utf8mb4 COLLATE=utf8mb4_bin";
     QString command = QString("CREATE TABLE IF NOT EXISTS ").append(_database + "." + tablename + " ").append(datadef);
-    //std::cout << command.toUtf8().constData() << std::endl;
     return execute(command);
 }
 
@@ -175,6 +172,7 @@ int DataBaseHandler::update_items(const QString &tablename,
         valuedef += (field_value_pairs[i].first + " = \"" + field_value_pairs[i].second + "\", ");
     valuedef += (field_value_pairs[field_value_pairs.size()-1].first + " = \"" + field_value_pairs[field_value_pairs.size()-1].second + "\" ");
     QString command = "UPDATE " + _database + "." + tablename + " SET " + valuedef + " WHERE " + constraint;
+    qDebug() << command.toUtf8().constData();
     return execute(command);
 }
 

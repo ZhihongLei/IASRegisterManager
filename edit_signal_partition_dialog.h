@@ -49,7 +49,7 @@ private:
     Ui::EditSignalPartitionDialog *ui;
     const QString block_id_, reg_type_id_, reg_sig_id_;
     const int signal_width_;
-    QString signal_lsb_, signal_msb_, reg_lsb_, reg_msb_, reg_name_, reg_id_, reg_sig_part_id_;
+    QString signal_lsb_, signal_msb_, reg_lsb_, reg_msb_, reg_name_, reg_id_;
     QHash<QString, QString> reg_name2id_;
     QVector<int> available_sig_part_starts_, available_sig_part_ends_;
     QComboBox *comboBoxSigLSB_, *comboBoxSigMSB_;

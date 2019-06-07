@@ -31,13 +31,16 @@ EditRegisterDialog::EditRegisterDialog(const QString& block_id, const QString& r
      QVector<QVector<QString> > items;
      dbhandler.show_items("block_register", {"reg_name"}, "reg_id", get_reg_id(), items);
      assert (items.size() == 1);
-     ui->lineEditRegName->setText(items[0][0]);
-     original_register_name_ = items[0][0];
+     ui->lineEditRegName->setText(REGISTER_NAMING.get_extended_name(items[0][0]));
+     original_register_name_ = ui->lineEditRegName->text();
 }
 
 void EditRegisterDialog::setup_ui()
 {
     ui->setupUi(this);
+    ui->lineEditRegName->setValidator(new QRegExpValidator(QRegExp(REGISTER_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+    ui->lineEditRegName->setText(REGISTER_NAMING.get_extended_name(""));
+    ui->lineEditRegName->setCursorPosition(REGISTER_NAMING.get_extended_name("***").indexOf("***"));
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("def_register_type", {"reg_type_id", "reg_type"}, items, "", "order by reg_type_id");
@@ -80,9 +83,11 @@ bool EditRegisterDialog::sanity_check()
 {
 
     QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Register" : "Edit Register";
-    if (get_reg_name() == "")
+    QRegularExpression re(REGISTER_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
+    QRegularExpressionMatch match = re.match(get_reg_name());
+    if (!match.hasMatch())
     {
-        QMessageBox::warning(this, warning_title, "Register name must not be empty!");
+        QMessageBox::warning(this, warning_title, "Register name must match "+  REGISTER_NAMING.get_extended_name("${NAME}") + " format!");
         return false;
     }
     if (mode_ == EDIT && get_reg_name() == original_register_name_) return true;
@@ -100,7 +105,6 @@ bool EditRegisterDialog::sanity_check()
 
 bool EditRegisterDialog::add_register()
 {
-
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     dbhandler.show_items("block_register", {"reg_id"}, {{"next", "-1"}, {"block_id", block_id_}}, items);
@@ -110,10 +114,10 @@ bool EditRegisterDialog::add_register()
     items.clear();
 
     QVector<QString> fields = {"reg_name", "block_id", "reg_type_id", "prev", "next"};
-    QVector<QString> values = {get_reg_name(), block_id_, get_reg_type_id(),  prev, "-1"};
+    QVector<QString> values = {REGISTER_NAMING.get_shortened_name(get_reg_name()), block_id_, get_reg_type_id(),  prev, "-1"};
 
     if (dbhandler.insert_item("block_register", fields, values) && \
-        dbhandler.show_items("block_register", {"reg_id"}, {{"block_id", block_id_}, {"reg_name", get_reg_name()}}, items))
+        dbhandler.show_items("block_register", {"reg_id"}, {{"block_id", block_id_}, {"reg_name", REGISTER_NAMING.get_shortened_name(get_reg_name())}}, items))
     {
         reg_id_ = items[0][0];
         if (prev != "-1") dbhandler.update_items("block_register", {{"reg_id", prev}}, {{"next", reg_id_}});
@@ -135,7 +139,7 @@ bool EditRegisterDialog::edit_register()
     QString prev("-1");
     if (items.size() == 1) prev = items[0][0];
     QVector<QString> fields = {"reg_name"};
-    return dbhandler.update_items("block_register", {{"reg_id", get_reg_id()}}, {{"reg_name",get_reg_name()}});
+    return dbhandler.update_items("block_register", {{"reg_id", get_reg_id()}}, {{"reg_name", REGISTER_NAMING.get_shortened_name(get_reg_name())}});
 }
 
 void EditRegisterDialog::accept()

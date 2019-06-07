@@ -18,5 +18,21 @@ QVector<QVector<QString> > sort_doubly_linked_list (const QVector<QVector<QStrin
 
 enum DIALOG_MODE {ADD, EDIT};
 
+class Naming
+{
+public:
+    explicit Naming();
+    void set_naming_template(const QString& naming_template);
+    QString get_extended_name(const QString& shortened_name);
+    QString get_shortened_name(const QString& extended_name);
+    void update_key(const QString& key, const QString& value);
+    void clear();
+private:
+    QHash<QString, QString> key2value;
+    QString naming_template;
+};
+
+extern Naming REGISTER_NAMING;
+extern Naming SIGNAL_NAMING;
 
 #endif // DATA_UTILS_H

@@ -38,14 +38,14 @@ private slots:
     void on_actionChipManagement_triggered();
 
     void on_actionDocEditorView_triggered();
-    void on_actionBlockEditorView_triggered();
+    void on_actionChipEditorView_triggered();
 
     void on_actionAdd_triggered();
     void on_actionRemove_triggered();
     void on_actionEdit_triggered();
     void on_actionRefresh_triggered();
 
-    void on_treeWidgetDoc_customContextMenuRequested(QPoint pos);
+    //void on_treeWidgetDoc_customContextMenuRequested(QPoint pos);
     void on_tableSignal_customContextMenuRequested(QPoint pos);
     void on_tableRegister_customContextMenuRequested(QPoint pos);
     void on_tableSigPart_customContextMenuRequested(QPoint pos);
@@ -53,6 +53,7 @@ private slots:
     void on_tableSystem_customContextMenuRequested(QPoint pos);
     void on_tableDesigner_customContextMenuRequested(QPoint pos);
     void on_tableRegPage_customContextMenuRequested(QPoint pos);
+    void on_tableDoc_customContextMenuRequested(QPoint pos);
 
     void on_pushButtonAddSys_clicked();
 
@@ -106,6 +107,19 @@ private slots:
 
     void on_tableDesigner_cellDoubleClicked(int row, int column);
 
+    void on_lineEditSearch_editingFinished();
+
+    void on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
+    void on_tableDoc_cellDoubleClicked(int row, int column);
+
+    void on_stackedWidgetDoc_currentChanged(int index);
+
+    void on_document_edited();
+    void on_document_added();
+
+    void on_tableDesigner_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
 public slots:
     void on_loggedin(QString);
 
@@ -117,6 +131,7 @@ private:
     QString username_, user_id_, db_role_, db_role_id_, chip_, chip_id_, block_, block_id_, chip_owner_id_, chip_owner_;
     int address_width_, register_width_;
     QVector<QString> blocks_;
+    QHash<QString, QString> block_id2abbr_;
     Authenticator authenticator_;
     void init_db();
     void clear_db();
@@ -127,9 +142,38 @@ private:
     void display_register_pages();
     void display_signals();
     void display_registers();
+    void display_documents(const QString& block_id, const QString& reg_id, const QString& sig_id);
     void display_documents();
     void display_signal_partitions();
     void display_register_partitions();
+
+    void display_overall_documents();
+    void display_documents(const QString level, const QString id);
+
+    /*
+    bool add_system(const QString& id);
+    bool add_designer(const QString& id);
+    bool add_register_page(const QString& id);
+    bool add_signal(const QString& id);
+    bool add_signal_partition(const QString& id);
+    bool add_register(const QString& id);
+    bool add_document(const QString& id);
+
+    bool remove_system(const QString& id);
+    bool remove_designer(const QString& id);
+    bool remove_register_page(const QString& id);
+    bool remove_signal(const QString& id);
+    bool remove_signal_partition(const QString& id);
+    bool remove_register(const QString& id);
+    bool remove_document(const QString& id);
+    */
+
+   // bool remove_signal(const QString& sid_id);
+   // bool remove_register(const QString& reg_id);
+
+    void refresh_block(QTreeWidgetItem* block_item);
+
+    bool search(QTreeWidgetItem* item, const QString& s, bool visible);
 
     bool eventFilter(QObject *obj, QEvent *eve);
     void table_drop_event_handling(QTableWidget* table, const QString& table_name, const QString& key, int from_row, int to_row);
