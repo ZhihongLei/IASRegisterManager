@@ -3,25 +3,29 @@
 #include "global_variables.h"
 #include "database_handler.h"
 #include <QMessageBox>
+#include <QtMath>
+#include <QDebug>
 
-EditRegisterDialog::EditRegisterDialog(const QString& block_id, QWidget *parent) :
+EditRegisterDialog::EditRegisterDialog(const QString& chip_id, const QString& block_id, QWidget *parent) :
     QDialog(parent),
     block_id_(block_id),
     ui(new Ui::EditRegisterDialog),
     mode_(DIALOG_MODE::ADD),
-    enabled_(true)
+    enabled_(true),
+    chip_id_(chip_id)
 {
     setup_ui();
     setWindowTitle("Add Register");
 }
 
-EditRegisterDialog::EditRegisterDialog(const QString& block_id, const QString& reg_id, bool enabled, QWidget* parent):
+EditRegisterDialog::EditRegisterDialog(const QString& chip_id, const QString& block_id, const QString& reg_id, bool enabled, QWidget* parent):
     QDialog (parent),
     block_id_(block_id),
     reg_id_(reg_id),
     ui(new Ui::EditRegisterDialog),
     mode_(DIALOG_MODE::EDIT),
-    enabled_(enabled)
+    enabled_(enabled),
+    chip_id_(chip_id)
 {
      setup_ui();
      ui->comboBoxRegType->setEnabled(false);
@@ -78,10 +82,8 @@ QString EditRegisterDialog::get_reg_type_id() const
     return reg_type_ids_[ui->comboBoxRegType->currentIndex()];
 }
 
-
-bool EditRegisterDialog::sanity_check()
+bool EditRegisterDialog::check_name()
 {
-
     QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Register" : "Edit Register";
     QRegularExpression re(REGISTER_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
     QRegularExpressionMatch match = re.match(get_reg_name());
@@ -101,6 +103,52 @@ bool EditRegisterDialog::sanity_check()
     }
     // anything else?
     return true;
+}
+
+bool EditRegisterDialog::check_address()
+{
+    if (mode_ == DIALOG_MODE::EDIT) return true;
+    QString warning_title = "Add Register";
+
+    QVector<QVector<QString> > items;
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    dbhandler.show_items("block_system_block", {"block_id", "start_address", "block_name"}, "chip_id", chip_id_, items);
+    qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toLongLong(nullptr, 16) < b[1].toLongLong(nullptr, 16);});
+
+    int i = 0;
+    while (i < items.size() && items[i][0] != block_id_) i++;
+
+    int num_regs = 0;
+    QVector<QString> item;
+    dbhandler.show_one_item("block_register", item, {"count(reg_id)"}, "block_id", block_id_);
+    num_regs = item[0].toInt();
+
+    qlonglong start_addr = items[i][1].toLongLong(nullptr, 16),
+                next_start_addr,
+                address_width = 0;
+
+    if (i == items.size() - 1)
+    {
+        item.clear();
+        dbhandler.show_one_item("chip_chip", item, {"address_width"}, "chip_id", chip_id_);
+        address_width = item[0].toInt();
+        next_start_addr = qRound64(qPow(2, address_width));
+    }
+    else next_start_addr = items[i+1][1].toLongLong(nullptr, 16);
+
+    if (num_regs+1 > next_start_addr - start_addr)
+    {
+        if (i == items.size() - 1) QMessageBox::warning(this, warning_title, "Too many registers!\nAddress exceeds address width " + QString::number(address_width) + "!");
+        else QMessageBox::warning(this, warning_title, "Too many registers!\nAddress overlaps with block " + items[i+1][2] + "!");
+        return false;
+    }
+    return true;
+}
+
+
+bool EditRegisterDialog::sanity_check()
+{
+    return check_address() && check_name();
 }
 
 bool EditRegisterDialog::add_register()

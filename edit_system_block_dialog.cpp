@@ -10,6 +10,8 @@
 #include <QMessageBox>
 #include "edit_chip_designer_dialog.h"
 #include "global_variables.h"
+#include <QtMath>
+#include <QDebug>
 
 EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, int address_width, bool can_add_designer, QWidget *parent) :
     QDialog(parent),
@@ -110,7 +112,7 @@ QString EditSystemBlockDialog::get_block_abbr() const
 
 QString EditSystemBlockDialog::get_start_addr() const
 {
-    return ui->lineEditStartAddr->text();
+    return normalize_hex(ui->lineEditStartAddr->text(), address_width_);
 }
 
 QString EditSystemBlockDialog::get_responsible() const
@@ -166,11 +168,55 @@ bool EditSystemBlockDialog::check_block_abbreviation()
 
 bool EditSystemBlockDialog::check_start_address()
 {
-    // TODO
     QString title = mode_ == DIALOG_MODE::ADD ? "Create System Block" : "Edit System Block";
     if (ui->lineEditStartAddr->text() == "")
     {
         QMessageBox::warning(this, title, "Please give a valid start address!");
+        return false;
+    }
+
+    QVector<QVector<QString> > items;
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    dbhandler.show_items("block_system_block", {"block_id", "start_address", "block_name"}, "chip_id", chip_id_, items);
+
+    if (mode_ == DIALOG_MODE::ADD) items.append({block_id_, ui->lineEditStartAddr->text(), ui->lineEditName->text()});
+
+    int i = 0;
+    while (i < items.size() && items[i][0] != block_id_) i++;
+    items[i][1] = ui->lineEditStartAddr->text();
+    qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toLongLong(nullptr, 16) < b[1].toLongLong(nullptr, 16);});
+
+    i = 0;
+    while (i < items.size() && items[i][0] != block_id_) i++;
+    int num_regs = 0, num_prev_regs = 0;
+    qlonglong start_addr = ui->lineEditStartAddr->text().toLongLong(nullptr, 16),
+                prev_start_addr = 0,
+                next_start_addr = (i == items.size() -1) ?  qRound64(qPow(2, address_width_)) : items[i+1][1].toLongLong(nullptr, 16);
+
+    if (mode_ == DIALOG_MODE::EDIT)
+    {
+        QVector<QString> item;
+        dbhandler.show_one_item("block_register", item, {"count(reg_id)"}, "block_id", block_id_);
+        num_regs = item[0].toInt();
+    }
+    if (i != 0)
+    {
+        QVector<QString> item;
+        dbhandler.show_one_item("block_register", item, {"count(reg_id)"}, "block_id", items[i-1][0]);
+        num_prev_regs = item[0].toInt();
+        prev_start_addr = items[i-1][1].toLongLong(nullptr, 16);
+    }
+
+    if (num_prev_regs > start_addr - prev_start_addr)
+    {
+        if (i == 0) QMessageBox::warning(this, title, "Start address should be positive number!");
+        else QMessageBox::warning(this, title, "Register address overlaps with block " + items[i-1][2] + "!");
+        return false;
+    }
+    if (num_regs > next_start_addr - start_addr)
+    {
+        if ( i == items.size() -1) QMessageBox::warning(this, title, "Register address exceeds address width " + QString::number(address_width_) + "!");
+        else QMessageBox::warning(this, title, "Register address overlaps with block " + items[i+1][2] + "!");
         return false;
     }
     return true;

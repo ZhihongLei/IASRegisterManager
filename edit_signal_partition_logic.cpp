@@ -25,7 +25,6 @@ void EditSignalPartitionLogic::make_available_signal_parts(int signal_width)
     {
         int start = segment.first;
         int end = segment.second;
-        std::cout << start << " " << end << std::endl;
         if (start > prev_end + 1) available_signal_parts_.push_back({prev_end+1, start - 1});
         prev_end = end;
     }
@@ -82,13 +81,12 @@ void EditSignalPartitionLogic::make_available_signal_ends()
 
 void EditSignalPartitionLogic::make_occupied_register_parts(const QString& reg_id)
 {
-    std::cout << "make occupied" << std::endl;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     if (reg_id2occupied_register_parts_.find(reg_id) != reg_id2occupied_register_parts_.end()) return;
     reg_id2occupied_register_parts_[reg_id] = partition_list();
 
-    dbhandler.show_items("block_reg_partition", {"lsb", "msb"}, {{"reg_id", reg_id}}, items, "order by lsb");
+    dbhandler.show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, {{"reg_id", reg_id}}, items, "order by reg_lsb");
     for (const auto& item : items)
     {
         reg_id2occupied_register_parts_[reg_id].push_back({item[0].toInt(), item[1].toInt()});
@@ -172,13 +170,10 @@ bool EditSignalPartitionLogic::add_signal_partition(const QString& sig_lsb,
 {
     QVector<QVector<QString> > items;
     DataBaseHandler dbhandler(gDBHost, gDatabase);
-    if (dbhandler.insert_item("signal_reg_sig_partition", {"reg_sig_id", "lsb", "msb"}, {reg_sig_id, sig_lsb, sig_msb}) && \
-            dbhandler.show_items("signal_reg_sig_partition", {"reg_sig_part_id"}, {{"reg_sig_id", reg_sig_id}, {"lsb", sig_lsb}, {"msb", sig_msb}}, items))
+    if (dbhandler.insert_item("block_sig_reg_partition_mapping", {"reg_sig_id", "sig_lsb", "sig_msb", "reg_id", "reg_lsb", "reg_msb"}, {reg_sig_id, sig_lsb, sig_msb, reg_id, reg_lsb, reg_msb}) && \
+            dbhandler.show_items("block_sig_reg_partition_mapping", {"sig_reg_part_mapping_id"}, {{"reg_sig_id", reg_sig_id}, {"sig_lsb", sig_lsb}, {"sig_msb", sig_msb}, {"reg_lsb", reg_lsb}, {"reg_msb", reg_msb}}, items))
     {
-        reg_sig_part_id_ = items[0][0];
-        items.clear();
-        dbhandler.insert_item("block_reg_partition", {"reg_id", "lsb", "msb", "reg_sig_part_id"}, {reg_id, reg_lsb, reg_msb, reg_sig_part_id_});
-        dbhandler.show_items("block_reg_partition", {"reg_part_id"}, {{"reg_id", reg_id}, {"lsb", reg_lsb}, {"msb", reg_msb}, {"reg_sig_part_id", reg_sig_part_id_}}, items);
+        sig_reg_part_mapping_id_ = items[0][0];
         return true;
     }
     return false;

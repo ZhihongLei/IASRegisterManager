@@ -7,12 +7,10 @@
 #include <QtWebEngineWidgets>
 #include <QUrl>
 #include <QDialog>
-#include <edit_latex_dialog.h>
 #include <QFileDevice>
-#include "document_editor.h"
+#include "edit_document_dialog.h"
 
 QString gDatabase, gDBHost, gUser, gPassword, mathjax_root;
-QHash<QString, QString> NamingKey2Value;
 int main(int argc, char *argv[])
 {
     gDatabase = "ias";

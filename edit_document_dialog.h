@@ -5,16 +5,16 @@
 #include "data_utils.h"
 
 namespace Ui {
-class DocumentEditor;
+class EditDocumentDialog;
 }
 
-class DocumentEditor : public QWidget
+class EditDocumentDialog : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit DocumentEditor(QWidget *parent = nullptr);
-    ~DocumentEditor();
+    explicit EditDocumentDialog(QWidget *parent = nullptr);
+    ~EditDocumentDialog();
     enum DOCUMENT_LEVEL {BLOCK, REGISTER, SIGNAL};
     bool add_document();
     bool edit_document();
@@ -32,6 +32,11 @@ public:
     void set_signal_id(const QString& sig_id);
     void set_level(const DOCUMENT_LEVEL& level);
     void setEnabled(bool enabled);
+
+    QString generate_html();
+    QString generate_text_html();
+    QString generate_image_html();
+    QString generate_table_html();
 
 signals:
     void document_added();
@@ -65,7 +70,7 @@ private slots:
     void on_buttonBox_accepted();
     void on_buttonBox_rejected();
 
-    QString generate_html_table();
+
 
 private:
     void setup_ui();
@@ -76,7 +81,7 @@ private:
     //bool validate_image_caption(const QString& text);
 
     void accept();
-    Ui::DocumentEditor *ui;
+    Ui::EditDocumentDialog *ui;
     QHash<QString, QString> document_type2id_;
     QVector<QString> document_types_;
     DOCUMENT_LEVEL level_;

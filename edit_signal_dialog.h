@@ -18,8 +18,8 @@ class EditSignalDialog : public QDialog, public EditSignalPartitionLogic
     Q_OBJECT
 
 public:
-    explicit EditSignalDialog(const QString& block_id, int register_width, bool msb_first=true, QWidget *parent = nullptr);
-    explicit EditSignalDialog(const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first=true, bool enabled=true, QWidget *parent = nullptr);
+    explicit EditSignalDialog(const QString& chip_id, const QString& block_id, int register_width, bool msb_first=true, QWidget *parent = nullptr);
+    explicit EditSignalDialog(const QString& chip_id, const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first=true, bool enabled=true, QWidget *parent = nullptr);
     ~EditSignalDialog();
     QString get_signal_name() const;
     QString get_signal_id() const;
@@ -55,6 +55,8 @@ private slots:
     void on_pushButtonEditSigParts_clicked();
 
 
+    void on_checkBoxAddPort_clicked(bool);
+
 private:
     void make_occupied_signal_parts();
     void make_occupied_register_parts(const QString& reg_id);
@@ -80,15 +82,16 @@ private:
     QHash<QString, QString> sig_type2id_, sig_type_id2type_, reg_name2id_;
     QHash<QString, QString> reg_type2id_, reg_type_id2type_;
     QHash<QString, QVector<QString>> sig_type2reg_types_;
-    const QString block_id_;
+    const QString chip_id_, block_id_;
     QString signal_id_, reg_sig_id_;
     const DIALOG_MODE mode_;
-    QVector<QString> original_sig_part_ids_, original_reg_part_ids_;
-    QString original_signal_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
+    QVector<QString> original_sig_reg_mapping_part_ids_;
+    QString original_shortened_signal_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
     int last_width_ = -1;
     bool edit_partitions_ = true;
     QComboBox* comboBoxSigLSB_, *comboBoxSigMSB_;
     const bool enabled_;
+    bool is_register_page_control_signal_ = false;
 };
 
 

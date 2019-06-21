@@ -35,4 +35,11 @@ private:
 extern Naming REGISTER_NAMING;
 extern Naming SIGNAL_NAMING;
 
+QString decimal2hex(QString n, int address_width);
+QString decimal2hex(int n, int address_width);
+QString decimal2hex(long n, int address_width);
+QString decimal2hex(long long n, int address_width);
+
+QString normalize_hex(const QString& hex, int address_width);
+
 #endif // DATA_UTILS_H

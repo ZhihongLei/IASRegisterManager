@@ -13,19 +13,20 @@
 #include <QDebug>
 
 
-EditSignalDialog::EditSignalDialog(const QString& block_id, int register_width, bool msb_first, QWidget *parent) :
+EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_id, int register_width, bool msb_first, QWidget *parent) :
     QDialog(parent),
     EditSignalPartitionLogic(register_width, msb_first),
     block_id_(block_id),
     ui(new Ui::EditSignalDialog),
     mode_(DIALOG_MODE::ADD),
-    enabled_(true)
+    enabled_(true),
+    chip_id_(chip_id)
 {
     setup_ui();
     setWindowTitle("Add Signal");
 }
 
-EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first, bool enabled, QWidget *parent) :
+EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first, bool enabled, QWidget *parent) :
     QDialog(parent),
     EditSignalPartitionLogic(register_width, msb_first),
     block_id_(block_id),
@@ -33,7 +34,8 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
     reg_sig_id_(reg_sig_id),
     ui(new Ui::EditSignalDialog),
     mode_(DIALOG_MODE::EDIT),
-    enabled_(enabled)
+    enabled_(enabled),
+    chip_id_(chip_id)
 {
     setup_ui();
     setWindowTitle("Edit Signal");
@@ -43,12 +45,15 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
     dbhandler.show_items("signal_signal", {"sig_name", "width", "sig_type_id", "add_port"}, "sig_id", get_signal_id(), items);
     assert (items.size() == 1);
 
-    ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(items[0][0]));
-    ui->lineEditWidth->setText(items[0][1]);
+
     ui->checkBoxAddPort->setChecked(items[0][3] == "1");
+    on_checkBoxAddPort_clicked(ui->checkBoxAddPort->isChecked());
+    QString sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_extended_name(items[0][0]) : items[0][0];
+    ui->lineEditSigName->setText(sig_name);
+    ui->lineEditWidth->setText(items[0][1]);
     emit(ui->lineEditWidth->editingFinished());
 
-    original_signal_name_ = SIGNAL_NAMING.get_extended_name(items[0][0]);
+    original_shortened_signal_name_ = items[0][0];
     original_width_ = items[0][1];
     original_sig_type_id_ = items[0][2];
 
@@ -62,6 +67,10 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
             break;
         }
     }
+
+    items.clear();
+    dbhandler.show_items("chip_register_page", {"page_id"}, "ctrl_sig", sig_id, items);
+    bool is_register_page_control_sig = items.size() > 0;
 
     if (is_register_signal())
     {
@@ -82,32 +91,29 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
         }
 
         ui->tableWidgetSigPart->setRowCount(0);
-        QVector<QString> ext_fields = {"signal_reg_sig_partition.reg_sig_part_id",
-                                       "block_reg_partition.reg_part_id",
-                                           "signal_reg_sig_partition.lsb",
-                                           "signal_reg_sig_partition.msb",
-                                           "block_register.reg_name",
-                                           "block_reg_partition.lsb",
-                                           "block_reg_partition.msb"};
+        QVector<QString> ext_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
+                                       "block_sig_reg_partition_mapping.sig_lsb",
+                                       "block_sig_reg_partition_mapping.sig_msb",
+                                       "block_register.reg_name",
+                                       "block_sig_reg_partition_mapping.reg_lsb",
+                                       "block_sig_reg_partition_mapping.reg_msb" };
 
         items.clear();
-        dbhandler.show_items_inner_join(ext_fields, {{{"signal_reg_sig_partition", "reg_sig_part_id"}, {"block_reg_partition", "reg_sig_part_id"}},
-                                                     {{"block_reg_partition", "reg_id"}, {"block_register", "reg_id"}}}, items, "signal_reg_sig_partition.reg_sig_id = \"" + reg_sig_id + "\"");
+        dbhandler.show_items_inner_join(ext_fields, {{{"block_sig_reg_partition_mapping", "reg_id"}, {"block_register", "reg_id"}}}, items, "block_sig_reg_partition_mapping.reg_sig_id = \"" + reg_sig_id + "\"");
         if (msb_first_) qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[3] > b[3];});
         else qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2] < b[2];});
         for (const auto& item : items)
         {
             int row = ui->tableWidgetSigPart->rowCount();
             ui->tableWidgetSigPart->insertRow(row);
-            QString reg_sig_part_id = item[0], reg_part_id = item[1], sig_lsb = item[2], sig_msb = item[3], reg_name = item[4], reg_lsb = item[5], reg_msb = item[6];
+            QString sig_reg_part_mapping_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5];
             reg_name = REGISTER_NAMING.get_extended_name(reg_name);
             QString sig_part, reg_part;
             sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">";
             reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
             ui->tableWidgetSigPart->setItem(row, 0, new QTableWidgetItem(sig_part));
             ui->tableWidgetSigPart->setItem(row, 1, new QTableWidgetItem(reg_part));
-            original_sig_part_ids_.append(reg_sig_part_id);
-            original_reg_part_ids_.append(reg_part_id);
+            original_sig_reg_mapping_part_ids_.push_back(sig_reg_part_mapping_id);
             occupied_signal_parts_.push_back({sig_lsb.toInt(), sig_msb.toInt()});
             make_occupied_register_parts(reg_name2id_[reg_name]);
         }
@@ -142,15 +148,27 @@ EditSignalDialog::EditSignalDialog(const QString& block_id, const QString& sig_i
 
         }
     }
+    if (is_register_page_control_sig)
+    {
+        is_register_page_control_signal_ = true;
+        QVector<QWidget*> widgets = {ui->comboBoxSigType, ui->lineEditWidth,
+                                    ui->comboBoxRegType, ui->comboBoxReg, ui->comboBoxSigLeft, ui->comboBoxSigRight,
+                                     ui->pushButtonAddReg,
+                                    ui->comboBoxRegPart, ui->pushButtonAddSigPart, ui->pushButtonRemoveSigPart, ui->tableWidgetSigPart};
+        for (QWidget* w : widgets) w->setEnabled(false);
+
+    }
 }
 
 void EditSignalDialog::setup_ui()
 {
     ui->setupUi(this);
-    ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
-    qDebug() << SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?");
-    ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
-    ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+    if (ui->checkBoxAddPort->isChecked())
+    {
+        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+        ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
+        ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+    }
 
     comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
     comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
@@ -201,7 +219,7 @@ void EditSignalDialog::setup_ui()
     emit(ui->tableWidgetSigPart->currentCellChanged(-1, -1, -1, -1));
 
     QVector<QWidget*> widgets = {ui->lineEditSigName, ui->lineEditWidth, ui->comboBoxSigType, ui->lineEditValue,
-                                ui->comboBoxRegType, ui->comboBoxReg, ui->comboBoxSigLeft, ui->comboBoxSigType, ui->pushButtonAddReg,
+                                ui->comboBoxRegType, ui->comboBoxReg, ui->comboBoxSigLeft, ui->comboBoxSigRight, ui->checkBoxAddPort, ui->pushButtonAddReg,
                                 ui->comboBoxRegPart, ui->pushButtonAddSigPart, ui->pushButtonRemoveSigPart, ui->tableWidgetSigPart};
     for (QWidget* w : widgets) w->setEnabled(enabled_);
 }
@@ -238,7 +256,7 @@ QString EditSignalDialog::get_width() const
 
 QString EditSignalDialog::get_value() const
 {
-    return ui->lineEditValue->text();
+    return normalize_hex(ui->lineEditValue->text(), get_width().toInt());
 }
 
 QString EditSignalDialog::get_signal_type() const
@@ -346,10 +364,11 @@ void EditSignalDialog::display_available_register_parts()
     for (const auto& segment : parts)
     {
         if (msb_first_)
-            ui->comboBoxRegPart->addItem("<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
+            ui->comboBoxRegPart->insertItem(0, "<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
         else
             ui->comboBoxRegPart->addItem("<" + QString::number(segment.first) + ":" + QString::number(segment.second) + ">");
     }
+    if (ui->comboBoxRegPart->count() > 0 && msb_first_) ui->comboBoxRegPart->setCurrentIndex(0);
     ui->comboBoxReg->setEnabled(enabled_ && (comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0));
 }
 
@@ -529,7 +548,7 @@ void EditSignalDialog::on_tableWidgetSigPart_currentCellChanged(int currentRow, 
 
 void EditSignalDialog::on_pushButtonAddReg_clicked()
 {
-    EditRegisterDialog new_reg(block_id_);
+    EditRegisterDialog new_reg(chip_id_, block_id_);
     if (new_reg.exec() == QDialog::Accepted)
     {
         new_reg.add_register();
@@ -621,17 +640,25 @@ bool EditSignalDialog::sanity_check()
 bool EditSignalDialog::check_name()
 {
     QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Signal" : "Edit Signal";
-    QRegularExpression re(SIGNAL_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
-    QRegularExpressionMatch match = re.match(get_signal_name());
-    if (!match.hasMatch())
+    if (ui->checkBoxAddPort->isChecked())
     {
-        QMessageBox::warning(this, warning_title, "Signal name must match "+  SIGNAL_NAMING.get_extended_name("${NAME}") + " format!");
-        return false;
+        QRegularExpression re(SIGNAL_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
+        QRegularExpressionMatch match = re.match(get_signal_name());
+        if (!match.hasMatch())
+        {
+            QMessageBox::warning(this, warning_title, "Signal name must match "+  SIGNAL_NAMING.get_extended_name("${NAME}") + " format!");
+            return false;
+        }
     }
-    if (mode_ == EDIT && get_signal_name() == original_signal_name_) return true;
+    if (mode_ == EDIT )
+    {
+        QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
+        if (shortened_sig_name == original_shortened_signal_name_) return true;
+    }
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())}}, items);
+    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
+    dbhandler.show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", shortened_sig_name}}, items);
     if (items.size() > 0)
     {
         QMessageBox::warning(this, warning_title, "Signal " + get_signal_name() + " already exists!");
@@ -658,7 +685,7 @@ bool EditSignalDialog::check_value()
         QMessageBox::warning(this, warning_title, "Invalid signal value " + get_value());
         return false;
     }
-    uint64_t max_value = static_cast<uint64_t>(qPow(2, width));
+    uint64_t max_value = qRound64(qPow(2, width));
     if (value >= max_value)
     {
         QMessageBox::warning(this, warning_title, "Signal value is too large!");
@@ -684,10 +711,11 @@ bool EditSignalDialog::add_signal()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
+    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
     QVector<QString> fields = {"sig_name", "block_id", "width", "sig_type_id", "add_port"},
-                     values = {SIGNAL_NAMING.get_shortened_name(get_signal_name()), block_id_, get_width(), get_signal_type_id(), add_port() ? "1" : "0"};
+                     values = {shortened_sig_name, block_id_, get_width(), get_signal_type_id(), add_port() ? "1" : "0"};
     if (dbhandler.insert_item("signal_signal", fields, values) && \
-            dbhandler.show_items("signal_signal", {"sig_id"}, {{"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())}, {"block_id", block_id_}}, items))
+            dbhandler.show_items("signal_signal", {"sig_id"}, {{"sig_name", shortened_sig_name}, {"block_id", block_id_}}, items))
     {
         signal_id_ = items[0][0];
         if (is_register_signal())
@@ -738,18 +766,17 @@ bool EditSignalDialog::add_signal()
 bool EditSignalDialog::edit_signal()
 {
     DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
     if (!dbhandler.update_items("signal_signal", "sig_id", get_signal_id(),
-                                {{"sig_name", SIGNAL_NAMING.get_shortened_name(get_signal_name())},
+                                {{"sig_name", shortened_sig_name},
                                 {"width", get_width()}, {"sig_type_id", get_signal_type_id()}, {"add_port", add_port() ? "1" : "0"}})) return false;
 
-
+    if (is_register_page_control_signal_) return true;
     bool originally_register_signal = (original_reg_type_id_ != "");
     if (!originally_register_signal && !is_register_signal()) return true;
 
-    for (const QString& reg_part_id : original_reg_part_ids_)
-        dbhandler.delete_items("block_reg_partition", "reg_part_id", reg_part_id);
-    for (const QString& sig_part_id : original_sig_part_ids_)
-        dbhandler.delete_items("signal_reg_sig_partition", "reg_sig_part_id", sig_part_id);
+    for (const QString& sig_reg_part_mapping_id : original_sig_reg_mapping_part_ids_)
+        dbhandler.delete_items("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id", sig_reg_part_mapping_id);
 
     if (originally_register_signal && !is_register_signal())
     {
@@ -823,4 +850,19 @@ void EditSignalDialog::on_pushButtonEditSigParts_clicked()
         resize(w, 235);
     }
 
+}
+
+void EditSignalDialog::on_checkBoxAddPort_clicked(bool checked)
+{
+    if (checked)
+    {
+        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+        ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
+        ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+    }
+    else
+    {
+        delete ui->lineEditSigName->validator();
+        ui->lineEditSigName->setText("");
+    }
 }

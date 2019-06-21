@@ -33,6 +33,7 @@ bool LoginDialog::sanity_check()
         QMessageBox::warning(this, "Login", "User does not exist");
         ui->lineEdit_user->setText("");
         ui->lineEdit_password->setText("");
+        ui->lineEdit_user->setFocus();
         return false;
     }
     else if (ret == PASSWORD_NOT_CORRECT_ERROR)

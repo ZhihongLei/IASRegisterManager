@@ -101,6 +101,11 @@ public:
 
     QString get_error_message() {return _error_message;}
 
+    static bool remove_signal(const QString& sig_id, const QString& reg_sig_id, QString* p_error_msg=nullptr);
+    static bool remove_register(const QString& reg_id, QString* p_error_msg=nullptr);
+    static bool remove_block(const QString& block_id, QString* p_error_msg=nullptr);
+    static bool remove_chip(const QString& chip_id, QString* p_error_msg=nullptr);
+
 private:
     int execute(const QString &command);
     int execute_query(const QString &command);

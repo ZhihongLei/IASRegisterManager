@@ -175,15 +175,20 @@ void OpenChipDialog::on_pushButtonRemoveChip_clicked()
     QString chip_id = ui->tableWidgetChip->item(row, 0)->text();
     if (chip_id == active_chip_id_)
     {
-        QMessageBox::warning(this, "Open Chip", "You cannot remove active project!");
+        QMessageBox::warning(this, "Remove Chip", "You cannot remove active project!");
         return;
     }
     if (QMessageBox::warning(this,
                          "Remove Chip",
                          "Are you sure you want to remove this chip?\nThis operation is not reversible!",
                          QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    if (dbhandler.delete_items("chip_chip", "chip_id", chip_id)) ui->tableWidgetChip->removeRow(row);
+
+    if (!DataBaseHandler::remove_chip(chip_id))
+    {
+        QMessageBox::warning(this, "Remove Chip", "Unable to remove this chip!");
+        return;
+    }
+    ui->tableWidgetChip->removeRow(row);
 }
 
 

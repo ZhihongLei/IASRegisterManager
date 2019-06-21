@@ -31,8 +31,9 @@ CONFIG += c++11
 SOURCES += \
     authenticator.cpp \
     chip_editor.cpp \
-    document_editor.cpp \
     edit_chip_designer_dialog.cpp \
+    edit_document_dialog.cpp \
+    edit_register_page_dialog.cpp \
     main.cpp \
     register_manager.cpp \
     database_handler.cpp \
@@ -47,15 +48,15 @@ SOURCES += \
     edit_chip_dialog.cpp \
     open_chip_dialog.cpp \
     edit_signal_partition_dialog.cpp \
-    edit_latex_dialog.cpp \
     edit_signal_partition_logic.cpp \
     data_utils.cpp
 
 HEADERS += \
     authenticator.h \
     chip_editor.h \
-    document_editor.h \
     edit_chip_designer_dialog.h \
+    edit_document_dialog.h \
+    edit_register_page_dialog.h \
     register_manager.h \
     password.h \
     database_handler.h \
@@ -70,14 +71,14 @@ HEADERS += \
     edit_chip_dialog.h \
     open_chip_dialog.h \
     edit_signal_partition_dialog.h \
-    edit_latex_dialog.h \
     edit_signal_partition_logic.h \
     data_utils.h
 
 FORMS += \
     chip_editor.ui \
-    document_editor.ui \
     edit_chip_designer_dialog.ui \
+    edit_document_dialog.ui \
+    edit_register_page_dialog.ui \
     register_manager.ui \
     login_dialog.ui \
     edit_signal_dialog.ui \
@@ -88,8 +89,7 @@ FORMS += \
     user_management_dialog.ui \
     edit_chip_dialog.ui \
     open_chip_dialog.ui \
-    edit_signal_partition_dialog.ui \
-    edit_latex_dialog.ui
+    edit_signal_partition_dialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

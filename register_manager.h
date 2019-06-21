@@ -21,10 +21,6 @@ class RegisterManager : public QMainWindow
 public:
     explicit RegisterManager(QWidget *parent = nullptr);
     ~RegisterManager();
-    const QString& get_username() const;
-    const QString& get_user_id() const;
-    const QString& get_db_role() const;
-    const QString& get_db_role_id() const;
 
 private slots:
     void on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int column);
@@ -87,13 +83,9 @@ private slots:
 
     void on_tableSystem_cellDoubleClicked(int row, int column);
 
-    void on_treeWidgetDoc_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
-
     void on_pushButtonAddDoc_clicked();
 
     void on_pushButtonRemoveDoc_clicked();
-
-    void on_treeWidgetDoc_itemDoubleClicked(QTreeWidgetItem *item, int column);
 
     void on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
@@ -119,6 +111,10 @@ private slots:
     void on_document_added();
 
     void on_tableDesigner_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+
+    void on_lineEditSearch_textChanged(const QString &arg1);
+
+    void on_tableRegPage_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 public slots:
     void on_loggedin(QString);
@@ -149,27 +145,6 @@ private:
 
     void display_overall_documents();
     void display_documents(const QString level, const QString id);
-
-    /*
-    bool add_system(const QString& id);
-    bool add_designer(const QString& id);
-    bool add_register_page(const QString& id);
-    bool add_signal(const QString& id);
-    bool add_signal_partition(const QString& id);
-    bool add_register(const QString& id);
-    bool add_document(const QString& id);
-
-    bool remove_system(const QString& id);
-    bool remove_designer(const QString& id);
-    bool remove_register_page(const QString& id);
-    bool remove_signal(const QString& id);
-    bool remove_signal_partition(const QString& id);
-    bool remove_register(const QString& id);
-    bool remove_document(const QString& id);
-    */
-
-   // bool remove_signal(const QString& sid_id);
-   // bool remove_register(const QString& reg_id);
 
     void refresh_block(QTreeWidgetItem* block_item);
 

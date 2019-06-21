@@ -15,27 +15,33 @@ const static QString html_template = "\
     </script>\n\
 </head>\n\
 <body>\n\
-{CONTENT} \n\
+{HTML} \n\
 </body>\n\
 </html>";
 
-const static QString html_table_template = "<style>\
-        table {border-top: 1px solid black; border-bottom: 1px solid black}\
-        th {border-bottom: 1px solid black}\
-        </style>\
-        <table>\
-         {TABLE}\
-        </table>";
+const static QString html_text_template = "{CONTENT}\n";
 
-const static QString html_image_template = "<style>\
-        figure { display: inline-block;}\
-        figure img { vertical-align: top;}\
-        figure figcaption { text-align: center;}\
-        </style>\
-        <figure>\
-        <img style='width: 100%; height: 80%; object-fit: contain' src=\"{IMAGE}\" alt=\"{CAPTION}\"/>\
-          <figcaption>{CAPTION}</figcaption>\
-        </figure>";
+const static QString html_table_template = "<style>\n\
+        table {border-top: 1px solid black; border-bottom: 1px solid black}\n\
+        th {border-bottom: 1px solid black}\n\
+        </style>\n\
+        <center>\n\
+        <table>\n\
+         {TABLE}\n\
+        </table>\n\
+        </center>";
+
+const static QString html_image_template = "<style>\n\
+        figure { display: inline-block;}\n\
+        figure img { vertical-align: top;}\n\
+        figure figcaption { text-align: center;}\n\
+        </style>\n\
+        <center>\n\
+        <figure>\n\
+        <img style='width: 80%; object-fit: contain' src=\"{IMAGE}\" alt=\"{CAPTION}\"/>\n\
+          <figcaption>{CAPTION}</figcaption>\n\
+        </figure>\n\
+        </center>";
 
 
 const static QString DOC_DELIMITER = "%^%";

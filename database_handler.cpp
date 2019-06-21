@@ -405,3 +405,86 @@ int DataBaseHandler::show_one_item(const QString &tablename,
     return 0;
 }
 
+bool DataBaseHandler::remove_signal(const QString& sig_id, const QString& reg_sig_id, QString *p_error_msg)
+{
+    QVector<QVector<QString> > page_ids;
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    dbhandler.show_items("chip_register_page", {"page_id"}, "ctrl_sig", sig_id, page_ids);
+    for (const auto& page_id : page_ids) dbhandler.delete_items("chip_register_page_content", "page_id", page_id[0]);
+    dbhandler.delete_items("chip_register_page", "ctrl_sig", sig_id);
+    dbhandler.delete_items("doc_signal", "sig_id", sig_id);
+
+    if (reg_sig_id != "")
+    {
+        dbhandler.delete_items("block_sig_reg_partition_mapping", "reg_sig_id", reg_sig_id);
+        dbhandler.delete_items("signal_reg_signal", "reg_sig_id", reg_sig_id);
+    }
+
+    return dbhandler.delete_items("signal_signal", "sig_id", sig_id);
+}
+
+bool DataBaseHandler::remove_register(const QString &reg_id, QString *p_error_msg)
+{
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QString> item;
+    dbhandler.show_one_item("block_register", item, {"prev", "next"}, "reg_id", reg_id);
+    QString prev = item[0], next = item[1];
+
+    dbhandler.delete_items("block_sig_reg_partition_mapping", "reg_id", reg_id);
+    dbhandler.delete_items("doc_register", "reg_id", reg_id);
+    dbhandler.delete_items("chip_register_page_content", "reg_id", reg_id);
+    if( dbhandler.delete_items("block_register", "reg_id", reg_id))
+    {
+        if (prev != "-1") dbhandler.update_items("block_register", {{"reg_id", prev}}, {{"next", next}});
+        if (next != "-1") dbhandler.update_items("block_register", {{"reg_id", next}}, {{"prev", prev}});
+        return true;
+    }
+    return false;
+}
+
+bool DataBaseHandler::remove_block(const QString &block_id, QString *p_error_msg)
+{
+    DataBaseHandler dbhandler(gDBHost, gDatabase);
+    QVector<QString> item;
+    dbhandler.show_one_item("block_system_block", item, {"prev", "next"}, "block_id", block_id);
+    QString prev = item[0], next = item[1];
+
+    dbhandler.delete_items("doc_block", "block_id", block_id);
+
+    QVector<QVector<QString>> items;
+    dbhandler.show_items_inner_join({"signal_signal.sig_id", "signal_reg_signal.reg_sig_id"},
+                                    {{{"signal_signal", "sig_id"}, {"signal_reg_signal", "sig_id"}}},
+                                    items, {{"signal_signal.block_id", block_id}});
+    for(const auto& item: items) remove_signal(item[0], item[1]);
+
+    items.clear();
+    dbhandler.show_items("block_register", {"reg_id"}, "block_id", block_id, items);
+    for(const auto& item: items) remove_register(item[0]);
+
+    if (dbhandler.delete_items("block_system_block", "block_id", block_id))
+    {
+        if (prev != "-1") dbhandler.update_items("block_system_block", {{"block_id", prev}}, {{"next", next}});
+        if (next != "-1") dbhandler.update_items("block_system_block", {{"block_id", next}}, {{"prev", prev}});
+        return true;
+    }
+    return false;
+}
+
+bool DataBaseHandler::remove_chip(const QString &chip_id, QString *p_error_msg)
+{
+     DataBaseHandler dbhandler(gDBHost, gDatabase);
+     QVector<QVector<QString>> items;
+
+     dbhandler.delete_items("chip_designer", "chip_id", chip_id);
+     dbhandler.delete_items("doc_chip", "chip_id", chip_id);
+
+     dbhandler.show_items("chip_register_page", {"page_id"}, "chip_id", chip_id, items);
+     for (const auto& item : items) dbhandler.delete_items("chip_register_page_content", "page_id", item[0]);
+     dbhandler.delete_items("chip_register_page", "chip_id", chip_id);
+
+     items.clear();
+     dbhandler.show_items("block_system_block", {"block_id"}, "chip_id", chip_id, items);
+     for (const auto& item : items) remove_block(item[0]);
+
+     return dbhandler.delete_items("chip_chip", "chip_id", chip_id);
+}

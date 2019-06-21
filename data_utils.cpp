@@ -15,10 +15,9 @@ QValidator::State HexValueValidator::validate(QString &input, int &pos) const
     if (QRegExpValidator::validate(input, pos) == QValidator::Intermediate) return QValidator::Intermediate;
     if (QRegExpValidator::validate(input, pos) == QValidator::Acceptable)
     {
-        if ((uint64_t) qPow(2, bits_) > input.toULongLong(nullptr, 16)) return QValidator::Acceptable;
+        if (qRound64(qPow(2, bits_)) > input.toULongLong(nullptr, 16)) return QValidator::Acceptable;
     }
     return QValidator::Invalid;
-
 }
 
 
@@ -91,4 +90,30 @@ void Naming::clear()
 {
     naming_template.clear();
     key2value.clear();
+}
+
+QString decimal2hex(QString n, int address_width)
+{
+    return decimal2hex(n.toLongLong(), address_width);
+}
+
+QString decimal2hex(int n, int address_width)
+{
+    return decimal2hex((long long)n, address_width);
+}
+QString decimal2hex(long n, int address_width)
+{
+    return decimal2hex((long long)n, address_width);
+}
+QString decimal2hex(long long n, int address_width)
+{
+    QString hex = QString::number(n, 16).toUpper();
+    hex = "0x" + QString(qCeil(address_width/4.0) - hex.size(), '0') + hex;
+    return hex;
+}
+
+QString normalize_hex(const QString& hex, int address_width)
+{
+    long long n = hex.toLongLong(nullptr, 16);
+    return decimal2hex(n, address_width);
 }

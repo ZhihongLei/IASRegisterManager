@@ -30,7 +30,7 @@ public:
     QString get_register_msb() const;
     QString get_register_name() const;
     QString get_register_id() const;
-    QString get_reg_sig_part_id() const;
+    QString get_sig_reg_part_mapping_id() const;
     bool add_signal_partition();
 
 private:
