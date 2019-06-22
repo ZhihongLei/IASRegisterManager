@@ -94,18 +94,14 @@ void Naming::clear()
 
 QString decimal2hex(QString n, int address_width)
 {
-    return decimal2hex(n.toLongLong(), address_width);
+    return decimal2hex(n.toULongLong(), address_width);
 }
 
-QString decimal2hex(int n, int address_width)
+QString decimal2hex(quint32 n, int address_width)
 {
-    return decimal2hex((long long)n, address_width);
+    return decimal2hex((quint64)n, address_width);
 }
-QString decimal2hex(long n, int address_width)
-{
-    return decimal2hex((long long)n, address_width);
-}
-QString decimal2hex(long long n, int address_width)
+QString decimal2hex(quint64 n, int address_width)
 {
     QString hex = QString::number(n, 16).toUpper();
     hex = "0x" + QString(qCeil(address_width/4.0) - hex.size(), '0') + hex;
@@ -114,6 +110,6 @@ QString decimal2hex(long long n, int address_width)
 
 QString normalize_hex(const QString& hex, int address_width)
 {
-    long long n = hex.toLongLong(nullptr, 16);
+    quint64 n = hex.toULongLong(nullptr, 16);
     return decimal2hex(n, address_width);
 }

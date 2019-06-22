@@ -75,15 +75,6 @@ RegisterManager::RegisterManager(QWidget *parent) :
     context_menu_->addSeparator();
     context_menu_->addAction(actionRefresh_);
 
-    ui->tableDoc->setColumnHidden(0, true);
-    ui->documentEditor->setVisible(false);
-    ui->stackedWidgetDoc->setCurrentIndex(0);
-    ui->splitterDoc->setCollapsible(0, false);
-    ui->splitterDoc->setCollapsible(1, false);
-
-    connect(ui->documentEditor, SIGNAL(document_edited()), this, SLOT(on_document_edited()));
-    connect(ui->documentEditor, SIGNAL(document_added()), this, SLOT(on_document_added()));
-
     connect(actionAdd_, SIGNAL(triggered()), this, SLOT(on_actionAdd_triggered()));
     connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
     connect(actionRemove_, SIGNAL(triggered()), this, SLOT(on_actionRemove_triggered()));
@@ -106,6 +97,8 @@ RegisterManager::RegisterManager(QWidget *parent) :
     ui->tableSignal->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeMode::ResizeToContents);
     ui->tableRegPage->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeMode::ResizeToContents);
     ui->tableRegPage->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
+
+    ui->docEditorView->set_authenticator(&authenticator_);
 }
 
 void RegisterManager::on_actionAdd_triggered()
@@ -115,7 +108,6 @@ void RegisterManager::on_actionAdd_triggered()
     else if (ui->tableRegPage->hasFocus()) on_pushButtonAddRegPage_clicked();
     else if (ui->tableSignal->hasFocus()) on_pushButtonAddSig_clicked();
     else if (ui->tableSigPart->hasFocus()) on_pushButtonAddSigPart_clicked();
-    else if (ui->tableDoc->hasFocus()) on_pushButtonAddDoc_clicked();
     else if (ui->tableRegister->hasFocus()) on_pushButtonAddReg_clicked();
     // else if (ui->tableRegPart->hasFocus())
 }
@@ -127,7 +119,6 @@ void RegisterManager::on_actionEdit_triggered()
     else if (ui->tableRegPage->hasFocus()) on_tableRegPage_cellDoubleClicked(ui->tableRegPage->currentRow(), ui->tableRegPage->currentColumn());
     else if (ui->tableSignal->hasFocus()) on_tableSignal_cellDoubleClicked(ui->tableSignal->currentRow(), ui->tableSignal->currentColumn());
     //else if (ui->tableSigPart->hasFocus()) on_tableSigPart_cellDoubleClicked(ui->tableSigPart->currentRow(), ui->tableSigPart->currentColumn());
-    else if (ui->tableDoc->hasFocus()); //on_treeWidgetDoc_itemDoubleClicked(ui->treeWidgetDoc->currentItem(), 0);
     else if (ui->tableRegister->hasFocus()) on_tableRegister_cellDoubleClicked(ui->tableRegister->currentRow(), ui->tableRegister->currentColumn());
     // else if (ui->tableRegPart->hasFocus())
 }
@@ -139,7 +130,6 @@ void RegisterManager::on_actionRemove_triggered()
     else if (ui->tableRegPage->hasFocus()) on_pushButtonRemoveRegPage_clicked();
     else if (ui->tableSignal->hasFocus()) on_pushButtonRemoveSig_clicked();
     else if (ui->tableSigPart->hasFocus()) on_pushButtonRemoveSigPart_clicked();
-    else if (ui->tableDoc->hasFocus()) on_pushButtonRemoveDoc_clicked();
     else if (ui->tableRegister->hasFocus()) on_pushButtonRemoveReg_clicked();
     // else if (ui->tableRegPart->hasFocus())
 }
@@ -152,20 +142,11 @@ void RegisterManager::on_actionRefresh_triggered()
     else if (ui->tableRegPage->hasFocus()) display_register_pages();
     else if (ui->tableSignal->hasFocus()) display_signals();
     else if (ui->tableSigPart->hasFocus()) display_signal_partitions();
-    else if (ui->tableDoc->hasFocus()) display_documents();
     else if (ui->tableRegister->hasFocus()) display_registers();
     else if (ui->tableRegPart->hasFocus()) display_register_partitions();
 }
 
 
-void RegisterManager::on_tableDoc_customContextMenuRequested(QPoint pos)
-{
-    QTableWidgetItem *current = ui->tableDoc->itemAt(pos);
-    actionEdit_->setEnabled(current && authenticator_.can_edit_document());
-    actionAdd_->setEnabled(authenticator_.can_edit_document());
-    actionRemove_->setEnabled(current && authenticator_.can_edit_document());
-    context_menu_->popup(ui->tableDoc->viewport()->mapToGlobal(pos));
-}
 
 void RegisterManager::on_tableSignal_customContextMenuRequested(QPoint pos)
 {
@@ -285,8 +266,7 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
 {
     if (obj == ui->tableSystem->viewport() ||
             obj == ui->tableRegister->viewport() ||
-            obj == ui->treeWidgetBlock->viewport() ||
-            obj == ui->tableDoc->viewport())
+            obj == ui->treeWidgetBlock->viewport())
     {
         if (eve->type() == QEvent::Drop)
         {
@@ -302,7 +282,6 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
                 QTableWidgetItem* pDropItem = nullptr;
                 if (obj == ui->tableSystem->viewport()) pDropItem = ui->tableSystem->itemAt((static_cast<QDropEvent*>(eve))->pos());
                 if (obj == ui->tableRegister->viewport()) pDropItem = ui->tableRegister->itemAt((static_cast<QDropEvent*>(eve))->pos());
-                if (obj == ui->tableDoc->viewport()) pDropItem = ui->tableDoc->itemAt((static_cast<QDropEvent*>(eve))->pos());
                 //if (obj == ui->treeWidgetBlock->viewport()) pDropItem = ui->treeWidgetBlock->childAt((static_cast<QDropEvent*>(eve))->pos());
                 if (!pDropItem) return true;
                 if (pDropItem->row() == row) return true;
@@ -335,22 +314,6 @@ bool RegisterManager::eventFilter(QObject *obj, QEvent *eve)
                     for (int j = 0; j < ui->treeWidgetBlock->columnCount(); j++)
                         topLevelItem->child(pDropItem->row())->setText(j, from[j]);
                 }
-                if (obj == ui->tableDoc->viewport())
-                {
-                    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
-                    QTreeWidgetItem* block_item = current;
-                    while (block_item->parent()->parent()) block_item = block_item->parent();
-
-                    if (current->parent() == block_item)   // register
-                        table_drop_event_handling(ui->tableDoc, "doc_register", "register_doc_id", row, pDropItem->row());
-                    else if (current->parent() && current->parent()->parent() == block_item)  // signal
-                        table_drop_event_handling(ui->tableDoc, "doc_signal", "signal_doc_id", row, pDropItem->row());
-                    else // block
-                        table_drop_event_handling(ui->tableDoc, "doc_block", "block_doc_id", row, pDropItem->row());
-                    ui->tableDoc->setCurrentCell(pDropItem->row(), 0);
-                    ui->tableDoc->resizeRowsToContents();
-
-                }
                 return true;
             }
         } else return QWidget::eventFilter(obj, eve);
@@ -373,7 +336,6 @@ void RegisterManager::open_chip()
     widget->setAcceptDrops(chip_owner_id_ == user_id_);
     widget->setDragDropMode(chip_owner_id_ == user_id_ ? QAbstractItemView::DragDrop : QAbstractItemView::NoDragDrop);
     ui->stackedWidgetChipEditor->setCurrentIndex(0);
-    ui->stackedWidgetDoc->setCurrentIndex(0);
 
     SIGNAL_NAMING.update_key("{CHIP_NAME}", chip_);
     REGISTER_NAMING.update_key("{CHIP_NAME}", chip_);
@@ -381,8 +343,13 @@ void RegisterManager::open_chip()
     display_system_blocks();
     display_designers();
     display_register_pages();
-    display_overall_documents();
-    // TODO: compile project widget
+
+    ui->docEditorView->set_chip_id(chip_id_);
+    ui->docEditorView->set_address_width(address_width_);
+    ui->docEditorView->set_register_width(register_width_);
+    ui->docEditorView->set_msb_first(msb_first_);
+    ui->docEditorView->set_doc_level(LEVEL::CHIP);
+    ui->docEditorView->display_overall_documents();
 }
 
 void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int column)
@@ -392,13 +359,11 @@ void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int 
         ui->stackedWidgetChipEditor->setCurrentIndex(0);
         block_ = "";
         block_id_ = "-1";
-        ui->stackedWidgetDoc->setCurrentIndex(0);
-        display_overall_documents();
+        ui->docEditorView->set_doc_level(LEVEL::CHIP);
         display_system_blocks();
         display_register_pages();
     }
     else {
-        ui->stackedWidgetDoc->setCurrentIndex(1);
         QString prev_block_id = block_id_;
         int prev_tab_index = ui->tabWidget->currentIndex(), prev_stack_index = ui->stackedWidgetChipEditor->currentIndex();
 
@@ -413,10 +378,23 @@ void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int 
         block_responsible = ui->tableSystem->item(row, 3)->text();
 
         assert (block_id_ == block_item->text(1) && block_ == block_item->text(0));
-        if (item->parent() == block_item)   // register
+        if (item == block_item) // block
+        {
+            ui->docEditorView->set_doc_level(LEVEL::BLOCK);
+            ui->docEditorView->set_block_id(block_id_);
+        }
+        else if (item->parent() == block_item)   // register
+        {
             reg_id = item->text(1);
+            ui->docEditorView->set_doc_level(LEVEL::REGISTER);
+            ui->docEditorView->set_register_id(reg_id);
+        }
         else if (item->parent() && item->parent()->parent() == block_item)  // signal
+        {
             sig_id = item->text(1);
+            ui->docEditorView->set_doc_level(LEVEL::SIGNAL);
+            ui->docEditorView->set_signal_id(sig_id);
+        }
 
         authenticator_.set_block_permissions(block_responsible == username_ || authenticator_.can_fully_access_all_blocks());
 
@@ -425,10 +403,11 @@ void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int 
         SIGNAL_NAMING.update_key("{BLOCK_NAME}", block_);
         SIGNAL_NAMING.update_key("{BLOCK_ABBR}", block_id2abbr_[block_id_]);
 
+        ui->docEditorView->set_install_event_filter();
 
-        QVector<QTableWidget*> tables = {ui->tableRegister, ui->tableDoc};
-        QVector<bool> enables = {authenticator_.can_add_register() && authenticator_.can_remove_register(), authenticator_.can_edit_document()};
-        for(int i = 0; i < 2; i++)
+        QVector<QTableWidget*> tables = {ui->tableRegister};
+        QVector<bool> enables = {authenticator_.can_add_register() && authenticator_.can_remove_register()};
+        for(int i = 0; i < 1; i++)
         {
             QTableWidget* table = tables[i];
             bool enabled = enables[i];
@@ -470,9 +449,8 @@ void RegisterManager::on_treeWidgetBlock_itemClicked(QTreeWidgetItem *item, int 
                     break;
                 }
         }
-
-        display_documents(block_id_, reg_id, sig_id);
     }
+    ui->docEditorView->display_documents();
 }
 
 void RegisterManager::on_tableSignal_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
@@ -737,13 +715,13 @@ void RegisterManager::display_registers()
     items  = sort_doubly_linked_list(items);
     QVector<QString> item;
     dbhandler.show_one_item("block_system_block", item, {"start_address"}, "block_id", block_id_);
-    int start_address = item[0].toInt();
+    quint64 decimal_start_address = item[0].toULongLong();
 
     for (int i = 0; i < items.size(); i++)
     {
         const auto& item = items[i];
         int row = ui->tableRegister->rowCount();
-        QString reg_id = item[0], reg_name = item[1], reg_type = item[2], address = decimal2hex(start_address+i, address_width_);
+        QString reg_id = item[0], reg_name = item[1], reg_type = item[2], address = decimal2hex(decimal_start_address + static_cast<quint64>(i), address_width_);
         reg_name = REGISTER_NAMING.get_extended_name(reg_name);
         ui->tableRegister->insertRow(row);
         ui->tableRegister->setItem(row, 0, new QTableWidgetItem(reg_id));
@@ -757,256 +735,6 @@ void RegisterManager::display_registers()
 }
 
 
-void RegisterManager::display_documents(const QString& block_id, const QString& reg_id, const QString& sig_id)
-{
-    ui->tableDoc->setRowCount(0);
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-    if (sig_id != "")
-        dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
-                                        {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                        items, {{"doc_signal.sig_id", sig_id}});
-    else if (reg_id != "")
-        dbhandler.show_items_inner_join({"doc_register.register_doc_id", "def_doc_type.doc_type", "doc_register.content", "doc_register.doc_type_id", "doc_register.prev", "doc_register.next"},
-                                        {{{"doc_register", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                        items, {{"doc_register.reg_id", reg_id}});
-    else if (block_id != "")
-        dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
-                                    {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                    items, {{"doc_block.block_id", block_id}});
-    items = sort_doubly_linked_list(items);
-
-    for (const auto& item : items)
-    {
-        int row = ui->tableDoc->rowCount();
-        ui->tableDoc->insertRow(row);
-        ui->tableDoc->setItem(row, 0, new QTableWidgetItem(item[0]));
-        ui->tableDoc->setItem(row, 1, new QTableWidgetItem(item[1]));
-        ui->tableDoc->setItem(row, 2, new QTableWidgetItem(item[2]));
-    }
-    ui->tableDoc->resizeRowsToContents();
-    ui->pushButtonAddDoc->setEnabled(authenticator_.can_edit_document());
-    ui->pushButtonRemoveDoc->setEnabled(false);
-    ui->documentEditor->clear();
-    ui->documentEditor->setVisible(false);
-}
-
-void RegisterManager::display_documents()
-{
-    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
-    QTreeWidgetItem* block_item = current;
-    while (block_item->parent()->parent()) block_item = block_item->parent();
-
-    QString block_id, reg_id, sig_id;
-    ui->documentEditor->clear();
-    if (current->parent() == block_item)   // register
-        reg_id = current->text(1);
-    else if (current->parent() && current->parent()->parent() == block_item)  // signal
-        sig_id = current->text(1);
-    else // block
-        block_id = current->text(1);
-    display_documents(block_id, reg_id, sig_id);
-}
-
-
-void RegisterManager::display_overall_documents()
-{
-    ui->documentEditor->set_mode(DIALOG_MODE::EDIT);
-    EditDocumentDialog::DOCUMENT_LEVEL level;
-
-    ui->webDocOverview->setHtml("", QUrl("file://"));
-
-    QString html_content, table_of_content;
-    for (int i = 0; i < ui->tableSystem->rowCount(); i++)
-    {
-        QString block_id = ui->tableSystem->item(i, 0)->text(),
-                block_name = ui->tableSystem->item(i, 1)->text(),
-                block_abbr = ui->tableSystem->item(i, 2)->text();
-
-        long long block_start_address = ui->tableSystem->item(i, 4)->text().toLongLong(nullptr, 16);
-
-        REGISTER_NAMING.update_key("{BLOCK_NAME}", block_name);
-        REGISTER_NAMING.update_key("{BLOCK_ABBR}", block_abbr);
-        SIGNAL_NAMING.update_key("{BLOCK_NAME}", block_name);
-        SIGNAL_NAMING.update_key("{BLOCK_ABBR}", block_abbr);
-
-        DataBaseHandler dbhandler(gDBHost, gDatabase);
-        QVector<QVector<QString> > items;
-        dbhandler.show_items_inner_join({"doc_block.block_doc_id", "def_doc_type.doc_type", "doc_block.content", "doc_block.doc_type_id", "doc_block.prev", "doc_block.next"},
-                                        {{{"doc_block", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                        items, {{"doc_block.block_id", block_id}});
-
-        items = sort_doubly_linked_list(items);
-        QString block_content = "<h2 id=" + block_name +">"+ block_name +"</h2>\n";
-        table_of_content += "<li>\n<a href=#" + block_name + ">" + block_name + "</a>\n</li>\n";
-        for (const auto& item : items)
-        {
-            ui->documentEditor->clear();
-            ui->documentEditor->set_content(item[0], item[1], item[2]);
-            block_content = block_content + ui->documentEditor->generate_html() + '\n';
-        }
-
-        QVector<QVector<QString> > registers;
-        dbhandler.show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id, registers);
-        registers = sort_doubly_linked_list(registers);
-
-        QString reg_bullets;
-        for (int i = 0; i < registers.size(); i++)
-        {
-            const auto& reg = registers[i];
-            QString reg_id = reg[0], reg_name = REGISTER_NAMING.get_extended_name(reg[1]);
-            QString address = decimal2hex(block_start_address + i, address_width_);
-
-            block_content = block_content + "<h4 id=" + reg_name + ">" + reg_name +" - " + address + "</h4>\n";
-            reg_bullets += "<li>\n<a href=#" + reg_name + ">" + reg_name + "</a>\n</li>\n";
-
-            QVector<QVector<QString> > signal_items;
-            QVector<QString> ext_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
-                                               "block_sig_reg_partition_mapping.reg_lsb",
-                                               "block_sig_reg_partition_mapping.reg_msb",
-                                                "signal_signal.sig_name",
-                                               "signal_signal.sig_id",
-                                               "block_sig_reg_partition_mapping.sig_lsb",
-                                               "block_sig_reg_partition_mapping.sig_msb",
-                                                "signal_reg_signal.init_value",
-                                                "signal_signal.width",
-                                                "signal_signal.add_port"};
-            dbhandler.show_items_inner_join(ext_fields, {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
-                                                         {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, signal_items, {{"block_sig_reg_partition_mapping.reg_id", reg_id}});
-
-            if (msb_first_) qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2] > b[2];});
-            else qSort(signal_items.begin(), signal_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1] < b[1];});
-
-            QString reg_table = "<style>\n\
-                    table#t_reg, td#t_reg {border: 1px solid black;border-collapse: collapse;}\n\
-                    td#t_reg {padding: 2px;text-align: center;}\n\
-                    </style>\n";
-
-            QString header, signal_row, value_row;
-            for (int j = 0; j < register_width_; j++)
-            {
-                if (msb_first_) header += "<td id=t_reg width=" + QString::number(100/register_width_) + "%>" + QString::number(register_width_-1-j) + "</td>\n";
-                else header += "<td id=t_reg width=" + QString::number(100/register_width_) + "%>" + QString::number(j) + "</td>\n";
-            }
-            header = "<tr id=t_reg>\n" + header + "</tr>\n";
-
-
-
-            if (signal_items.size() == 0) {
-                QString span = QString::number(register_width_);
-                QString cell = "<td id=t_reg colspan=" +span + ">" + "..." + "</td>\n";
-                signal_row = cell;
-                for (int j = 0; j < register_width_; j++) value_row += "<td id=t_reg>.</td>\n";
-            }
-            else {
-                for (int j = 0; j < signal_items.size(); j++)
-                {
-                    const auto &curr = signal_items[j];
-                    QString reg_msb = curr[2],
-                            reg_lsb = curr[1],
-                            sig_name = curr[9]=="1" ? SIGNAL_NAMING.get_extended_name(curr[3]) : curr[3],
-                            sig_value = QString::number(curr[7].toLongLong(nullptr, 16), 2);
-                    int sig_width = curr[8].toInt();
-                    sig_value = QString(sig_width - sig_value.size(), '0') + sig_value;
-                    QString span = QString::number(reg_msb.toInt() - reg_lsb.toInt() + 1);
-                    signal_row += "<td id=t_reg colspan=" +span + ">" + "<font size=\"2\">" + sig_name +"</font>" + "</td>";
-
-                    for (int bit = 0; bit < sig_width; bit++) value_row += "<td id=t_reg>" + sig_value[msb_first_ ? bit : sig_width - bit - 1] + "</td>\n";
-                    if (j < signal_items.size()-1)
-                    {
-                        const auto &next = signal_items[j+1];
-                        int gap = msb_first_ ? reg_lsb.toInt() - next[2].toInt() - 1 : next[1].toInt() - reg_msb.toInt() -1;
-                        if (gap > 0)
-                        {
-                            signal_row += "<td id=t_reg colspan=" + QString::number(gap) + ">" + "..." + "</td>";
-                            for (int bit = 0; bit < gap; bit ++) value_row += "<td id=t_reg>.</td>\n";
-                        }
-
-                    }
-                    if (j == 0)
-                    {
-                        int gap = msb_first_ ? register_width_ - reg_msb.toInt() -1 : reg_lsb.toInt();
-                        if (gap > 0)
-                        {
-                            signal_row = "<td id=t_reg colspan=" +QString::number(gap) + ">" + "..." + "</td>" + signal_row;
-                            for (int bit = 0; bit < gap; bit ++) value_row = "<td id=t_reg>.</td>\n" + value_row;
-                        }
-                    }
-                    if (j == signal_items.size()-1)
-                    {
-                        int gap = msb_first_ ? reg_lsb.toInt() : register_width_ - reg_msb.toInt() -1;
-                        if (gap > 0)
-                        {
-                            signal_row += "<td id=t_reg colspan=" +QString::number(gap) + ">" + "..." + "</td>";
-                            for (int bit = 0; bit < gap; bit ++) value_row += "<td id=t_reg>.</td>\n";
-                        }
-                    }
-                }
-            }
-            signal_row = "<tr id=t_reg>\n" + signal_row + "</tr>\n";
-            value_row = "<tr id=t_reg>\n" + value_row + "</tr>\n";
-            reg_table = "<p>\n<table id=t_reg width=90%>\n" + reg_table + header + signal_row + value_row + "</table>\n</p>\n";
-            block_content = block_content + reg_table;
-
-            items.clear();
-            dbhandler.show_items_inner_join({"doc_register.register_doc_id", "def_doc_type.doc_type", "doc_register.content", "doc_register.doc_type_id", "doc_register.prev", "doc_register.next"},
-                                            {{{"doc_register", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                            items, {{"doc_register.reg_id", reg_id}});
-
-            for (const auto& item : items)
-            {
-                ui->documentEditor->clear();
-                ui->documentEditor->set_content(item[0], item[1], item[2]);
-                block_content = block_content + ui->documentEditor->generate_html() + '\n';
-            }
-
-            QSet<QString> signal_set;
-            QVector<QString> signal_ids, signal_names;
-            for (const auto& signal_item : signal_items)
-            {
-                QString sig_id = signal_item[4],
-                        sig_name = signal_item[9]=="1" ? SIGNAL_NAMING.get_extended_name(signal_item[3]) : signal_item[3];
-                if (signal_set.contains(sig_id)) continue;
-                signal_set.insert(sig_id);
-                signal_ids.push_back(sig_id);
-                signal_names.push_back(sig_name);
-            }
-
-            QString bullet_list;
-            for (int j = 0; j < signal_ids.size(); j++)
-            {
-                QString sig_id = signal_ids[j], sig_name = signal_names[j];
-                signal_items.clear();
-                dbhandler.show_items_inner_join({"doc_signal.signal_doc_id", "def_doc_type.doc_type", "doc_signal.content", "doc_signal.doc_type_id", "doc_signal.prev", "doc_signal.next"},
-                                                {{{"doc_signal", "doc_type_id"}, {"def_doc_type", "doc_type_id"}}},
-                                                signal_items, {{"doc_signal.sig_id", sig_id}});
-                signal_items = sort_doubly_linked_list(signal_items);
-
-                QString bullet = sig_name + " ";
-                for (const auto& signal_item : signal_items)
-                {
-                    ui->documentEditor->clear();
-                    ui->documentEditor->set_content(signal_item[0], signal_item[1], signal_item[2]);
-                    bullet += ui->documentEditor->generate_html() + "<br>\n" ;
-                }
-                bullet = "<li>\n" + bullet + "</li>\n";
-                bullet_list += bullet;
-            }
-            bullet_list = "<ul>\n" + bullet_list + "</ul>\n";
-            block_content += bullet_list;
-        }
-
-        reg_bullets = "<ul>\n" + reg_bullets + "</ul>\n";
-        table_of_content += reg_bullets;
-        html_content = html_content + "<section>\n" + block_content + "</section>\n";
-    }
-    table_of_content = "<h2>Table of Content</h2>\n<ol>\n" + table_of_content + "</ol>\n";
-    html_content = table_of_content + html_content;
-    QString html = html_template;
-    html.replace("{HTML}", html_content).replace("{MATHJAX_ROOT}", mathjax_root);
-    ui->webDocOverview->setHtml(html, QUrl("file://"));
-
-}
 
 
 void RegisterManager::display_signal_partitions()
@@ -1096,6 +824,8 @@ void RegisterManager::on_loggedin(QString username)
     ui->actionChipManagement->setEnabled(authenticator_.can_add_project() && authenticator_.can_remove_project());
     setWindowTitle("IAS Register Manager - " + username);
 
+    ui->docEditorView->set_user_id(user_id_);
+
     login_dialog_.hide();
     OpenChipDialog open_dial(user_id_, authenticator_.can_add_project(), this);
     show();
@@ -1182,15 +912,13 @@ void RegisterManager::on_actionOpenChip_triggered()
 void RegisterManager::on_actionCloseChip_triggered()
 {
     QVector<QTableWidget*> tables = {ui->tableChipBasics, ui->tableSystem, ui->tableDesigner, ui->tableRegPage,
-                                     ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart, ui->tableDoc};
+                                     ui->tableSignal, ui->tableSigPart, ui->tableRegister, ui->tableRegPart};
     for (QTableWidget* table : tables) table->setRowCount(0);
     ui->treeWidgetBlock->clear();
-    ui->webDocOverview->setHtml("", QUrl("file://"));
-
     QVector<QWidget*> widgets = {ui->pushButtonAddSys, ui->pushButtonRemoveSys, ui->pushButtonAddReg, ui->pushButtonRemoveReg,
                                  ui->pushButtonAddSig, ui->pushButtonRemoveSig, ui->pushButtonAddSigPart,
                                 ui->pushButtonRemoveSigPart, ui->pushButtonAddDesigner, ui->pushButtonRemoveDesigner,
-                                ui->pushButtonAddDoc, ui->pushButtonRemoveDoc, ui->pushButtonAddRegPage, ui->pushButtonRemoveRegPage};
+                                ui->pushButtonAddRegPage, ui->pushButtonRemoveRegPage};
     for (QWidget* widget : widgets) widget->setEnabled(false);
 
     QVector<QString*> variables = {&chip_, &chip_id_, &chip_owner_, &chip_owner_id_};
@@ -1203,10 +931,10 @@ void RegisterManager::on_actionCloseChip_triggered()
     authenticator_.clear_project_permission();
     authenticator_.clear_block_permission();
 
-    ui->stackedWidgetDoc->setCurrentIndex(0);
     ui->stackedWidgetChipEditor->setCurrentIndex(0);
 
     block_id2abbr_.clear();
+    ui->docEditorView->close_chip();
 }
 
 void RegisterManager::on_actionChipManagement_triggered()
@@ -1917,80 +1645,6 @@ void RegisterManager::on_tableSystem_cellDoubleClicked(int row, int column)
 
 }
 
-
-void RegisterManager::on_pushButtonAddDoc_clicked()
-{    
-    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
-    QTreeWidgetItem* block_item = current;
-    while (block_item->parent()->parent()) block_item = block_item->parent();
-
-    ui->documentEditor->clear();
-    QString block_id, reg_id, sig_id;
-    EditDocumentDialog::DOCUMENT_LEVEL level;
-    if (current->parent() == block_item)   // register
-    {
-        level = EditDocumentDialog::REGISTER;
-        ui->documentEditor->set_register_id(current->text(1));
-    }
-    else if (current->parent() && current->parent()->parent() == block_item)  // signal
-    {
-        level = EditDocumentDialog::SIGNAL;
-        ui->documentEditor->set_signal_id(current->text(1));
-    }
-    else // block
-    {
-        level = EditDocumentDialog::BLOCK;
-        ui->documentEditor->set_block_id(current->text(1));
-    }
-    ui->documentEditor->set_level(level);
-    ui->documentEditor->set_mode(DIALOG_MODE::ADD);
-    ui->documentEditor->setVisible(true);
-
-}
-
-void RegisterManager::on_pushButtonRemoveDoc_clicked()
-{
-    int row = ui->tableDoc->currentRow();
-    if (row < 0) return;
-    if (QMessageBox::warning(this,
-                             "Remove Document",
-                             "Are you sure you want to remove this document?",
-                             QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
-    QString doc_id = ui->tableDoc->item(row, 0)->text();
-
-    QString table, id_field;
-    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
-    QTreeWidgetItem* block_item = current;
-    while (block_item->parent()->parent()) block_item = block_item->parent();
-
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-
-    if (current->parent() == block_item)   // register
-    {
-        table = "doc_register";
-        id_field = "register_doc_id";
-    }
-    else if (current->parent() && current->parent()->parent() == block_item)  // signal
-    {
-        table = "doc_signal";
-        id_field = "signal_doc_id";
-    }
-    else // block
-    {
-        table = "doc_block";
-        id_field = "block_doc_id";
-    }
-
-    QVector<QVector<QString> > items;
-    if (dbhandler.show_items(table, {"prev", "next"}, id_field, doc_id, items) && dbhandler.delete_items(table, id_field, doc_id) )
-    {
-        QString prev = items[0][0], next = items[0][1];
-        if (prev != "-1") dbhandler.update_items(table, {{id_field, prev}}, {{"next", next}});
-        if (next != "-1") dbhandler.update_items(table, {{id_field, next}}, {{"prev", prev}});
-        ui->tableDoc->removeRow(row);
-    }
-}
-
 void RegisterManager::on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
     if (currentRow < 0) ui->pushButtonRemoveSys->setEnabled(false);
@@ -2105,63 +1759,6 @@ void RegisterManager::on_lineEditSearch_editingFinished()
 {
     search(ui->treeWidgetBlock->topLevelItem(0), ui->lineEditSearch->text(), false);
     ui->treeWidgetBlock->topLevelItem(0)->setExpanded(true);
-}
-
-void RegisterManager::on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
-{
-    if (ui->stackedWidgetDoc->currentIndex() == 0 || currentRow < 0) return;
-    ui->pushButtonRemoveDoc->setEnabled(authenticator_.can_edit_document() && currentRow>=0);
-}
-
-void RegisterManager::on_tableDoc_cellDoubleClicked(int row, int column)
-{
-    if (row < 0) return;
-    ui->documentEditor->clear();
-    QTreeWidgetItem* current = ui->treeWidgetBlock->currentItem();
-    QTreeWidgetItem* block_item = current;
-    while (block_item->parent()->parent()) block_item = block_item->parent();
-
-    EditDocumentDialog::DOCUMENT_LEVEL level;
-    if (current->parent() == block_item)   // register
-        level = EditDocumentDialog::REGISTER;
-    else if (current->parent() && current->parent()->parent() == block_item)  // signal
-        level = EditDocumentDialog::SIGNAL;
-    else // block
-        level = EditDocumentDialog::BLOCK;
-
-    ui->documentEditor->set_level(level);
-    ui->documentEditor->set_mode(DIALOG_MODE::EDIT);
-    ui->documentEditor->setEnabled(authenticator_.can_edit_document());
-    ui->documentEditor->setVisible(true);
-
-    QString doc_id = ui->tableDoc->item(row, 0)->text(),
-            type = ui->tableDoc->item(row, 1)->text(),
-            content = ui->tableDoc->item(row, 2)->text();
-    ui->documentEditor->set_content(doc_id, type, content);
-}
-
-void RegisterManager::on_stackedWidgetDoc_currentChanged(int index)
-{
-    if (index == 1) ui->pushButtonRemoveDoc->setEnabled(false);
-}
-
-
-void RegisterManager::on_document_added()
-{
-    int row = ui->tableDoc->rowCount();
-    ui->tableDoc->insertRow(row);
-    ui->tableDoc->setItem(row, 0, new QTableWidgetItem(ui->documentEditor->get_doc_id()));
-    ui->tableDoc->setItem(row, 1, new QTableWidgetItem(ui->documentEditor->get_document_type()));
-    ui->tableDoc->setItem(row, 2, new QTableWidgetItem(ui->documentEditor->get_content()));
-    ui->tableDoc->resizeRowToContents(row);
-}
-
-void RegisterManager::on_document_edited()
-{
-    int row = ui->tableDoc->currentRow();
-    ui->tableDoc->item(row, 1)->setText(ui->documentEditor->get_document_type());
-    ui->tableDoc->item(row, 2)->setText(ui->documentEditor->get_content());
-    ui->tableDoc->resizeRowToContents(row);
 }
 
 void RegisterManager::on_tableDesigner_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)

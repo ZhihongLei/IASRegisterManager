@@ -13,7 +13,7 @@ EditDocumentDialog::EditDocumentDialog(QWidget *parent) :
     ui(new Ui::EditDocumentDialog)
 {
     ui->setupUi(this);
-    level_ = DOCUMENT_LEVEL::BLOCK;
+    level_ = LEVEL::BLOCK;
     mode_ = DIALOG_MODE::ADD;
     setup_ui();
     on_comboBoxDocType_currentIndexChanged(0);
@@ -100,7 +100,7 @@ void EditDocumentDialog::set_content(const QString& doc_id, const QString& doc_t
     }
 }
 
-void EditDocumentDialog::set_level(const DOCUMENT_LEVEL &level)
+void EditDocumentDialog::set_doc_level(const LEVEL &level)
 {
     level_ = level;
 }
@@ -191,7 +191,7 @@ bool EditDocumentDialog::add_document()
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     QString doc_id_field, obj_field, table, obj_id;
-    if (level_ == DOCUMENT_LEVEL::BLOCK)
+    if (level_ == LEVEL::BLOCK)
     {
         table = "doc_block";
         doc_id_field = "block_doc_id";
@@ -199,14 +199,14 @@ bool EditDocumentDialog::add_document()
         obj_id = block_id_;
 
     }
-    else if (level_ == DOCUMENT_LEVEL::REGISTER)
+    else if (level_ == LEVEL::REGISTER)
     {
         table = "doc_register";
         doc_id_field = "register_doc_id";
         obj_field = "reg_id";
         obj_id = register_id_;
     }
-    else if (level_ == DOCUMENT_LEVEL::SIGNAL)
+    else if (level_ == LEVEL::SIGNAL)
     {
         table = "doc_signal";
         doc_id_field = "signal_doc_id";
@@ -245,17 +245,17 @@ bool EditDocumentDialog::add_document()
 bool EditDocumentDialog::edit_document()
 {
     QString doc_id_field, obj_field, table;
-    if (level_ == DOCUMENT_LEVEL::BLOCK)
+    if (level_ == LEVEL::BLOCK)
     {
         table = "doc_block";
         doc_id_field = "block_doc_id";
     }
-    else if (level_ == DOCUMENT_LEVEL::REGISTER)
+    else if (level_ == LEVEL::REGISTER)
     {
         table = "doc_register";
         doc_id_field = "register_doc_id";
     }
-    else if (level_ == DOCUMENT_LEVEL::SIGNAL)
+    else if (level_ == LEVEL::SIGNAL)
     {
         table = "doc_signal";
         doc_id_field = "signal_doc_id";

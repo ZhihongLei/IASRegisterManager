@@ -15,7 +15,6 @@ class EditDocumentDialog : public QWidget
 public:
     explicit EditDocumentDialog(QWidget *parent = nullptr);
     ~EditDocumentDialog();
-    enum DOCUMENT_LEVEL {BLOCK, REGISTER, SIGNAL};
     bool add_document();
     bool edit_document();
 
@@ -30,7 +29,7 @@ public:
     void set_block_id(const QString& block_id);
     void set_register_id(const QString& reg_id);
     void set_signal_id(const QString& sig_id);
-    void set_level(const DOCUMENT_LEVEL& level);
+    void set_doc_level(const LEVEL& level);
     void setEnabled(bool enabled);
 
     QString generate_html();
@@ -84,7 +83,7 @@ private:
     Ui::EditDocumentDialog *ui;
     QHash<QString, QString> document_type2id_;
     QVector<QString> document_types_;
-    DOCUMENT_LEVEL level_;
+    LEVEL level_;
     QString block_id_, register_id_, signal_id_;
     QString doc_id_;
     QVector<QString> signal_ids_;

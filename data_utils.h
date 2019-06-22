@@ -18,6 +18,8 @@ QVector<QVector<QString> > sort_doubly_linked_list (const QVector<QVector<QStrin
 
 enum DIALOG_MODE {ADD, EDIT};
 
+enum LEVEL {CHIP, BLOCK, REGISTER, SIGNAL};
+
 class Naming
 {
 public:
@@ -36,9 +38,8 @@ extern Naming REGISTER_NAMING;
 extern Naming SIGNAL_NAMING;
 
 QString decimal2hex(QString n, int address_width);
-QString decimal2hex(int n, int address_width);
-QString decimal2hex(long n, int address_width);
-QString decimal2hex(long long n, int address_width);
+QString decimal2hex(quint32 n, int address_width);
+QString decimal2hex(quint64 n, int address_width);
 
 QString normalize_hex(const QString& hex, int address_width);
 

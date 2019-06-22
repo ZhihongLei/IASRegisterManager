@@ -49,7 +49,6 @@ private slots:
     void on_tableSystem_customContextMenuRequested(QPoint pos);
     void on_tableDesigner_customContextMenuRequested(QPoint pos);
     void on_tableRegPage_customContextMenuRequested(QPoint pos);
-    void on_tableDoc_customContextMenuRequested(QPoint pos);
 
     void on_pushButtonAddSys_clicked();
 
@@ -83,10 +82,6 @@ private slots:
 
     void on_tableSystem_cellDoubleClicked(int row, int column);
 
-    void on_pushButtonAddDoc_clicked();
-
-    void on_pushButtonRemoveDoc_clicked();
-
     void on_tableSystem_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
     void on_tableSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
@@ -100,15 +95,6 @@ private slots:
     void on_tableDesigner_cellDoubleClicked(int row, int column);
 
     void on_lineEditSearch_editingFinished();
-
-    void on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
-
-    void on_tableDoc_cellDoubleClicked(int row, int column);
-
-    void on_stackedWidgetDoc_currentChanged(int index);
-
-    void on_document_edited();
-    void on_document_added();
 
     void on_tableDesigner_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
@@ -138,14 +124,8 @@ private:
     void display_register_pages();
     void display_signals();
     void display_registers();
-    void display_documents(const QString& block_id, const QString& reg_id, const QString& sig_id);
-    void display_documents();
     void display_signal_partitions();
     void display_register_partitions();
-
-    void display_overall_documents();
-    void display_documents(const QString level, const QString id);
-
     void refresh_block(QTreeWidgetItem* block_item);
 
     bool search(QTreeWidgetItem* item, const QString& s, bool visible);
