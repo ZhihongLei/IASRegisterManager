@@ -19,20 +19,19 @@ class DocumentEditorView : public QWidget
 public:
     explicit DocumentEditorView(QWidget *parent = nullptr);
     ~DocumentEditorView();
-    void display_documents();
-    void display_overall_documents();
     void set_authenticator(Authenticator* authenticator);
     void set_doc_level(const LEVEL& level);
-    void set_register_width(int width);
-    void set_address_width(int width);
-    void set_msb_first(bool msb_first);
-    void set_user_id(const QString& user_id);
-    void set_chip_id(const QString& chip_id);
+    void login(const QString& username, const QString& user_id);
+    void open_chip(const QString& chip, const QString& chip_id,
+                   int register_width, int address_width, bool msb_first);
     void set_block_id(const QString& block_id);
     void set_register_id(const QString& register_id);
     void set_signal_id(const QString& signal_id);
     void set_install_event_filter();
 
+    void display_documents();
+    void display_overall_documents();
+    QString generate_html_document();
     void close_chip();
 
 private slots:
@@ -60,8 +59,8 @@ private:
     QMenu* context_menu_;
     Authenticator *authenticator_;
     LEVEL level_;
-    QString chip_id_, block_id_, register_id_, signal_id_;
-    QString user_id_;
+    QString chip_, chip_id_, block_id_, register_id_, signal_id_;
+    QString username_, user_id_;
     bool msb_first_;
     int register_width_, address_width_;
 };

@@ -30,7 +30,8 @@ CONFIG += c++11
 
 SOURCES += \
     authenticator.cpp \
-    chip_editor.cpp \
+    chip_editor_view.cpp \
+    chip_navigator.cpp \
     document_editor_view.cpp \
     edit_chip_designer_dialog.cpp \
     edit_document_dialog.cpp \
@@ -54,7 +55,8 @@ SOURCES += \
 
 HEADERS += \
     authenticator.h \
-    chip_editor.h \
+    chip_editor_view.h \
+    chip_navigator.h \
     document_editor_view.h \
     edit_chip_designer_dialog.h \
     edit_document_dialog.h \
@@ -77,7 +79,8 @@ HEADERS += \
     data_utils.h
 
 FORMS += \
-    chip_editor.ui \
+    chip_editor_view.ui \
+    chip_navigator.ui \
     document_editor_view.ui \
     edit_chip_designer_dialog.ui \
     edit_document_dialog.ui \

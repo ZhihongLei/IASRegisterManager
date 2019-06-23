@@ -31,12 +31,6 @@ void EditDocumentDialog::setup_ui()
     ui->framePreview->setVisible(show_preview_);
     ui->pushButtonPreview->setVisible(true);
     ui->pushButtonPreview->setText("Show Preview");
-    /*
-    QVector<QWidget*> widgets = {ui->comboBoxDocType, ui->textEditText,
-                                ui->lineEditImagePath, ui->lineEditImageCaption, ui->pushButtonSelectImage,
-                                ui->tableWidget, ui->lineEditTableRow, ui->lineEditTableColumn, ui->pushButtonPreview, ui->lineEditTableTitle, ui->webEngineView};
-    for (QWidget* w : widgets) w->setEnabled(enabled_);
-    */
 
     ui->splitter->setCollapsible(0, false);
     ui->splitter->setCollapsible(1, false);
@@ -95,7 +89,6 @@ void EditDocumentDialog::set_content(const QString& doc_id, const QString& doc_t
         for (int i = 0; i < rows.toInt(); i++)
             for (int j = 0; j < cols.toInt(); j++)
                 ui->tableWidget->setItem(i, j, new QTableWidgetItem(ss[i*cols.toInt() + j + 3]));
-        //ui->tableWidget->verticalHeader()->resizeSections(QHeaderView::ResizeToContents);
         ui->tableWidget->resizeRowsToContents();
     }
 }
@@ -139,10 +132,11 @@ void EditDocumentDialog::on_comboBoxDocType_currentIndexChanged(int index)
 
 void EditDocumentDialog::on_pushButtonSelectImage_clicked()
 {
-    QString file = QFileDialog::getOpenFileName(this, "Select an image", "", "JPEG file (*.jpg *.jpeg);;PNG file (*.png);;PDF file (*.pdf);; All Files (*.* *)");
-    if (file == "") return;
-    ui->lineEditImagePath->setText(file);
-    QString image = generate_image_html();
+    QString path = QFileDialog::getOpenFileName(this, "Select an image", "", "JPEG file (*.jpg *.jpeg);;PNG file (*.png);;PDF file (*.pdf);; All Files (*.* *)");
+    if (path == "") return;
+    QString caption = ui->lineEditImageCaption->text();
+    ui->lineEditImagePath->setText(path);
+    QString image = generate_image_html(caption, path);
     QString html = html_template;
     html.replace("{HTML}", image).replace("{MATHJAX_ROOT}", mathjax_root);
     ui->webEngineView->setHtml(html, QUrl("file://"));
@@ -150,8 +144,15 @@ void EditDocumentDialog::on_pushButtonSelectImage_clicked()
 
 void EditDocumentDialog::on_lineEditImageCaption_editingFinished()
 {
-    QString file = ui->lineEditImagePath->text();
-    QString image = generate_image_html();
+    QString caption = ui->lineEditImageCaption->text(),
+            path = ui->lineEditImagePath->text();
+    if (!validate_delimiter(caption))
+    {
+        ui->lineEditImageCaption->clear();
+        QMessageBox::warning(this, "Edit Image", "Caption should not contain delimiter " + DOC_DELIMITER + "!");
+        return;
+    }
+    QString image = generate_image_html(caption, path);
     QString html = html_template;
     html.replace("{HTML}", image).replace("{MATHJAX_ROOT}", mathjax_root);
     ui->webEngineView->setHtml(html, QUrl("file://"));
@@ -176,13 +177,6 @@ bool EditDocumentDialog::sanity_check()
 {
     // TODO
     return true;
-}
-
-
-void EditDocumentDialog::accept()
-{
-    //if (!enabled_) return QDialog::reject();
-    //if (sanity_check()) QDialog::accept();
 }
 
 
@@ -320,11 +314,6 @@ void EditDocumentDialog::on_pushButtonPreview_clicked()
                                    QSizePolicy::Fixed, !show_preview_ && index == 1 ? QSizePolicy::Expanding: QSizePolicy::Fixed);
 }
 
-void EditDocumentDialog::on_tableWidget_cellClicked(int row, int column)
-{
-
-}
-
 
 void EditDocumentDialog::on_tableWidget_cellDoubleClicked(int row, int column)
 {
@@ -334,46 +323,60 @@ void EditDocumentDialog::on_tableWidget_cellDoubleClicked(int row, int column)
 
 void EditDocumentDialog::on_tableWidget_cellChanged(int row, int column)
 {
+    QString text = ui->tableWidget->item(row, column) ? ui->tableWidget->item(row, column)->text() : "";
+    if (!validate_delimiter(text))
+    {
+        QMessageBox::warning(this, "Edit Table", "Text should not contain delimiter " + DOC_DELIMITER + "!");
+        if (ui->tableWidget->item(row, column)) ui->tableWidget->item(row, column)->setText(current_text_);
+        return;
+    }
     if (row < 0 || column < 0) return;
     QString html = html_template;
-    QString table = generate_table_html();
+    int rows = ui->lineEditTableRow->text().toInt(),
+        cols = ui->lineEditTableColumn->text().toInt();
+    QVector<QVector<QString> > cells(rows, QVector<QString>(cols, ""));
+    if (rows > 0 && cols > 0)
+    {
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                cells[i][j] = ui->tableWidget->item(i, j) ? ui->tableWidget->item(i, j)->text() : "";
+    }
+    QString caption = ui->lineEditTableCaption->text();
+    QString table = generate_table_html(caption, cells);
     html.replace("{HTML}", table).replace("{MATHJAX_ROOT}", mathjax_root);
     ui->webEngineView->setHtml(html, QUrl("file://"));
     ui->tableWidget->resizeRowsToContents();
 }
 
 
-QString EditDocumentDialog::generate_text_html()
+QString EditDocumentDialog::generate_text_html(const QString& text)
 {
-    QString text = html_text_template;
-    text.replace("{CONTENT}", ui->textEditText->toPlainText());
-    return text;
+    QString text_html = html_text_template;
+    text_html.replace("{CONTENT}", text);
+    return text_html;
 }
 
-QString EditDocumentDialog::generate_image_html()
+QString EditDocumentDialog::generate_image_html(const QString& caption, const QString& path)
 {
-    QString file = ui->lineEditImagePath->text(),
-            caption = ui->lineEditImageCaption->text();
     QString image = html_image_template;
-    image.replace("{CAPTION}", caption).replace("{IMAGE}", file);
+    image.replace("{CAPTION}", caption).replace("{IMAGE}", path);
     return image;
 }
 
-QString EditDocumentDialog::generate_table_html()
+QString EditDocumentDialog::generate_table_html(const QString& caption, const QVector<QVector<QString> >& cells)
 {
     QString table = html_table_template;
     QString table_content;
-    int rows = ui->lineEditTableRow->text().toInt();
-    int cols = ui->lineEditTableColumn->text().toInt();
+    int rows = cells.size();
+    int cols = rows > 0 ? cells[0].size() : 0;
     if (rows < 1 or cols < 1) return "";
 
-    // header
-    if (ui->lineEditTableCaption->text() != "")
-        table_content += ("<caption>" + ui->lineEditTableCaption->text() + "</caption>");
+    if (caption != "")
+        table_content += ("<caption>" + caption + "</caption>");
 
     table_content += "<tr>";
     for (int j = 0; j < cols; j++)
-        table_content += ("<th>" + (ui->tableWidget->item(0, j) ? ui->tableWidget->item(0, j)->text() : "") + "</th>");
+        table_content += ("<th>" + cells[0][j] + "</th>");
     table_content += "</tr>";
     if (rows > 1)
     {
@@ -381,7 +384,7 @@ QString EditDocumentDialog::generate_table_html()
         {
             table_content += "<tr>";
             for (int j = 0; j < cols; j ++)
-                table_content += ("<td>" + (ui->tableWidget->item(i, j) ? ui->tableWidget->item(i, j)->text() : "") + "</td>");
+                table_content += ("<td>" + cells[i][j] + "</td>");
             table_content += "</tr>";
         }
     }
@@ -389,24 +392,45 @@ QString EditDocumentDialog::generate_table_html()
     return table;
 }
 
-QString EditDocumentDialog::generate_html()
+QString EditDocumentDialog::generate_html(const QString& doc_type, const QString& content)
 {
-    if (ui->comboBoxDocType->currentIndex() == 0) return generate_text_html();
-    if (ui->comboBoxDocType->currentIndex() == 1) return generate_image_html();
-    if (ui->comboBoxDocType->currentIndex() == 2) return generate_table_html();
+    if (doc_type == ui->comboBoxDocType->itemText(0)) // text
+    {
+        QString text = content;
+        return generate_text_html(text);
+    }
+    else if (doc_type == ui->comboBoxDocType->itemText(1)) // image
+    {
+        ui->comboBoxDocType->setCurrentIndex(1);
+        QStringList ss = content.split(DOC_DELIMITER);
+        QString caption = ss[0], path = ss[1];
+        return generate_image_html(caption, path);
+    }
+    else if (doc_type == ui->comboBoxDocType->itemText(2)) // table
+    {
+        ui->comboBoxDocType->setCurrentIndex(2);
+        QStringList ss = content.split(DOC_DELIMITER);
+        QString caption = ss[0];
+        int rows = ss[1].toInt(), cols = ss[2].toInt();
+        QVector<QVector<QString> > cells(rows, QVector<QString>(cols, ""));
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                cells[i][j] = ss[i*cols + j + 3];
+        return generate_table_html(caption, cells);
+    }
     return "";
 }
 
-bool EditDocumentDialog::validate_table_cell_text(const QString& text)
+
+bool EditDocumentDialog::validate_delimiter(const QString& text)
 {
     return !text.contains(DOC_DELIMITER);
 }
 
-
 void EditDocumentDialog::on_textEditText_textChanged()
 {
     QString html = html_template;
-    QString text = generate_text_html();
+    QString text = generate_text_html(ui->textEditText->toPlainText());
     html.replace("{HTML}", text).replace("{MATHJAX_ROOT}", mathjax_root);
     ui->webEngineView->setHtml(html, QUrl("file://"));
 }
@@ -420,6 +444,7 @@ void EditDocumentDialog::on_buttonBox_rejected()
 
 void EditDocumentDialog::on_buttonBox_accepted()
 {
+    if (!enabled_) on_buttonBox_rejected();
     if (sanity_check())
     {
         if ((mode_ == DIALOG_MODE::ADD && add_document()) || (mode_ == DIALOG_MODE::EDIT && edit_document()))
@@ -451,6 +476,13 @@ void EditDocumentDialog::clear()
 
 void EditDocumentDialog::on_lineEditTableCaption_editingFinished()
 {
+    QString caption = ui->lineEditTableCaption->text();
+    if (!validate_delimiter(caption))
+    {
+        ui->lineEditTableCaption->clear();
+        QMessageBox::warning(this, "Edit Table", "Caption should not contain delimiter " + DOC_DELIMITER + "!");
+        return;
+    }
     on_tableWidget_cellChanged(0, 0);
 }
 
@@ -461,5 +493,6 @@ void EditDocumentDialog::setEnabled(bool enabled)
                                 ui->lineEditImagePath, ui->lineEditImageCaption, ui->pushButtonSelectImage,
                                 ui->tableWidget, ui->lineEditTableRow, ui->lineEditTableColumn, ui->lineEditTableCaption};
     for (QWidget* w : widgets) w->setEnabled(enabled);
+    enabled_ = enabled;
 }
 

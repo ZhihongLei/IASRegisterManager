@@ -32,10 +32,10 @@ public:
     void set_doc_level(const LEVEL& level);
     void setEnabled(bool enabled);
 
-    QString generate_html();
-    QString generate_text_html();
-    QString generate_image_html();
-    QString generate_table_html();
+    QString generate_html(const QString& doc_type, const QString& content);
+    static QString generate_text_html(const QString& text);
+    static QString generate_image_html(const QString& caption, const QString& path);
+    static QString generate_table_html(const QString& caption, const QVector<QVector<QString> >& cells);
 
 signals:
     void document_added();
@@ -56,7 +56,6 @@ private slots:
 
     void on_pushButtonPreview_clicked();
 
-    void on_tableWidget_cellClicked(int row, int column);
     void on_tableWidget_cellDoubleClicked(int row, int column);
 
     void on_tableWidget_cellChanged(int row, int column);
@@ -74,12 +73,11 @@ private slots:
 private:
     void setup_ui();
     bool sanity_check();
-    bool validate_table_cell_text(const QString& text);
+    bool validate_delimiter(const QString& text);
 
     //bool validate_table_title(const QString& text);
     //bool validate_image_caption(const QString& text);
 
-    void accept();
     Ui::EditDocumentDialog *ui;
     QHash<QString, QString> document_type2id_;
     QVector<QString> document_types_;

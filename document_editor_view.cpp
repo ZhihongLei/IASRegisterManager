@@ -62,7 +62,7 @@ void DocumentEditorView::on_actionAdd_triggered()
 
 void DocumentEditorView::on_actionEdit_triggered()
 {
-    if (ui->tableDoc->hasFocus()); //on_treeWidgetDoc_itemDoubleClicked(ui->treeWidgetDoc->currentItem(), 0);
+    if (ui->tableDoc->hasFocus()) on_tableDoc_cellDoubleClicked(ui->tableDoc->currentRow(), 0);
 }
 
 void DocumentEditorView::on_actionRemove_triggered()
@@ -87,15 +87,23 @@ void DocumentEditorView::set_doc_level(const LEVEL& level)
     ui->stackedWidgetDoc->setCurrentIndex(level == LEVEL::CHIP ? 0 : 1);
 }
 
-void DocumentEditorView::set_user_id(const QString& user_id)
+void DocumentEditorView::login(const QString &username, const QString &user_id)
 {
+    username_ = username;
     user_id_ = user_id;
 }
 
-void DocumentEditorView::set_chip_id(const QString& chip_id)
+void DocumentEditorView::open_chip(const QString &chip, const QString &chip_id, int register_width, int address_width, bool msb_first)
 {
+    chip_ = chip;
     chip_id_ = chip_id;
+    register_width_ = register_width;
+    address_width_ = address_width;
+    msb_first_ = msb_first;
+    level_ = LEVEL::CHIP;
+    display_overall_documents();
 }
+
 void DocumentEditorView::set_block_id(const QString& block_id)
 {
     block_id_ = block_id;
@@ -107,21 +115,6 @@ void DocumentEditorView::set_register_id(const QString& register_id)
 void DocumentEditorView::set_signal_id(const QString& signal_id)
 {
     signal_id_ = signal_id;
-}
-
-void DocumentEditorView::set_address_width(int width)
-{
-    address_width_ = width;
-}
-
-void DocumentEditorView::set_register_width(int width)
-{
-    register_width_ = width;
-}
-
-void DocumentEditorView::set_msb_first(bool msb_first)
-{
-    msb_first_ = msb_first;
 }
 
 void DocumentEditorView::set_install_event_filter()
@@ -226,6 +219,8 @@ void DocumentEditorView::display_documents()
         display_overall_documents();
         return;
     }
+    set_install_event_filter();
+
     ui->tableDoc->setRowCount(0);
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
@@ -262,9 +257,14 @@ void DocumentEditorView::display_documents()
 
 void DocumentEditorView::display_overall_documents()
 {
-    ui->documentEditor->set_mode(DIALOG_MODE::EDIT);
     ui->webDocOverview->setHtml("", QUrl("file://"));
+    QString html = generate_html_document();
+    ui->webDocOverview->setHtml(html, QUrl("file://"));
+}
 
+
+QString DocumentEditorView::generate_html_document()
+{
     DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
     QVector<QPair<QString, QString> > key_value_pairs;
@@ -304,9 +304,7 @@ void DocumentEditorView::display_overall_documents()
         table_of_content += "<li>\n<a href=#" + block_name + ">" + block_name + "</a>\n</li>\n";
         for (const auto& item : items)
         {
-            ui->documentEditor->clear();
-            ui->documentEditor->set_content(item[0], item[1], item[2]);
-            block_content = block_content + ui->documentEditor->generate_html() + '\n';
+            block_content = block_content + ui->documentEditor->generate_html(item[1], item[2]) + '\n';
         }
 
         QVector<QVector<QString> > registers;
@@ -418,9 +416,7 @@ void DocumentEditorView::display_overall_documents()
 
             for (const auto& item : items)
             {
-                ui->documentEditor->clear();
-                ui->documentEditor->set_content(item[0], item[1], item[2]);
-                block_content = block_content + ui->documentEditor->generate_html() + '\n';
+                block_content = block_content + ui->documentEditor->generate_html(item[1], item[2]) + '\n';
             }
 
             QSet<QString> signal_set;
@@ -448,9 +444,7 @@ void DocumentEditorView::display_overall_documents()
                 QString bullet = sig_name + " ";
                 for (const auto& signal_item : signal_items)
                 {
-                    ui->documentEditor->clear();
-                    ui->documentEditor->set_content(signal_item[0], signal_item[1], signal_item[2]);
-                    bullet += ui->documentEditor->generate_html() + "<br>\n" ;
+                    bullet += ui->documentEditor->generate_html(signal_item[1], signal_item[2]) + "<br>\n" ;
                 }
                 bullet = "<li>\n" + bullet + "</li>\n";
                 bullet_list += bullet;
@@ -467,7 +461,7 @@ void DocumentEditorView::display_overall_documents()
     html_content = table_of_content + html_content;
     QString html = html_template;
     html.replace("{HTML}", html_content).replace("{MATHJAX_ROOT}", mathjax_root);
-    ui->webDocOverview->setHtml(html, QUrl("file://"));
+    return html;
 }
 
 void DocumentEditorView::close_chip()

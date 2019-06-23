@@ -19,7 +19,7 @@ const static QString html_template = "\
 </body>\n\
 </html>";
 
-const static QString html_text_template = "{CONTENT}\n";
+const static QString html_text_template = "{CONTENT}<br>\n";
 
 const static QString html_table_template = "<style>\n\
         table {border-top: 1px solid black; border-bottom: 1px solid black}\n\

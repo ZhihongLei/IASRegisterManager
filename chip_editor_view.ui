@@ -1,19 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ChipEditor</class>
- <widget class="QWidget" name="ChipEditor">
+ <class>ChipEditorView</class>
+ <widget class="QWidget" name="ChipEditorView">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>529</width>
-    <height>484</height>
+    <width>512</width>
+    <height>460</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_10">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
     <widget class="QStackedWidget" name="stackedWidgetChipEditor">
      <property name="frameShape">
@@ -23,7 +35,7 @@
       <enum>QFrame::Raised</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="pageChip">
       <layout class="QVBoxLayout" name="verticalLayout_12">
@@ -517,7 +529,12 @@
                   </column>
                   <column>
                    <property name="text">
-                    <string>Description</string>
+                    <string>Control Signal</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Page Count</string>
                    </property>
                   </column>
                  </widget>
@@ -639,7 +656,7 @@
           <enum>QTabWidget::Rounded</enum>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="usesScrollButtons">
           <bool>false</bool>
@@ -681,7 +698,7 @@
              <property name="childrenCollapsible">
               <bool>false</bool>
              </property>
-             <widget class="QWidget" name="layoutWidget">
+             <widget class="QWidget" name="layoutWidget_2">
               <layout class="QVBoxLayout" name="verticalLayout_2">
                <item>
                 <widget class="QTableWidget" name="tableSignal">
@@ -744,6 +761,11 @@
                  <column>
                   <property name="text">
                    <string>Value</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Port</string>
                   </property>
                  </column>
                 </widget>
@@ -818,7 +840,7 @@
                </item>
               </layout>
              </widget>
-             <widget class="QWidget" name="layoutWidget_2">
+             <widget class="QWidget" name="layoutWidget_3">
               <layout class="QVBoxLayout" name="verticalLayout_3">
                <item>
                 <widget class="QTableWidget" name="tableSigPart">
@@ -845,7 +867,7 @@
                  </attribute>
                  <column>
                   <property name="text">
-                   <string>Signal Partition ID</string>
+                   <string>Signal Register Partition Mapping ID</string>
                   </property>
                  </column>
                  <column>
@@ -856,11 +878,6 @@
                  <column>
                   <property name="text">
                    <string>Register Partition</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Register Partition ID</string>
                   </property>
                  </column>
                 </widget>
@@ -964,7 +981,7 @@
              <property name="childrenCollapsible">
               <bool>false</bool>
              </property>
-             <widget class="QWidget" name="layoutWidget_3">
+             <widget class="QWidget" name="layoutWidget_4">
               <layout class="QVBoxLayout" name="verticalLayout">
                <item>
                 <widget class="QTableWidget" name="tableRegister">
@@ -1002,6 +1019,11 @@
                  <column>
                   <property name="text">
                    <string>Register Type</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Presumed Address</string>
                   </property>
                  </column>
                 </widget>
@@ -1100,7 +1122,7 @@
               </attribute>
               <column>
                <property name="text">
-                <string>Register Partition ID</string>
+                <string>Signal Register Partition Mapping ID</string>
                </property>
               </column>
               <column>
@@ -1111,11 +1133,6 @@
               <column>
                <property name="text">
                 <string>Signal Partition</string>
-               </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Signal Partition ID</string>
                </property>
               </column>
              </widget>
