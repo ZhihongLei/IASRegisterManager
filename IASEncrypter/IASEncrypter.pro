@@ -27,11 +27,11 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         encrypter_dialog.cpp \
-        qaesencryption.cpp
+        ../qaesencryption.cpp
 
 HEADERS += \
         encrypter_dialog.h \
-        qaesencryption.h
+        ../qaesencryption.h
 
 FORMS += \
         encrypter_dialog.ui

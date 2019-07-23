@@ -22,7 +22,7 @@ public:
     static bool create_database(const QString &dbname);
     static bool delete_database(const QString &dbname);
 
-    static bool show_databases(const QString &constraint, QVector<QString>& dbs);
+    static bool show_databases(QVector<QString>& dbs, const QString &constraint="");
     static bool create_table(const QString &tablename,
                      const QVector<QVector<QString> > &field_definitions,
                      const QString &primary_key = "");
@@ -98,30 +98,7 @@ public:
                    const QString &constraint);
 
     static bool get_next_auto_increment_id(const QString& tablename, const QString& id_field, QString& id);
-
     static QString get_error_message();
-
-    static bool remove_signal(const QString& sig_id, const QString& reg_sig_id);
-    static bool remove_register(const QString& reg_id);
-    static bool remove_block(const QString& block_id);
-    static bool remove_chip(const QString& chip_id);
-    static bool remove_user(const QString& my_user_id, const QString& user_id);
-
-    static bool copy_row(const QString& tablename, const QString& id_field,
-                         const QVector<QString>& data_fields,
-                         const QHash<QString, QHash<QString, QString> >& in_old2news,
-                         QHash<QString, QString>& out_old2new,
-                         bool order, const QString& key, const QString& value);
-    static bool copy_row(const QString& tablename, const QString& id_field,
-                         const QVector<QString>& data_fields,
-                         const QHash<QString, QHash<QString, QString> >& in_old2news,
-                         QHash<QString, QString>& out_old2new,
-                         bool order, const QVector<QPair<QString, QString>> &key_value_pairs);
-    static bool copy_row(const QString& tablename, const QString& id_field,
-                         const QVector<QString>& data_fields,
-                         const QHash<QString, QHash<QString, QString> >& in_old2news,
-                         QHash<QString, QString>& out_old2new,
-                         bool order, const QString& constraint);
 
 private:
     static bool execute(const QString &statement);

@@ -1,6 +1,6 @@
 #include "database_initializer_dialog.h"
 #include "ui_database_initializer_dialog.h"
-#include "database_handler.h"
+#include "../database_handler.h"
 #include <QMessageBox>
 
 DatabaseInitializerDialog::DatabaseInitializerDialog(QWidget *parent) :

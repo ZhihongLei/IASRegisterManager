@@ -31,15 +31,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
-        database_handler.cpp \
         database_initializer_dialog.cpp \
         login_dialog.cpp \
+        ../database_handler.cpp \
         main.cpp
 
 HEADERS += \
-    database_handler.h \
     database_initializer_dialog.h \
-    login_dialog.h
+    login_dialog.h \
+    ../database_handler.h
 
 FORMS += \
     database_initializer_dialog.ui \

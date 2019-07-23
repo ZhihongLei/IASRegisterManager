@@ -3,6 +3,7 @@
 #include "global_variables.h"
 #include "database_handler.h"
 #include "edit_chip_dialog.h"
+#include "database_utils.h"
 #include <QDialogButtonBox>
 #include <QPushButton>
 #include <QMessageBox>
@@ -190,7 +191,7 @@ void OpenChipDialog::on_pushButtonRemoveChip_clicked()
                          "Are you sure you want to remove this chip?\nEverything belonging to this chip will also be removed.\nThis operation is not reversible!",
                          QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
-    if (!DataBaseHandler::remove_chip(chip_id))
+    if (!DatabaseUtils::remove_chip(chip_id))
     {
         DataBaseHandler::rollback();
         QMessageBox::warning(this, "Remove Chip", "Unable to remove this chip.Error Message: " + DataBaseHandler::get_error_message());

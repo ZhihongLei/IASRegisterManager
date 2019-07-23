@@ -2,6 +2,7 @@
 #include "ui_edit_chip_dialog.h"
 #include "database_handler.h"
 #include "global_variables.h"
+#include "database_utils.h"
 #include <QRegExp>
 #include <QRegExpValidator>
 #include <QMessageBox>
@@ -287,7 +288,7 @@ bool EditChipDialog::add_chip_from()
     in_old2news["owner"]["default"] = get_owner_id();
     in_old2news["chip_name"]["default"] = get_chip_name();
     in_old2news["freeze"]["default"] = "0";
-    success = success && DataBaseHandler::copy_row("chip_chip", "chip_id",
+    success = success && DatabaseUtils::copy_row("chip_chip", "chip_id",
                                 {"chip_name", "owner", "register_width", "address_width", "msb_first", "freeze"},
                               in_old2news, out_old2new, false, "chip_id", old_chip_id);
     chip_id_ = out_old2new[old_chip_id];
@@ -301,7 +302,7 @@ bool EditChipDialog::add_chip_from()
 
     in_old2news["responsible"] = QHash<QString, QString>();
     in_old2news["responsible"]["default"] = get_owner_id();
-    success = success && DataBaseHandler::copy_row("block_system_block", "block_id",
+    success = success && DatabaseUtils::copy_row("block_system_block", "block_id",
                             {"block_name", "abbreviation", "chip_id", "responsible", "start_address"},
                               in_old2news, out_old2new, true, "chip_id", old_chip_id);
     in_old2news["block_id"] = out_old2new;
@@ -321,12 +322,12 @@ bool EditChipDialog::add_chip_from()
     in_old2news["sig_id"] = QHash<QString, QString>();
     for (const QString& block_id : in_old2news["block_id"].keys())
     {
-        success = success && DataBaseHandler::copy_row("block_register", "reg_id", {"reg_name", "block_id", "reg_type_id"},
+        success = success && DatabaseUtils::copy_row("block_register", "reg_id", {"reg_name", "block_id", "reg_type_id"},
                               in_old2news, out_old2new, true, "block_id", block_id);
         for (const QString& key : out_old2new.keys()) in_old2news["reg_id"][key] = out_old2new[key];
         out_old2new.clear();
 
-        success = success && DataBaseHandler::copy_row("signal_signal", "sig_id", {"sig_name", "block_id", "width", "sig_type_id", "add_port"},
+        success = success && DatabaseUtils::copy_row("signal_signal", "sig_id", {"sig_name", "block_id", "width", "sig_type_id", "add_port"},
                                   in_old2news, out_old2new, false, "block_id", block_id);
         for (const QString& key : out_old2new.keys()) in_old2news["sig_id"][key] = out_old2new[key];
         out_old2new.clear();
@@ -336,7 +337,7 @@ bool EditChipDialog::add_chip_from()
     in_old2news["reg_sig_id"] = QHash<QString, QString>();
     for (const QString& sig_id : in_old2news["sig_id"].keys())
     {
-        success = success && DataBaseHandler::copy_row("signal_reg_signal", "reg_sig_id", {"sig_id", "init_value", "reg_type_id"},
+        success = success && DatabaseUtils::copy_row("signal_reg_signal", "reg_sig_id", {"sig_id", "init_value", "reg_type_id"},
                                   in_old2news, out_old2new, false, "sig_id", sig_id);
         for (const QString& key : out_old2new.keys()) in_old2news["reg_sig_id"][key] = out_old2new[key];
         out_old2new.clear();
@@ -345,36 +346,36 @@ bool EditChipDialog::add_chip_from()
 
     for (const QString& reg_id : in_old2news["reg_id"].keys())
     {
-        success = success && DataBaseHandler::copy_row("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id",
+        success = success && DatabaseUtils::copy_row("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id",
                                 {"reg_sig_id", "sig_lsb", "sig_msb", "reg_id", "reg_lsb", "reg_msb"},
                                   in_old2news, out_old2new, false, "reg_id", reg_id);
         out_old2new.clear();
     }
 
     in_old2news["ctrl_sig"] = in_old2news["sig_id"];
-    success = success && DataBaseHandler::copy_row("chip_register_page", "page_id", {"page_name", "chip_id", "ctrl_sig", "page_count"},
+    success = success && DatabaseUtils::copy_row("chip_register_page", "page_id", {"page_name", "chip_id", "ctrl_sig", "page_count"},
                               in_old2news, out_old2new, false, "chip_id", old_chip_id);
     in_old2news["page_id"] = out_old2new;
     out_old2new.clear();
 
     for (const QString& page_id : in_old2news["page_id"].keys())
     {
-        success = success && DataBaseHandler::copy_row("chip_register_page_content", "page_content_id", {"page_id", "reg_id"},
+        success = success && DatabaseUtils::copy_row("chip_register_page_content", "page_content_id", {"page_id", "reg_id"},
                                   in_old2news, out_old2new, false, "page_id", page_id);
         out_old2new.clear();
     }
 
     // doc
-   success = success &&  DataBaseHandler::copy_row("doc_chip", "chip_doc_id", {"chip_id", "doc_type_id", "content"},
+   success = success &&  DatabaseUtils::copy_row("doc_chip", "chip_doc_id", {"chip_id", "doc_type_id", "content"},
                               in_old2news, out_old2new, true, "chip_id", old_chip_id);
     for (const QString& block_id : in_old2news["block_id"].keys())
-        success = success && DataBaseHandler::copy_row("doc_block", "block_doc_id", {"block_id", "doc_type_id", "content"},
+        success = success && DatabaseUtils::copy_row("doc_block", "block_doc_id", {"block_id", "doc_type_id", "content"},
                                   in_old2news, out_old2new, true, "block_id", block_id);
     for (const QString& reg_id : in_old2news["reg_id"].keys())
-        success = success && DataBaseHandler::copy_row("doc_register", "register_doc_id", {"reg_id", "doc_type_id", "content"},
+        success = success && DatabaseUtils::copy_row("doc_register", "register_doc_id", {"reg_id", "doc_type_id", "content"},
                                   in_old2news, out_old2new, true, "reg_id", reg_id);
     for (const QString& sig_id : in_old2news["sig_id"].keys())
-        success = success && DataBaseHandler::copy_row("doc_signal", "signal_doc_id", {"sig_id", "doc_type_id", "content"},
+        success = success && DatabaseUtils::copy_row("doc_signal", "signal_doc_id", {"sig_id", "doc_type_id", "content"},
                                   in_old2news, out_old2new, true, "sig_id", sig_id);
     return success;
 }

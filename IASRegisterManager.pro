@@ -32,6 +32,7 @@ SOURCES += \
     authenticator.cpp \
     chip_editor_view.cpp \
     chip_navigator.cpp \
+    database_utils.cpp \
     document_editor_view.cpp \
     document_generation_dialog.cpp \
     document_generator.cpp \
@@ -65,6 +66,7 @@ HEADERS += \
     authenticator.h \
     chip_editor_view.h \
     chip_navigator.h \
+    database_utils.h \
     document_editor_view.h \
     document_generation_dialog.h \
     document_generator.h \

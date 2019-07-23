@@ -3,6 +3,7 @@
 #include "create_user_dialog.h"
 #include "database_handler.h"
 #include "global_variables.h"
+#include "database_utils.h"
 #include <QMessageBox>
 #include <QTableWidgetItem>
 
@@ -80,7 +81,7 @@ void UserManagementDialog::on_pushButtonRemoveUser_clicked()
         {
             if (QMessageBox::question(this, "Remove User", "Are you sure you want to remove " + username,
                                       QMessageBox::Yes|QMessageBox::No) != QMessageBox::Yes) return;
-            if (DataBaseHandler::remove_user(myself_, user_id))
+            if (DatabaseUtils::remove_user(myself_, user_id))
             {
                 DataBaseHandler::commit();
                 ui->tableWidgetUser->removeRow(row);

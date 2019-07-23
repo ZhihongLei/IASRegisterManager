@@ -10,6 +10,7 @@
 #include "edit_signal_partition_dialog.h"
 #include "edit_register_page_dialog.h"
 #include "edit_chip_dialog.h"
+#include "database_utils.h"
 #include <QTableWidgetItem>
 #include <QMimeData>
 #include <QDropEvent>
@@ -480,7 +481,7 @@ void ChipEditorView::on_pushButtonRemoveBlock_clicked()
                          QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
     QString block_id = ui->tableBlock->item(row, 0)->text();
-    if (!DataBaseHandler::remove_block(block_id))
+    if (!DatabaseUtils::remove_block(block_id))
     {
         DataBaseHandler::rollback();
         QMessageBox::warning(this, "Remove System Block", "Unable to remove system block.\nError message: " + DataBaseHandler::get_error_message());
@@ -588,7 +589,7 @@ void ChipEditorView::on_pushButtonRemoveSig_clicked()
     QString sig_id = ui->tableSignal->item(row, 0)->text(),
             reg_sig_id = ui->tableSignal->item(row, 1)->text();
 
-    if (!DataBaseHandler::remove_signal(sig_id, reg_sig_id))
+    if (!DatabaseUtils::remove_signal(sig_id, reg_sig_id))
     {
         DataBaseHandler::rollback();
         QMessageBox::warning(this, "Remove Signal", "Unable to remove signal.\nError message: " + DataBaseHandler::get_error_message());
@@ -616,7 +617,7 @@ void ChipEditorView::on_pushButtonRemoveReg_clicked()
                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) return;
 
     QString reg_id = ui->tableRegister->item(row, 0)->text();
-    if (!DataBaseHandler::remove_register(reg_id))
+    if (!DatabaseUtils::remove_register(reg_id))
     {
         DataBaseHandler::rollback();
         QMessageBox::warning(this, "Remove Register", "Unable to remove register.\nError message: " + DataBaseHandler::get_error_message());

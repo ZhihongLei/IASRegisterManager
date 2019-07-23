@@ -1,7 +1,7 @@
 #include "encrypter_dialog.h"
 #include "ui_encrypter_dialog.h"
 #include <QCryptographicHash>
-#include "qaesencryption.h"
+#include "../qaesencryption.h"
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDateTime>

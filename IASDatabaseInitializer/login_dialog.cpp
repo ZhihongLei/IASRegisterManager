@@ -1,6 +1,6 @@
 #include "login_dialog.h"
 #include "ui_login_dialog.h"
-#include "database_handler.h"
+#include "../database_handler.h"
 #include <QMessageBox>
 
 LoginDialog::LoginDialog(QWidget *parent) :
