@@ -7,8 +7,10 @@
 #include <QPushButton>
 #include "data_utils.h"
 #include <QDebug>
+#include <QMessageBox>
 
 EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
+                                                     const QString& signal_id,
                                                      const QString& reg_sig_id,
                                                      const QString& reg_type_id,
                                                      int signal_width,
@@ -17,26 +19,42 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
                                                      QWidget *parent) :
     QDialog(parent),
     EditSignalPartitionLogic(register_width, msb_first),
+    ui(new Ui::EditSignalPartitionDialog),
     block_id_(block_id),
     reg_type_id_(reg_type_id),
     reg_sig_id_(reg_sig_id),
-    signal_width_(signal_width),
-    ui(new Ui::EditSignalPartitionDialog)
+    signal_width_(signal_width)
 {
     ui->setupUi(this);
+    setWindowTitle("Add Signal Partition");
     comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
     comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
     connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigLSB_currentIndexChanged(int)));
     connect(comboBoxSigMSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigMSB_currentIndexChanged(int)));
 
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", reg_type_id_}}, items);
+    bool success = true;
+
+    QSet<QString> registers_in_page;
+    success = success && DataBaseHandler::show_items("chip_register_page", {"page_id"}, "ctrl_sig", signal_id, items);
     for (const auto& item : items)
     {
-        ui->comboBoxReg->addItem(REGISTER_NAMING.get_extended_name(item[0]));
-        reg_name2id_[REGISTER_NAMING.get_extended_name(item[0])] = item[1];
+        QString page_id = item[0];
+        QVector<QVector<QString> > regs;
+        success = success && DataBaseHandler::show_items("chip_register_page_content", {"reg_id"}, "page_id", page_id, regs);
+        for (const auto& reg : regs)
+            registers_in_page.insert(reg[0]);
     }
+
+    items.clear();
+    success = success && DataBaseHandler::show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", reg_type_id_}}, items);
+    for (const auto& item : items)
+    {
+        if (registers_in_page.contains(item[1])) continue;
+        ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
+        reg_name2id_[GLOBAL_REGISTER_NAMING.get_extended_name(item[0])] = item[1];
+    }
+    if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.");
 
     make_occupied_signal_parts();
     make_available_signal_parts(signal_width);
@@ -46,17 +64,6 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
 EditSignalPartitionDialog::~EditSignalPartitionDialog()
 {
     delete ui;
-}
-
-void EditSignalPartitionDialog::make_occupied_signal_parts()
-{
-    QVector<QVector<QString> > items;
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    dbhandler.show_items("block_sig_reg_partition_mapping", {"sig_lsb", "sig_msb"}, "reg_sig_id", reg_sig_id_, items);
-    for (const auto& item : items)
-    {
-        occupied_signal_parts_.push_back({item[0].toInt(), item[1].toInt()});
-    }
 }
 
 QString EditSignalPartitionDialog::get_signal_lsb() const
@@ -98,12 +105,51 @@ QString EditSignalPartitionDialog::get_sig_reg_part_mapping_id() const
     return sig_reg_part_mapping_id_;
 }
 
+int EditSignalPartitionDialog::get_current_signal_lsb() const
+{
+    if (comboBoxSigLSB_->currentIndex() < 0) return -1;
+    return comboBoxSigLSB_->currentText().toInt();
+}
+
+int EditSignalPartitionDialog::get_current_signal_msb() const
+{
+    if (comboBoxSigMSB_->currentIndex() < 0) return -1;
+    return comboBoxSigMSB_->currentText().toInt();
+}
+
+void EditSignalPartitionDialog::make_occupied_signal_parts()
+{
+    QVector<QVector<QString> > items;
+
+    if (!DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"sig_lsb", "sig_msb"}, "reg_sig_id", reg_sig_id_, items))
+        QMessageBox::warning(this, windowTitle(), "Unable to read existing signal partitions from database.\nExceptions might happen.\nPlease try again!");
+    for (const auto& item : items)
+    {
+        occupied_signal_parts_.push_back({item[0].toInt(), item[1].toInt()});
+    }
+}
+
+void EditSignalPartitionDialog::display_available_register_parts()
+{
+    const partition_list& parts = get_available_register_parts_by_length(get_partition_length());
+    ui->comboBoxRegPart->clear();
+    for (const auto& segment : parts)
+    {
+        if (msb_first_)
+            ui->comboBoxRegPart->insertItem(0, "<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
+        else
+            ui->comboBoxRegPart->addItem("<" + QString::number(segment.first) + ":" + QString::number(segment.second) + ">");
+    }
+    if (msb_first_ && ui->comboBoxRegPart->count() > 0) ui->comboBoxRegPart->setCurrentIndex(0);
+    ui->comboBoxReg->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
+}
+
 void EditSignalPartitionDialog::accept()
 {
     // TODO: check validity
     QDialog::accept();
 }
-
 
 void EditSignalPartitionDialog::on_comboBoxSigLSB_currentIndexChanged(int index)
 {
@@ -183,10 +229,7 @@ void EditSignalPartitionDialog::on_comboBoxReg_currentIndexChanged(int index)
         comboBoxSigMSB_->blockSignals(false);
         emit(comboBoxSigMSB_->currentIndexChanged(comboBoxSigMSB_->currentIndex()));
     }
-
 }
-
-
 
 bool EditSignalPartitionDialog::add_signal_partition()
 {
@@ -194,34 +237,12 @@ bool EditSignalPartitionDialog::add_signal_partition()
             sig_msb = comboBoxSigMSB_->currentText();
     QString reg_lsb = get_register_lsb(),
             reg_msb = get_register_msb();
-    return EditSignalPartitionLogic::add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, get_register_id(), reg_sig_id_);
-
-}
-
-int EditSignalPartitionDialog::get_current_signal_lsb()
-{
-    if (comboBoxSigLSB_->currentIndex() < 0) return -1;
-    return comboBoxSigLSB_->currentText().toInt();
-}
-
-int EditSignalPartitionDialog::get_current_signal_msb()
-{
-    if (comboBoxSigMSB_->currentIndex() < 0) return -1;
-    return comboBoxSigMSB_->currentText().toInt();
-}
-
-void EditSignalPartitionDialog::display_available_register_parts()
-{
-    const partition_list& parts = get_available_register_parts_by_length(get_partition_length());
-    ui->comboBoxRegPart->clear();
-    for (const auto& segment : parts)
+    if(EditSignalPartitionLogic::add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, get_register_id(), reg_sig_id_))
     {
-        if (msb_first_)
-            ui->comboBoxRegPart->insertItem(0, "<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
-        else
-            ui->comboBoxRegPart->addItem("<" + QString::number(segment.first) + ":" + QString::number(segment.second) + ">");
+        DataBaseHandler::commit();
+        return true;
     }
-    if (msb_first_ && ui->comboBoxRegPart->count() > 0) ui->comboBoxRegPart->setCurrentIndex(0);
-    ui->comboBoxReg->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0);
+    DataBaseHandler::rollback();
+    QMessageBox::warning(this, windowTitle(), "Unable to add signal partition.\nPlease try again!");
+    return false;
 }

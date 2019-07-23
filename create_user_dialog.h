@@ -14,11 +14,11 @@ class CreateUserDialog : public QDialog
 public:
     explicit CreateUserDialog(QWidget *parent = nullptr);
     ~CreateUserDialog();
-    QString get_username();
-    QString get_user_id();
-    QString get_db_role();
-    QString get_db_role_id();
-    QString get_password();
+    QString get_username() const;
+    QString get_user_id() const;
+    QString get_db_role() const;
+    QString get_db_role_id() const;
+    QString get_password() const;
     bool create_user();
 
 private:

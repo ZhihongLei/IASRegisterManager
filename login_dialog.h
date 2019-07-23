@@ -14,19 +14,22 @@ class LoginDialog : public QDialog
 public:
     explicit LoginDialog(QWidget *parent = nullptr);
     ~LoginDialog();
-    QString get_username();
-    QString get_password();
+    void set_username(const QString& username);
+    void set_password(const QString& password);
+    void set_save_password(bool save=true);
+
+    QString get_username() const;
+    QString get_password() const;
+    bool save_password() const;
+    bool login();
     void clear();
 
 signals:
     void logged_in(QString);
 
 private:
-    bool sanity_check();
     void accept();
-
     Ui::LoginDialog *ui;
-
 };
 
 #endif // LOGIN_DIALOG_H

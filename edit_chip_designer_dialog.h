@@ -25,15 +25,15 @@ public:
     bool edit_designer();
 
 private:
-    void setup_ui();
+    bool setup_ui();
     void accept();
     bool sanity_check();
     Ui::EditChipDesignerDialog *ui;
-    QVector<QString> project_role_ids_;
     const QString chip_id_;
-    QString chip_designer_id_;
     const DIALOG_MODE mode_;
+    QString chip_designer_id_;
     const bool enabled_;
+    QVector<QString> project_role_ids_;
 
 };
 

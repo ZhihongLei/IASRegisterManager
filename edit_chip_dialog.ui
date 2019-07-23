@@ -27,7 +27,7 @@
     <number>30</number>
    </property>
    <item>
-    <layout class="QGridLayout" name="layoutMain">
+    <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="0">
       <widget class="QLabel" name="labelChipName">
        <property name="sizePolicy">
@@ -54,6 +54,16 @@
       <widget class="QLineEdit" name="lineEditChipName"/>
      </item>
      <item row="1" column="0">
+      <widget class="QLabel" name="labelChipOwner">
+       <property name="text">
+        <string>Chip Owner</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="comboBoxChipOwner"/>
+     </item>
+     <item row="2" column="0">
       <widget class="QLabel" name="labelRegWidth">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -75,10 +85,10 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="2" column="1">
       <widget class="QLineEdit" name="lineEditRegWidth"/>
      </item>
-     <item row="1" column="2">
+     <item row="2" column="2">
       <widget class="QCheckBox" name="checkBoxMSBFirst">
        <property name="text">
         <string>MSB First</string>
@@ -88,7 +98,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="3" column="0">
       <widget class="QLabel" name="labelAddrWidth">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -110,7 +120,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="3" column="1">
       <widget class="QLineEdit" name="lineEditAddrWidth"/>
      </item>
     </layout>

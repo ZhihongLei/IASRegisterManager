@@ -1,6 +1,7 @@
 #include "login_dialog.h"
 #include "ui_login_dialog.h"
-#include "password.h"
+#include "global_variables.h"
+#include "database_handler.h"
 #include <QMessageBox>
 #include <iostream>
 
@@ -15,48 +16,83 @@ LoginDialog::~LoginDialog()
     delete ui;
 }
 
-QString LoginDialog::get_username()
+void LoginDialog::set_username(const QString &username)
 {
-    return ui->lineEdit_user->text();
+    ui->lineEditUser->setText(username);
 }
 
-QString LoginDialog::get_password()
+void LoginDialog::set_password(const QString &password)
 {
-    return ui->lineEdit_password->text();
+    ui->lineEditPassword->setText(password);
 }
 
-bool LoginDialog::sanity_check()
+void LoginDialog::set_save_password(bool save)
 {
-    int ret = login(get_username(), get_password());
-    if (ret == USER_NOT_EXISTS_ERROR)
+    ui->checkBoxSavePassword->setChecked(save);
+}
+
+QString LoginDialog::get_username() const
+{
+    return ui->lineEditUser->text();
+}
+
+QString LoginDialog::get_password() const
+{
+    return ui->lineEditPassword->text();
+}
+
+bool LoginDialog::save_password() const
+{
+    return ui->checkBoxSavePassword->isChecked();
+}
+
+bool LoginDialog::login()
+{
+    if (get_username() == "")
     {
-        QMessageBox::warning(this, "Login", "User does not exist");
-        ui->lineEdit_user->setText("");
-        ui->lineEdit_password->setText("");
-        ui->lineEdit_user->setFocus();
+        QMessageBox::warning(this, "Login", "Username is empty!");
         return false;
     }
-    else if (ret == PASSWORD_NOT_CORRECT_ERROR)
+
+    if (get_password() == "")
     {
-        QMessageBox::warning(this, "Login", "Password is not correct");
-        ui->lineEdit_password->setText("");
+        QMessageBox::warning(this, "Login", "Password is empty!");
+        return false;
+    }
+
+    QVector<QString> item;
+    if (!DataBaseHandler::show_one_item("global_user", item, {"password"}, "username", get_username()))
+    {
+        QMessageBox::warning(this, "Login", "Unable to validate user account due to database connection issue.\nPlease try again!");
+        return false;
+    }
+    if (item.empty())
+    {
+        QMessageBox::warning(this, "Login", "User does not exist");
+        ui->lineEditUser->setText("");
+        ui->lineEditPassword->setText("");
+        ui->lineEditUser->setFocus();
+        return false;
+    }
+    if (item[0] != get_password())
+    {
+        QMessageBox::warning(this, "Login", "Password is not correct!");
+        ui->lineEditPassword->setText("");
         return false;
     }
     return true;
 }
 
+void LoginDialog::clear()
+{
+    ui->lineEditPassword->clear();
+}
+
 void LoginDialog::accept()
 {
-    if (sanity_check())
+    if (login())
     {
         emit(logged_in(get_username()));
         QDialog::accept();
     }
-}
-
-void LoginDialog::clear()
-{
-    ui->lineEdit_user->setFocus();
-    ui->lineEdit_user->clear();
-    ui->lineEdit_password->clear();
 }

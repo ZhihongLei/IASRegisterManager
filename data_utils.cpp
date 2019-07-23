@@ -50,48 +50,6 @@ QVector<QVector<QString> > sort_doubly_linked_list (const QVector<QVector<QStrin
     return ans;
 }
 
-Naming REGISTER_NAMING;
-Naming SIGNAL_NAMING;
-
-Naming::Naming()
-{
-
-}
-
-QString Naming::get_extended_name(const QString &shortened_name)
-{
-    QString naming = naming_template;
-    for (const QString& key : key2value.keys()) naming.replace(key, key2value[key]);
-    naming.replace("{NAME}", shortened_name);
-    return naming;
-}
-
-QString Naming::get_shortened_name(const QString &extended_name)
-{
-    QString ref = get_extended_name("");
-    int i = 0;
-    while (i < ref.size() && ref[i] == extended_name[i]) i++;
-    int j = 0, m = ref.size() - 1, n = extended_name.size() - 1;
-    while (j < ref.size() && ref[m - j] == extended_name[n - j]) j++;
-    return extended_name.mid(i, n - i - j + 1);
-}
-
-void Naming::set_naming_template(const QString &naming_template)
-{
-    Naming::naming_template = naming_template;
-}
-
-void Naming::update_key(const QString &key, const QString &value)
-{
-    key2value[key] = value;
-}
-
-void Naming::clear()
-{
-    naming_template.clear();
-    key2value.clear();
-}
-
 QString decimal2hex(QString n, int address_width)
 {
     return decimal2hex(n.toULongLong(), address_width);

@@ -14,111 +14,125 @@
 class DataBaseHandler
 {
 public:
-    DataBaseHandler(const QString &hostname, const QString& database);
-    ~DataBaseHandler();
-    int create_database(const QString &dbname);
-    int delete_database(const QString &dbname);
+    static bool initialize(const QString& hostname, const QString& database, const QString& username, const QString& password);
+    static bool use_database(const QString &database);
+    static void close();
+    static void commit();
+    static void rollback();
+    static bool create_database(const QString &dbname);
+    static bool delete_database(const QString &dbname);
 
-    int use_database(const QString &dbname);
-    int show_databases(const QString &constraint, QVector<QString>& dbs);
-    // assume the first field is always primary key and auto increment
-    int create_table(const QString &tablename,
-                     const QVector<QString> &fields,
-                     const QVector<QString> &datatypes,
-                     const QVector<QString> &additionals,
-                     const QString &prikey = "");
-    int create_table(const QString &tablename,
-                     const QVector<QVector<QString> > &table_define,
-                     const QString &primary_key = "",
-                     const QVector<QVector<QString> > *foreign_keys = nullptr,
-                     const QVector<QString>* unique_keys = nullptr);
-    int delete_table(const QString &tablename);
-    int show_tables();
-    int show_items(const QString& tablename,
+    static bool show_databases(const QString &constraint, QVector<QString>& dbs);
+    static bool create_table(const QString &tablename,
+                     const QVector<QVector<QString> > &field_definitions,
+                     const QString &primary_key = "");
+    static bool delete_table(const QString &tablename);
+    static bool add_unique_key_constraint(const QString& tablename, const QVector<QString>& fields);
+    static bool add_foreign_key_constraint(const QString& from_table, const QString& from_field,
+                                           const QString& to_table, const QString& to_field);
+    static bool show_tables();
+    static bool insert_item(const QString &tablename,
+                    const QVector<QString> &fields,
+                    const QVector<QString> &values);
+    static bool update_items(const QString &tablename,
+                   const QVector<QPair<QString, QString>> &key_value_pairs,
+                    const QVector<QPair<QString, QString>> &field_value_pairs);
+    static bool update_items(const QString &tablename,
+                    const QString& key, const QString& value,
+                    const QVector<QPair<QString, QString>> &field_value_pairs);
+    static bool delete_items(const QString &tablename,
+                   const QString &key,
+                   const QString &value);
+    static bool delete_items(const QString &tablename,
+                     const QVector<QPair<QString, QString> >& key_value_pairs);
+    static bool delete_items(const QString &tablename,
+                     const QString &constraint="");
+    static bool show_items(const QString& tablename,
                    const QVector<QString>& fields,
                    const QString& key,
                    const QString& value,
                    QVector<QVector<QString> >& items,
                    const QString& additional="");
-    int show_items(const QString &tablename,
+    static bool show_items(const QString &tablename,
                    const QVector<QString> &fields,
                    const QVector<QPair<QString, QString> >& key_value_pairs,
                    QVector<QVector<QString> >& items,
                    const QString& additional="");
-    int show_items(const QString& tablename,
+    static bool show_items(const QString& tablename,
                    const QVector<QString> &fields,
                    QVector<QVector<QString> >& items,
                    const QString& constraint="",
                    const QString& additional="");
-    int show_items_inner_join(const QVector<QPair<QString, QString> >& table_field_pairs,
-                            const QVector<QPair<QString, QString> >& table_pairs,
-                            const QVector<QPair<QString, QString> >& field_pairs,
+
+    static bool show_items_inner_join(const QVector<QString>& extended_fields,
+                            const QVector<QPair<QPair<QString, QString>, QPair<QString, QString> > >& equal_table_field_pairs,
                             QVector<QVector<QString> >& items,
-                            const QString &constraint="",
-                            const QString &additional="");
-    int show_items_inner_join(const QVector<QString>& ext_fields,
-                            const QVector<QPair<QPair<QString, QString>, QPair<QString, QString> > >& table_field_pairs,
-                            QVector<QVector<QString> >& items,
-                            const QString &constraint="",
-                            const QString &additional="");
-    int show_items_inner_join(const QVector<QString>& ext_fields,
-                            const QVector<QPair<QPair<QString, QString>, QPair<QString, QString> > >& table_field_pairs,
+                            const QString& key,
+                            const QString& value,
+                            const QString &additional);
+
+    static bool show_items_inner_join(const QVector<QString>& extended_fields,
+                            const QVector<QPair<QPair<QString, QString>, QPair<QString, QString> > >& equal_table_field_pairs,
                             QVector<QVector<QString> >& items,
                             const QVector<QPair<QString, QString> >& key_value_pairs,
                             const QString &additional="");
 
-    int show_one_item(const QString &tablename,
+    static bool show_items_inner_join(const QVector<QString>& extended_fields,
+                            const QVector<QPair<QPair<QString, QString>, QPair<QString, QString> > >& equal_table_field_pairs,
+                            QVector<QVector<QString> >& items,
+                            const QString &constraint="",
+                            const QString &additional="");
+
+    static bool show_one_item(const QString &tablename,
                    QVector<QString>& item,
                    const QVector<QString> &fields,
                    const QString &key,
-                   const QString &key_value);
-    int show_one_item(const QString &tablename,
+                   const QString &value);
+    static bool show_one_item(const QString &tablename,
                    QVector<QString>& item,
                    const QVector<QString> &fields,
                    const QVector<QPair<QString, QString> >& key_value_pairs);
-    int show_one_item(const QString &tablename,
+    static bool show_one_item(const QString &tablename,
                    QVector<QString>& item,
                    const QVector<QString> &fields,
                    const QString &constraint);
 
-    int delete_items(const QString &tablename,
-                   const QString &key,
-                   const QString &key_value);
-    int delete_items(const QString &tablename,
-                     const QVector<QPair<QString, QString> >& key_value_pairs);
-    int delete_items(const QString &tablename,
-                     const QString &constraint="");
-    int insert_item(const QString &tablename,
-                    const QVector<QString> &fields,
-                    const QVector<QString> &values);
+    static bool get_next_auto_increment_id(const QString& tablename, const QString& id_field, QString& id);
 
-    int update_items(const QString &tablename,
-                   const QVector<QPair<QString, QString>> &key_value_pairs,
-                    const QVector<QPair<QString, QString>> &field_value_pairs);
-    int update_items(const QString &tablename,
-                   const QString& key, const QString& value,
-                    const QVector<QPair<QString, QString>> &field_value_pairs);
+    static QString get_error_message();
 
-    QString get_error_message() {return _error_message;}
+    static bool remove_signal(const QString& sig_id, const QString& reg_sig_id);
+    static bool remove_register(const QString& reg_id);
+    static bool remove_block(const QString& block_id);
+    static bool remove_chip(const QString& chip_id);
+    static bool remove_user(const QString& my_user_id, const QString& user_id);
 
-    static bool remove_signal(const QString& sig_id, const QString& reg_sig_id, QString* p_error_msg=nullptr);
-    static bool remove_register(const QString& reg_id, QString* p_error_msg=nullptr);
-    static bool remove_block(const QString& block_id, QString* p_error_msg=nullptr);
-    static bool remove_chip(const QString& chip_id, QString* p_error_msg=nullptr);
+    static bool copy_row(const QString& tablename, const QString& id_field,
+                         const QVector<QString>& data_fields,
+                         const QHash<QString, QHash<QString, QString> >& in_old2news,
+                         QHash<QString, QString>& out_old2new,
+                         bool order, const QString& key, const QString& value);
+    static bool copy_row(const QString& tablename, const QString& id_field,
+                         const QVector<QString>& data_fields,
+                         const QHash<QString, QHash<QString, QString> >& in_old2news,
+                         QHash<QString, QString>& out_old2new,
+                         bool order, const QVector<QPair<QString, QString>> &key_value_pairs);
+    static bool copy_row(const QString& tablename, const QString& id_field,
+                         const QVector<QString>& data_fields,
+                         const QHash<QString, QHash<QString, QString> >& in_old2news,
+                         QHash<QString, QString>& out_old2new,
+                         bool order, const QString& constraint);
 
 private:
-    int execute(const QString &command);
-    int execute_query(const QString &command);
-    const QString _database;
-    const QString _username;
-    const QString _hostname;
-    const static QString _root_password;
-    QString _error_message;
-    sql::Driver* _driver;
-    std::unique_ptr< sql::Connection > _con;
-    std::unique_ptr< sql::Statement > _stmt;
-    std::unique_ptr< sql::ResultSet > _res;
-    std::unique_ptr< sql::PreparedStatement > _pstmt;
+    static bool execute(const QString &statement);
+    static bool execute_query(const QString &statement);
+
+    static QString error_message_;
+    static QString database_;
+    static sql::Driver* driver_;
+    static std::unique_ptr< sql::Connection > con_;
+    static std::unique_ptr< sql::Statement > stmt_;
+    static std::unique_ptr< sql::ResultSet > res_;
 };
 
 #endif // DATABASE_HANDLER_H

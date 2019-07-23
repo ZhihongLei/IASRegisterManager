@@ -22,20 +22,22 @@ public:
     QString get_start_addr() const;
     QString get_responsible() const;
     QString get_responsible_id() const;
+    bool designer_added() const;
     bool add_system_block();
     bool edit_system_block();
-    bool designer_added() const;
+
 
 private slots:
     void on_pushButtonAddDesigner_clicked();
 
 private:
-    void setup_ui();
+    bool setup_ui();
     void accept();
     bool sanity_check();
     bool check_block_name();
     bool check_block_abbreviation();
     bool check_start_address();
+
     Ui::EditSystemBlockDialog *ui;
     QString chip_id_, block_id_;
     const int address_width_;

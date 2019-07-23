@@ -3,10 +3,16 @@
 #include "database_handler.h"
 #include <iostream>
 #include <QtAlgorithms>
+#include <QMessageBox>
 
 EditSignalPartitionLogic::EditSignalPartitionLogic(int register_width, bool msb_first):
     register_width_(register_width),
     msb_first_(msb_first)
+{
+
+}
+
+EditSignalPartitionLogic::~EditSignalPartitionLogic()
 {
 
 }
@@ -45,7 +51,6 @@ void EditSignalPartitionLogic::make_available_signal_starts()
     else
     {
         int msb = get_current_signal_msb();
-        std::cout << "msb " << msb <<std::endl;
         for (const auto & segment: available_signal_parts_)
         {
             if (segment.first<= msb and segment.second >= msb)
@@ -72,7 +77,6 @@ void EditSignalPartitionLogic::make_available_signal_ends()
         {
             for (int msb = segment.first; msb <= segment.second; msb++)
             {
-                std::cout << msb << std::endl;
                 available_signal_ends_.push_back(msb);
             }
         }
@@ -81,12 +85,13 @@ void EditSignalPartitionLogic::make_available_signal_ends()
 
 void EditSignalPartitionLogic::make_occupied_register_parts(const QString& reg_id)
 {
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
+
     QVector<QVector<QString> > items;
     if (reg_id2occupied_register_parts_.find(reg_id) != reg_id2occupied_register_parts_.end()) return;
     reg_id2occupied_register_parts_[reg_id] = partition_list();
 
-    dbhandler.show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, {{"reg_id", reg_id}}, items, "order by reg_lsb");
+    if (!DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, {{"reg_id", reg_id}}, items, "order by reg_lsb"))
+        QMessageBox::warning(nullptr, "Add Signal Partition", "Unable to read existing register partitions from database.\nExceptions might happen.\nPlease try again!");
     for (const auto& item : items)
     {
         reg_id2occupied_register_parts_[reg_id].push_back({item[0].toInt(), item[1].toInt()});
@@ -168,14 +173,10 @@ bool EditSignalPartitionLogic::add_signal_partition(const QString& sig_lsb,
                                                     const QString& reg_id,
                                                     const QString& reg_sig_id)
 {
-    QVector<QVector<QString> > items;
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    if (dbhandler.insert_item("block_sig_reg_partition_mapping", {"reg_sig_id", "sig_lsb", "sig_msb", "reg_id", "reg_lsb", "reg_msb"}, {reg_sig_id, sig_lsb, sig_msb, reg_id, reg_lsb, reg_msb}) && \
-            dbhandler.show_items("block_sig_reg_partition_mapping", {"sig_reg_part_mapping_id"}, {{"reg_sig_id", reg_sig_id}, {"sig_lsb", sig_lsb}, {"sig_msb", sig_msb}, {"reg_lsb", reg_lsb}, {"reg_msb", reg_msb}}, items))
-    {
-        sig_reg_part_mapping_id_ = items[0][0];
+    if (DataBaseHandler::get_next_auto_increment_id("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id", sig_reg_part_mapping_id_) &&
+        DataBaseHandler::insert_item("block_sig_reg_partition_mapping",
+                                    {"reg_sig_id", "sig_lsb", "sig_msb", "reg_id", "reg_lsb", "reg_msb"},
+                                    {reg_sig_id, sig_lsb, sig_msb, reg_id, reg_lsb, reg_msb}))
         return true;
-    }
     return false;
-
 }

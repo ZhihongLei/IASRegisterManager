@@ -20,23 +20,6 @@ enum DIALOG_MODE {ADD, EDIT};
 
 enum LEVEL {CHIP, BLOCK, REGISTER, SIGNAL};
 
-class Naming
-{
-public:
-    explicit Naming();
-    void set_naming_template(const QString& naming_template);
-    QString get_extended_name(const QString& shortened_name);
-    QString get_shortened_name(const QString& extended_name);
-    void update_key(const QString& key, const QString& value);
-    void clear();
-private:
-    QHash<QString, QString> key2value;
-    QString naming_template;
-};
-
-extern Naming REGISTER_NAMING;
-extern Naming SIGNAL_NAMING;
-
 QString decimal2hex(QString n, int address_width);
 QString decimal2hex(quint32 n, int address_width);
 QString decimal2hex(quint64 n, int address_width);

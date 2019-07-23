@@ -8,6 +8,7 @@
 #include <QRegExpValidator>
 #include "data_utils.h"
 #include <QComboBox>
+#include <QSet>
 
 namespace Ui {
 class EditSignalDialog;
@@ -35,40 +36,30 @@ public:
     bool add_signal();
     bool edit_signal();
 
-
-
 private slots:
-    void on_lineEditValue_editingFinished();
     void on_lineEditWidth_editingFinished();
+    void on_lineEditWidth_textChanged(const QString &arg1);
 
     void on_comboBoxSigType_currentIndexChanged(int index);
     void on_comboBoxRegType_currentIndexChanged(int index);
     void on_comboBoxReg_currentIndexChanged(int index);
     void on_comboBoxSigLSB_currentIndexChanged(int index);
     void on_comboBoxSigMSB_currentIndexChanged(int index);
-    void on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
-    void on_pushButtonAddSigPart_clicked();
     void on_pushButtonAddReg_clicked();
+    void on_pushButtonAddSigPart_clicked();
     void on_pushButtonRemoveSigPart_clicked();
-
     void on_pushButtonEditSigParts_clicked();
 
-
+    void on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void on_checkBoxAddPort_clicked(bool);
 
 private:
+    bool setup_ui();
+    int get_current_signal_lsb() const;
+    int get_current_signal_msb() const;
     void make_occupied_signal_parts();
-    void make_occupied_register_parts(const QString& reg_id);
-    int get_current_signal_lsb();
-    int get_current_signal_msb();
-
-    void setup_ui();
-
     void display_available_register_parts();
-
-    QString get_register_name();
-    QString get_register_id();
 
     bool sanity_check();
     bool check_name();
@@ -76,22 +67,22 @@ private:
     bool check_partitions();
     void accept();
 
-
 private:
     Ui::EditSignalDialog *ui;
     QHash<QString, QString> sig_type2id_, sig_type_id2type_, reg_name2id_;
     QHash<QString, QString> reg_type2id_, reg_type_id2type_;
+    QSet<QString> writable_reg_types_;
     QHash<QString, QVector<QString>> sig_type2reg_types_;
     const QString chip_id_, block_id_;
     QString signal_id_, reg_sig_id_;
     const DIALOG_MODE mode_;
     QVector<QString> original_sig_reg_mapping_part_ids_;
-    QString original_shortened_signal_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
+    QString original_signal_given_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
     int last_width_ = -1;
     bool edit_partitions_ = true;
     QComboBox* comboBoxSigLSB_, *comboBoxSigMSB_;
     const bool enabled_;
-    bool is_register_page_control_signal_ = false;
+    QSet<QString> registers_in_page_;
 };
 
 

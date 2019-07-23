@@ -81,6 +81,11 @@
        <string>MSB first</string>
       </property>
      </column>
+     <column>
+      <property name="text">
+       <string>freeze</string>
+      </property>
+     </column>
     </widget>
    </item>
    <item>

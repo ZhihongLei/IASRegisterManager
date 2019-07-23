@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>512</width>
-    <height>460</height>
+    <width>686</width>
+    <height>564</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -52,7 +52,7 @@
         <number>12</number>
        </property>
        <item>
-        <widget class="QSplitter" name="splitter_4">
+        <widget class="QSplitter" name="splitterBlocks">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
@@ -60,7 +60,7 @@
           <bool>false</bool>
          </property>
          <widget class="QFrame" name="frameBlocks">
-          <layout class="QHBoxLayout" name="horizontalLayout_13">
+          <layout class="QVBoxLayout" name="verticalLayout_11">
            <property name="leftMargin">
             <number>0</number>
            </property>
@@ -76,170 +76,84 @@
            <item>
             <layout class="QVBoxLayout" name="verticalLayout_9">
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_11">
-               <item>
-                <widget class="QLabel" name="label_4">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="text">
-                  <string>Basics</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QTableWidget" name="tableChipBasics">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>50</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>16777215</width>
-                   <height>50</height>
-                  </size>
-                 </property>
-                 <property name="editTriggers">
-                  <set>QAbstractItemView::NoEditTriggers</set>
-                 </property>
-                 <property name="selectionMode">
-                  <enum>QAbstractItemView::NoSelection</enum>
-                 </property>
-                 <attribute name="verticalHeaderVisible">
-                  <bool>false</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderDefaultSectionSize">
-                  <number>24</number>
-                 </attribute>
-                 <attribute name="verticalHeaderStretchLastSection">
-                  <bool>true</bool>
-                 </attribute>
-                 <column>
-                  <property name="text">
-                   <string>Name</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Owner</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Register Width</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Address Width</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>MSB First</string>
-                  </property>
-                 </column>
-                </widget>
-               </item>
-              </layout>
+              <widget class="QLabel" name="label_4">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Basics</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <spacer name="verticalSpacer">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
+              <widget class="QTableWidget" name="tableChipBasics">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
                </property>
-               <property name="sizeType">
-                <enum>QSizePolicy::Fixed</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
+               <property name="minimumSize">
                 <size>
-                 <width>20</width>
-                 <height>15</height>
+                 <width>0</width>
+                 <height>50</height>
                 </size>
                </property>
-              </spacer>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>50</height>
+                </size>
+               </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+               <property name="selectionMode">
+                <enum>QAbstractItemView::NoSelection</enum>
+               </property>
+               <attribute name="verticalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>24</number>
+               </attribute>
+               <attribute name="verticalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>Name</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Owner</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Register Width</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Address Width</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>MSB First</string>
+                </property>
+               </column>
+              </widget>
              </item>
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_4">
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
                <item>
-                <widget class="QLabel" name="label_2">
-                 <property name="text">
-                  <string>System Block</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QTableWidget" name="tableSystem">
-                 <property name="contextMenuPolicy">
-                  <enum>Qt::CustomContextMenu</enum>
-                 </property>
-                 <property name="editTriggers">
-                  <set>QAbstractItemView::NoEditTriggers</set>
-                 </property>
-                 <property name="selectionMode">
-                  <enum>QAbstractItemView::SingleSelection</enum>
-                 </property>
-                 <property name="selectionBehavior">
-                  <enum>QAbstractItemView::SelectRows</enum>
-                 </property>
-                 <attribute name="verticalHeaderVisible">
-                  <bool>false</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderDefaultSectionSize">
-                  <number>24</number>
-                 </attribute>
-                 <attribute name="verticalHeaderHighlightSections">
-                  <bool>true</bool>
-                 </attribute>
-                 <column>
-                  <property name="text">
-                   <string>Block ID</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Name</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Abbreviation</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Responsible</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Start Address</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Register Count</string>
-                  </property>
-                 </column>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout">
-               <item>
-                <spacer name="horizontalSpacer_4">
+                <spacer name="horizontalSpacer_7">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
@@ -252,7 +166,7 @@
                 </spacer>
                </item>
                <item>
-                <widget class="QPushButton" name="pushButtonAddSys">
+                <widget class="QPushButton" name="pushButtonEditChip">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -265,32 +179,19 @@
                    <height>0</height>
                   </size>
                  </property>
-                 <property name="text">
-                  <string>Add</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="pushButtonRemoveSys">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
+                 <property name="maximumSize">
                   <size>
                    <width>100</width>
-                   <height>0</height>
+                   <height>16777215</height>
                   </size>
                  </property>
                  <property name="text">
-                  <string>Remove</string>
+                  <string>Edit</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <spacer name="horizontalSpacer_12">
+                <spacer name="horizontalSpacer_8">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
                  </property>
@@ -306,9 +207,143 @@
              </item>
             </layout>
            </item>
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>System Block</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTableWidget" name="tableBlock">
+               <property name="contextMenuPolicy">
+                <enum>Qt::CustomContextMenu</enum>
+               </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+               <property name="selectionMode">
+                <enum>QAbstractItemView::SingleSelection</enum>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectRows</enum>
+               </property>
+               <attribute name="verticalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>24</number>
+               </attribute>
+               <attribute name="verticalHeaderHighlightSections">
+                <bool>true</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>Block ID</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Name</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Abbreviation</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Responsible</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Start Address</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Register Count</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <spacer name="horizontalSpacer_4">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButtonAddBlock">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Add</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButtonRemoveBlock">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Remove</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_12">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
           </layout>
          </widget>
-         <widget class="QSplitter" name="splitter_3">
+         <widget class="QSplitter" name="splitterDesignerRegPage">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -677,7 +712,7 @@
           <attribute name="title">
            <string>Signal</string>
           </attribute>
-          <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
            <property name="leftMargin">
             <number>5</number>
            </property>
@@ -691,15 +726,30 @@
             <number>5</number>
            </property>
            <item>
-            <widget class="QSplitter" name="splitter_2">
+            <widget class="QSplitter" name="splitterSignal">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
-             <property name="childrenCollapsible">
-              <bool>false</bool>
-             </property>
-             <widget class="QWidget" name="layoutWidget_2">
-              <layout class="QVBoxLayout" name="verticalLayout_2">
+             <widget class="QFrame" name="frameSignal">
+              <property name="frameShape">
+               <enum>QFrame::NoFrame</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QTableWidget" name="tableSignal">
                  <property name="contextMenuPolicy">
@@ -840,8 +890,26 @@
                </item>
               </layout>
              </widget>
-             <widget class="QWidget" name="layoutWidget_3">
-              <layout class="QVBoxLayout" name="verticalLayout_3">
+             <widget class="QFrame" name="frameSigPart">
+              <property name="frameShape">
+               <enum>QFrame::NoFrame</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QTableWidget" name="tableSigPart">
                  <property name="contextMenuPolicy">
@@ -960,7 +1028,7 @@
           <attribute name="title">
            <string>Register</string>
           </attribute>
-          <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
            <property name="leftMargin">
             <number>5</number>
            </property>
@@ -974,15 +1042,30 @@
             <number>5</number>
            </property>
            <item>
-            <widget class="QSplitter" name="splitter">
+            <widget class="QSplitter" name="splitterRegister">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
-             <property name="childrenCollapsible">
-              <bool>false</bool>
-             </property>
-             <widget class="QWidget" name="layoutWidget_4">
-              <layout class="QVBoxLayout" name="verticalLayout">
+             <widget class="QFrame" name="frameRegister">
+              <property name="frameShape">
+               <enum>QFrame::NoFrame</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_3">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QTableWidget" name="tableRegister">
                  <property name="contextMenuPolicy">
@@ -1098,43 +1181,67 @@
                </item>
               </layout>
              </widget>
-             <widget class="QTableWidget" name="tableRegPart">
-              <property name="contextMenuPolicy">
-               <enum>Qt::CustomContextMenu</enum>
+             <widget class="QFrame" name="frameRegPart">
+              <property name="frameShape">
+               <enum>QFrame::NoFrame</enum>
               </property>
-              <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
               </property>
-              <property name="selectionMode">
-               <enum>QAbstractItemView::SingleSelection</enum>
-              </property>
-              <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
-              </property>
-              <attribute name="horizontalHeaderStretchLastSection">
-               <bool>false</bool>
-              </attribute>
-              <attribute name="verticalHeaderVisible">
-               <bool>false</bool>
-              </attribute>
-              <attribute name="verticalHeaderDefaultSectionSize">
-               <number>24</number>
-              </attribute>
-              <column>
-               <property name="text">
-                <string>Signal Register Partition Mapping ID</string>
+              <layout class="QVBoxLayout" name="verticalLayout_13">
+               <property name="leftMargin">
+                <number>0</number>
                </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Register Partition</string>
+               <property name="topMargin">
+                <number>0</number>
                </property>
-              </column>
-              <column>
-               <property name="text">
-                <string>Signal Partition</string>
+               <property name="rightMargin">
+                <number>0</number>
                </property>
-              </column>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QTableWidget" name="tableRegPart">
+                 <property name="contextMenuPolicy">
+                  <enum>Qt::CustomContextMenu</enum>
+                 </property>
+                 <property name="editTriggers">
+                  <set>QAbstractItemView::NoEditTriggers</set>
+                 </property>
+                 <property name="selectionMode">
+                  <enum>QAbstractItemView::SingleSelection</enum>
+                 </property>
+                 <property name="selectionBehavior">
+                  <enum>QAbstractItemView::SelectRows</enum>
+                 </property>
+                 <attribute name="horizontalHeaderStretchLastSection">
+                  <bool>false</bool>
+                 </attribute>
+                 <attribute name="verticalHeaderVisible">
+                  <bool>false</bool>
+                 </attribute>
+                 <attribute name="verticalHeaderDefaultSectionSize">
+                  <number>24</number>
+                 </attribute>
+                 <column>
+                  <property name="text">
+                   <string>Signal Register Partition Mapping ID</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Register Partition</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Signal Partition</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </widget>
            </item>

@@ -40,12 +40,15 @@
        <height>0</height>
       </size>
      </property>
+     <property name="headerHidden">
+      <bool>false</bool>
+     </property>
      <attribute name="headerVisible">
       <bool>false</bool>
      </attribute>
      <column>
       <property name="text">
-       <string>Chip Overview</string>
+       <string>Name</string>
       </property>
      </column>
      <column>

@@ -20,22 +20,26 @@ public:
     QString get_reg_id() const;
     QString get_reg_type() const;
     QString get_reg_type_id() const;
+    QString get_address() const;
     bool add_register();
     bool edit_register();
 
 private:
-    Ui::EditRegisterDialog *ui;
-    QVector<QString> reg_type_ids_;
-    const QString chip_id_, block_id_;
-    QString reg_id_;
-    QString original_register_name_;
-    const DIALOG_MODE mode_;
-    const bool enabled_;
+    bool setup_ui();
     void accept();
-    void setup_ui();
+    bool sanity_check();
     bool check_name();
     bool check_address();
-    bool sanity_check();
+
+    Ui::EditRegisterDialog *ui;
+    const QString chip_id_, block_id_;
+    QString reg_id_, address_;
+    QString original_register_name_;
+    QVector<QString> reg_type_ids_;
+    const bool enabled_;
+    const DIALOG_MODE mode_;
+
+
 };
 
 #endif // EDIT_REGISTER_DIALOG_H

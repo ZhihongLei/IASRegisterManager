@@ -1,7 +1,6 @@
 #include "register_manager.h"
 #include "ui_register_manager.h"
 #include "database_handler.h"
-#include "create_user_dialog.h"
 #include "user_management_dialog.h"
 #include "change_password_dialog.h"
 #include "global_variables.h"
@@ -10,18 +9,31 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include "data_utils.h"
+#include "authenticator.h"
 #include "login_dialog.h"
+#include "naming_template_dialog.h"
+#include "document_generator.h"
 #include <QDebug>
+#include <QSettings>
+#include "qaesencryption.h"
+#include <QResizeEvent>
+#include <QCompleter>
+#include "document_generation_dialog.h"
+#include "spi_generation_dialog.h"
 
 RegisterManager::RegisterManager(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::RegisterManager)
+    ui(new Ui::RegisterManager),
+    login_dialog_(new LoginDialog()),
+    authenticator_(new Authenticator()),
+    completer_(nullptr)
 {
     ui->setupUi(this);
     //clear_db();
     //init_db();
 
     msb_first_ = true;
+    chip_opened_ = false;
 
     for (QAction* action : {ui->actionUserManagement, ui->actionNewChip}) action->setEnabled(false);
 
@@ -30,69 +42,295 @@ RegisterManager::RegisterManager(QWidget *parent) :
     ui->splitterWorking->setCollapsible(0, false);
     ui->splitterWorking->setCollapsible(1, false);
 
-    connect(&login_dialog_, SIGNAL(logged_in(QString)), this, SLOT(on_loggedin(QString)));
-    login_dialog_.show();
+    connect(login_dialog_, SIGNAL(logged_in(QString)), this, SLOT(on_loggedin(QString)));
+    login_dialog_->show();
 
-    // TODO: set naming template, which is dependent of specific chips
-    REGISTER_NAMING.set_naming_template(REGISTER_NAMING_TEMPLATE);
-    SIGNAL_NAMING.set_naming_template(SIGNAL_NAMING_TEMPLATE);
-    ui->docEditorView->set_authenticator(&authenticator_);
-    ui->chipEditorView->set_authenticator(&authenticator_);
-    ui->chipNavigator->set_authenticator(&authenticator_);
+    ui->docEditorView->set_authenticator(authenticator_);
+    ui->chipEditorView->set_authenticator(authenticator_);
+    ui->chipNavigator->set_authenticator(authenticator_);
+
+    ui->frameDoc->setVisible(false);
+    ui->actionDocEditor->setChecked(false);
+    ui->actionDocPreview->setChecked(false);
+
+    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
+        a->setEnabled(false);
+    ui->actionFreezeChip->setText("Freeze");
+
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    settings.beginGroup("user");
+    bool save_password = settings.value("save_password").toBool();
+    login_dialog_->set_save_password(save_password);
+    login_dialog_->set_username(settings.value("username").toString());
+    if (save_password)
+    {
+        QString key = settings.value("key").toString(),
+                encrypted_password = settings.value("encrypted_password").toString();
+        QString password = QAESEncryption::decode(encrypted_password, key);
+        login_dialog_->set_password(password);
+    }
+    settings.endGroup();
 }
 
 
 RegisterManager::~RegisterManager()
 {
+    hide();
+    if (authenticator_) delete authenticator_;
+    if (login_dialog_) delete  login_dialog_;
+    if (completer_) delete  completer_;
+    DataBaseHandler::close();
+
+    if (username_ == "") return;
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    settings.beginGroup("ui");
+    settings.setValue("fullscreen", isFullScreen());
+    settings.setValue("mainwindow_width", width());
+    settings.setValue("mainwindow_height", height());
+    settings.setValue("navigator_width", ui->splitterMain->sizes()[0]);
+    settings.setValue("chip_editor_width", ui->splitterWorking->sizes()[0]);
+    settings.setValue("doc_editor_width", ui->splitterWorking->sizes()[1]);
+    settings.setValue("document_preview", ui->actionDocPreview->isChecked());
+    settings.setValue("document_editor_view", ui->actionDocEditor->isChecked());
+    settings.setValue("document_preview", ui->actionDocPreview->isChecked());
+    settings.setValue("document_editor_view", ui->actionDocEditor->isChecked());
+    settings.setValue("chip_editor_view", ui->actionChipEditorView->isChecked());
+
     delete ui;
 }
 
+bool RegisterManager::initialize()
+{
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    settings.beginGroup("database");
+    QString host = settings.value("host").toString(),
+            database = settings.value("database").toString(),
+            username = settings.value("username").toString(),
+            key = settings.value("key").toString(),
+            encoded = settings.value("encrypted_password").toString(),
+            password = QAESEncryption::decode(encoded, key);
+    settings.endGroup();
+    if (!DataBaseHandler::initialize(host, database, username, password))
+    {
+        QMessageBox::warning(nullptr, "Register Manager", "Unable to login to database.\nError message: " + DataBaseHandler::get_error_message());
+        return false;
+    }
+
+    settings.beginGroup("mathjax");
+    MATHJAX_ROOT = settings.value("path").toString();
+    if (MATHJAX_ROOT == "") MATHJAX_ROOT = QDir::current().absoluteFilePath("MathJax");
+    settings.endGroup();
+
+    settings.beginGroup("html_templates");
+    QVector<QString*> templates = {&HTML_TEMPLATE, &HTML_TEXT_TEMPLATE, &HTML_TABLE_TEMPLATE, &HTML_IMAGE_TEMPLATE};
+    QVector<QString> keys = {"HTML_TEMPLATE", "HTML_TEXT_TEMPLATE", "HTML_TABLE_TEMPLATE", "HTML_IMAGE_TEMPLATE"};
+    QVector<QString> default_templates = {DEFAULT_HTML_TEMPLATE, DEFAULT_HTML_TEXT_TEMPLATE,
+                                          DEFAULT_HTML_IMAGE_TEMPLATE, DEFAULT_HTML_TABLE_TEMPLATE};
+
+    for (int i = 0; i < templates.size(); i++)
+    {
+        QString html_template_path = settings.value(keys[i]).toString();
+        if (html_template_path != "")
+        {
+            QFile file(html_template_path);
+            if (file.open(QIODevice::ReadOnly))
+            {
+                QTextStream stream(&file);
+                *templates[i] = stream.readAll();
+                continue;
+            }
+        }
+        *templates[i] = default_templates[i];
+    }
+
+    return true;
+}
 
 void RegisterManager::on_loggedin(QString username)
 {
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items_inner_join({"global_user.user_id", "def_db_role.db_role", "def_db_role.db_role_id"},
-                                    {{{"global_user", "db_role_id"}, {"def_db_role", "db_role_id"}}}, items, {{"username", username}});
+    if (!DataBaseHandler::show_items_inner_join({"global_user.user_id", "def_db_role.db_role", "def_db_role.db_role_id"},
+                                    {{{"global_user", "db_role_id"}, {"def_db_role", "db_role_id"}}}, items, {{"username", username}}))
+    {
+        QMessageBox::warning(this, "Login", "Unable to login due to database connection issue.\nPlease try again!");
+        return;
+    }
+
     username_ = username;
     user_id_ = items[0][0];
     db_role_ = items[0][1];
     db_role_id_ = items[0][2];
-    authenticator_.set_database_permissions(db_role_id_);
+    authenticator_->set_database_permissions(db_role_id_);
 
-    ui->actionUserManagement->setEnabled(authenticator_.can_add_user() && authenticator_.can_remove_user());
-    ui->actionNewChip->setEnabled(authenticator_.can_add_project());
-    ui->actionChipManagement->setEnabled(authenticator_.can_add_project() && authenticator_.can_remove_project());
+    ui->actionUserManagement->setEnabled(authenticator_->can_add_user() && authenticator_->can_remove_user());
+    ui->actionNewChip->setEnabled(authenticator_->can_add_project());
+    ui->actionChipManagement->setEnabled(authenticator_->can_add_project() && authenticator_->can_remove_project());
     setWindowTitle("IAS Register Manager - " + username);
 
     ui->docEditorView->login(username_, user_id_);
     ui->chipEditorView->login(username_, user_id_);
     ui->chipNavigator->login(username_, user_id_);
 
-    login_dialog_.hide();
-    OpenChipDialog open_dial(user_id_, authenticator_.can_add_project(), this);
+    login_dialog_->hide();
+
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    settings.beginGroup("user");
+    settings.setValue("username", username);
+    settings.setValue("save_password", login_dialog_->save_password());
+    if (login_dialog_->save_password())
+    {
+        QString key = QAESEncryption::generate_key();
+        QString encrypted = QAESEncryption::encode(login_dialog_->get_password(), key);
+        settings.setValue("key", key);
+        settings.setValue("encrypted_password", encrypted);
+    }
+    else {
+        settings.setValue("key", "");
+        settings.setValue("encrypted_password", "");
+    }
+    settings.endGroup();
+
+    settings.beginGroup("ui");
+    int navigator_width = settings.value("navigator_width").toInt(),
+        chip_editor_width = settings.value("chip_editor_width").toInt(),
+        doc_editor_width = settings.value("doc_editor_width").toInt();
+    int width = settings.value("mainwindow_width").toInt();
+    int height = settings.value("mainwindow_height").toInt();
+    resize(width, height);
     show();
+
+    if (settings.value("chip_editor_view").toBool() != ui->actionChipEditorView->isChecked())
+    {
+        ui->actionChipEditorView->setChecked(settings.value("chip_editor_view").toBool());
+        on_actionChipEditorView_triggered();
+    }
+    if (settings.value("document_editor_view").toBool() != ui->actionDocEditor->isChecked())
+    {
+        ui->actionDocEditor->setChecked(settings.value("document_editor_view").toBool());
+        on_actionDocEditor_triggered();
+    }
+    if (settings.value("document_preview").toBool() != ui->actionDocPreview->isChecked())
+    {
+        ui->actionDocPreview->setChecked(settings.value("document_preview").toBool());
+        on_actionDocPreview_triggered();
+    }
+    ui->splitterMain->setSizes({navigator_width, chip_editor_width + doc_editor_width});
+    ui->splitterWorking->setSizes({chip_editor_width, doc_editor_width});
+
     on_actionOpenChip_triggered();
+    if (settings.value("fullscreen").toBool()) showFullScreen();
 }
 
 
 void RegisterManager::open_chip()
 {
-    SIGNAL_NAMING.update_key("{CHIP_NAME}", chip_);
-    REGISTER_NAMING.update_key("{CHIP_NAME}", chip_);
-    ui->chipEditorView->open_chip(chip_, chip_id_, chip_owner_, chip_owner_id_, register_width_, address_width_, msb_first_);
-    ui->docEditorView->open_chip(chip_, chip_id_, register_width_, address_width_, msb_first_);
-    ui->chipNavigator->open_chip(chip_, chip_id_, msb_first_);
+    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
+    chip_setttings.beginGroup(chip_id_);
+    QString reg_naming_template = chip_setttings.value("register_naming_template").toString();
+    QString sig_naming_template = chip_setttings.value("signal_naming_template").toString();
+    if (reg_naming_template == "")
+    {
+        reg_naming_template = DEFAULT_REGISTER_NAMING_TEMPLATE;
+        chip_setttings.setValue("register_naming_template", reg_naming_template);
+    }
+    if (sig_naming_template == "")
+    {
+        sig_naming_template = DEFAULT_SIGNAL_NAMING_TEMPLATE;
+        chip_setttings.setValue("signal_naming_template", sig_naming_template);
+    }
+
+    GLOBAL_SIGNAL_NAMING.set_naming_template(sig_naming_template);
+    GLOBAL_REGISTER_NAMING.set_naming_template(reg_naming_template);
+
+    GLOBAL_SIGNAL_NAMING.update_key("${CHIP_NAME}", chip_name_);
+    GLOBAL_REGISTER_NAMING.update_key("${CHIP_NAME}", chip_name_);
+    ui->chipNavigator->open_chip(chip_name_, chip_id_, msb_first_);
+    ui->chipEditorView->open_chip(chip_name_, chip_id_, chip_owner_, chip_owner_id_, register_width_, address_width_, msb_first_);
+    ui->docEditorView->open_chip(chip_name_, chip_id_, register_width_, address_width_, msb_first_);
+    if (ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
+    else if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
+    set_completer();
+
+    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip})
+        a->setEnabled(true);
+    ui->actionFreezeChip->setEnabled(chip_owner_ == username_);
+
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    settings.beginGroup("recent_projects");
+    int pos = 1;
+    QString candidate = settings.value("project" + QString::number(pos)).toString();
+    while (candidate != "" && candidate != chip_id_)
+    {
+        pos++;
+        candidate = settings.value("project"+QString::number(pos)).toString();
+    }
+    for (int i = pos; i > 1; i--)
+        settings.setValue("project"+QString::number(i), settings.value("project"+QString::number(i-1)).toString());
+    settings.setValue("project1", chip_id_);
+
+    chip_opened_ = true;
 }
+
+void RegisterManager::set_completer()
+{
+    QStringList words;
+    words << chip_name_ + " ";
+    QVector<QVector<QString> > items;
+
+    QVector<QPair<QString, QString> > key_value_pairs;
+    if (authenticator_->can_read_all_blocks()) key_value_pairs = {{"block_system_block.chip_id", chip_id_}};
+    else key_value_pairs = {{"block_system_block.chip_id", chip_id_}, {"block_system_block.responsible", user_id_}};
+    DataBaseHandler::show_items("block_system_block", {"block_id", "block_name", "abbreviation"}, key_value_pairs, items, "order by block_id");
+
+    NamingTemplate signal_naming = GLOBAL_SIGNAL_NAMING,
+                   register_naming = GLOBAL_REGISTER_NAMING;
+    for (const auto& item : items)
+    {
+        QString block_id = item[0], block_name = item[1], block_abbr = item[2];
+        words << block_name + " " << block_abbr + " ";
+        signal_naming.update_key("${BLOCK_NAME}", block_name);
+        signal_naming.update_key("${BLOCK_ABBR}", block_abbr);
+        register_naming.update_key("${BLOCK_NAME}", block_name);
+        register_naming.update_key("${BLOCK_ABBR}", block_abbr);
+
+        QVector<QVector<QString> > reg_items;
+        DataBaseHandler::show_items("block_register", {"reg_name"}, "block_id", block_id, reg_items);
+        for (const auto & reg_item : reg_items)
+            words << register_naming.get_extended_name(reg_item[0]) + " ";
+
+        QVector<QVector<QString> > sig_items;
+        DataBaseHandler::show_items("signal_signal", {"sig_name", "add_port"}, "block_id", block_id, sig_items);
+        for (const auto & sig_item : sig_items)
+            words <<  (sig_item[1] == "1" ? signal_naming.get_extended_name(sig_item[0]) : sig_item[0]) + " ";
+    }
+
+    QDir dir("completion");
+    QStringList files = dir.entryList({"*.txt"}, QDir::Files);
+    for (const QString& file : files)
+    {
+        QFile f(dir.absoluteFilePath(file));
+        if (f.open(QIODevice::ReadOnly))
+        {
+            QTextStream stream(&f);
+            while (!stream.atEnd()) words << stream.readLine().trimmed();
+        }
+    }
+
+    QCompleter * c = new QCompleter(words);
+    ui->docEditorView->set_completer(c);
+    if (completer_) delete completer_;
+    completer_ = c;
+}
+
 
 void RegisterManager::on_actionUserManagement_triggered()
 {
-    if (!authenticator_.can_add_user() || !authenticator_.can_remove_user())
+    if (!authenticator_->can_add_user() || !authenticator_->can_remove_user())
     {
         QMessageBox::warning(this, "User Management", "You do not have access to User Manager!");
         return;
     }
-    UserManagementDialog user_management(username_, this);
+    UserManagementDialog user_management(chip_id_, user_id_, this);
     user_management.exec();
 }
 
@@ -106,466 +344,338 @@ void RegisterManager::on_actionLogOut_triggered()
 {
     hide();
     on_actionCloseChip_triggered();
-    authenticator_.clear_database_permission();
+    authenticator_->clear_database_permission();
     for (QString* s : {&username_, &user_id_, &db_role_, &db_role_id_}) s->clear();
     for (QAction* action : {ui->actionUserManagement, ui->actionNewChip, ui->actionChipManagement}) action->setEnabled(false);
-
-    login_dialog_.clear();
-    login_dialog_.show();
+    if (!login_dialog_->save_password()) login_dialog_->clear();
+    login_dialog_->show();
 }
 
 void RegisterManager::on_actionNewChip_triggered()
 {
-    if (!authenticator_.can_add_project())
+    if (!authenticator_->can_add_project())
     {
-        QMessageBox::warning(this, "New Chip", "You are not eligible to add projects!");
+        QMessageBox::warning(this, "New Chip", "You are not eligible to create chips!");
         return;
     }
-    EditChipDialog new_chip(user_id_, this);
+    EditChipDialog new_chip(username_, user_id_, this);
     if (new_chip.exec() == QDialog::Accepted && new_chip.add_chip())
     {
-        chip_ = new_chip.get_chip_name();
+        chip_name_ = new_chip.get_chip_name();
         chip_id_ = new_chip.get_chip_id();
         address_width_ = new_chip.get_address_width();
         register_width_ = new_chip.get_register_width();
         chip_owner_ = username_;
         chip_owner_id_ = user_id_;
-        authenticator_.set_project_permissions(new_chip.get_project_role_id());
+        if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
+        else authenticator_->set_project_permissions(new_chip.get_project_role_id());
+        ui->actionFreezeChip->setText("Freeze");
         open_chip();
+    }
+}
+
+void RegisterManager::on_actionNewChipFrom_triggered()
+{
+    if (!authenticator_->can_add_project())
+    {
+        QMessageBox::warning(this, "New Chip", "You are not eligible to create chips!");
+        return;
+    }
+    OpenChipDialog open_chip_dialog(username_, user_id_, false, this);
+    if (open_chip_dialog.exec() == QDialog::Accepted)
+    {
+        QString chip_id = open_chip_dialog.get_chip_id(),
+                chip_name = open_chip_dialog.get_chip_name();
+        int address_width = open_chip_dialog.get_address_width(),
+            register_width = open_chip_dialog.get_register_width();
+        bool msb_first = open_chip_dialog.msb_first();
+        EditChipDialog new_chip(username_, user_id_, chip_id, chip_name, register_width, address_width, msb_first, this);
+        if (new_chip.exec() == QDialog::Accepted)
+        {
+            if (new_chip.add_chip_from())
+            {
+                QMessageBox::information(this, "New Chip", "Chip successfully created from " + chip_name + "!");
+                DataBaseHandler::commit();
+                chip_name_ = new_chip.get_chip_name();
+                chip_id_ = new_chip.get_chip_id();
+                address_width_ = new_chip.get_address_width();
+                register_width_ = new_chip.get_register_width();
+                chip_owner_ = username_;
+                chip_owner_id_ = user_id_;
+                if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
+                else authenticator_->set_project_permissions(new_chip.get_project_role_id());
+                ui->actionFreezeChip->setText("Freeze");
+                open_chip();
+            }
+            else
+            {
+                QMessageBox::information(this, "New Chip", "Unable to create chip from " + chip_name + ".\nError message: "+ DataBaseHandler::get_error_message());
+                DataBaseHandler::rollback();
+            }
+        }
     }
 }
 
 void RegisterManager::on_actionOpenChip_triggered()
 {
-    OpenChipDialog open_dial(user_id_, authenticator_.can_add_project(), this);
-    if (open_dial.exec() == QDialog::Accepted)
+    OpenChipDialog open_chip_dialog(username_, user_id_, authenticator_->can_add_project(), this);
+    if (open_chip_dialog.exec() == QDialog::Accepted)
     {
         on_actionCloseChip_triggered();
-        chip_ = open_dial.get_chip_name();
-        chip_id_ = open_dial.get_chip_id();
-        address_width_ = open_dial.get_address_width();
-        register_width_ = open_dial.get_register_width();
-        msb_first_ = open_dial.is_msb_first();
-        chip_owner_ = open_dial.get_owner();
-        chip_owner_id_ = open_dial.get_owner_id();
-        authenticator_.set_project_permissions(open_dial.get_project_role_id());
+        chip_name_ = open_chip_dialog.get_chip_name();
+        chip_id_ = open_chip_dialog.get_chip_id();
+        address_width_ = open_chip_dialog.get_address_width();
+        register_width_ = open_chip_dialog.get_register_width();
+        msb_first_ = open_chip_dialog.msb_first();
+        chip_owner_ = open_chip_dialog.get_owner();
+        chip_owner_id_ = open_chip_dialog.get_owner_id();
+        if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true, open_chip_dialog.frozen());
+        else authenticator_->set_project_permissions(open_chip_dialog.get_project_role_id(), open_chip_dialog.frozen());
+        ui->actionFreezeChip->setText(open_chip_dialog.frozen() ? "Unfreeze" : "Freeze");
         open_chip();
     }
 }
 
 void RegisterManager::on_actionCloseChip_triggered()
 {
-    QVector<QString*> variables = {&chip_, &chip_id_, &chip_owner_, &chip_owner_id_};
+    QVector<QString*> variables = {&chip_name_, &chip_id_, &chip_owner_, &chip_owner_id_};
     for (QString* &v : variables) v->clear();
 
     address_width_ = 0;
     register_width_ = 0;
     msb_first_ = true;
+    chip_opened_ = false;
 
-    authenticator_.clear_project_permission();
-    authenticator_.clear_block_permission();
+    authenticator_->clear_project_permission();
+    authenticator_->clear_block_permission();
 
     ui->chipNavigator->close_chip();
     ui->docEditorView->close_chip();
     ui->chipEditorView->close_chip();
+
+    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
+        a->setEnabled(false);
+    ui->actionFreezeChip->setText("Freeze");
+}
+
+void RegisterManager::on_actionSignalNaming_triggered()
+{
+    NamingTemplateDialog naming;
+    if (naming.exec() == QDialog::Accepted)
+    {
+        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
+        chip_setttings.beginGroup(chip_id_);
+        chip_setttings.setValue("signal_naming_template", naming.get_naming_template());
+        open_chip();
+    }
+}
+
+void RegisterManager::on_actionFreezeChip_triggered()
+{
+    if (DataBaseHandler::update_items("chip_chip", "chip_id", chip_id_, {{"freeze", ui->actionFreezeChip->text() == "Freeze" ? "1" : "0"}}))
+    {
+        DataBaseHandler::commit();
+        authenticator_->freeze(ui->actionFreezeChip->text() == "Freeze");
+        ui->actionFreezeChip->setText(ui->actionFreezeChip->text() == "Freeze" ? "Unfreeze" : "Freeze");
+        ui->chipEditorView->open_chip(chip_name_, chip_id_, chip_owner_, chip_owner_id_, register_width_, address_width_, msb_first_);
+        ui->docEditorView->open_chip(chip_name_, chip_id_, register_width_, address_width_, msb_first_);
+    }
+    else
+    {
+        DataBaseHandler::rollback();
+        QMessageBox::warning(this,
+                             ui->actionFreezeChip->text() + " Chip",
+                             "Unable to " + ui->actionFreezeChip->text() + " chip due to database connection issue.\nPlease try again!\nError message: " + DataBaseHandler::get_error_message());
+    }
+}
+
+void RegisterManager::on_actionRegisterNaming_triggered()
+{
+    NamingTemplateDialog naming;
+    if (naming.exec() == QDialog::Accepted)
+    {
+        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
+        chip_setttings.beginGroup(chip_id_);
+        chip_setttings.setValue("register_naming_template", naming.get_naming_template());
+        open_chip();
+    }
 }
 
 void RegisterManager::on_actionChipManagement_triggered()
 {
-    if (!authenticator_.can_add_project() || !authenticator_.can_remove_project())
+    if (!authenticator_->can_add_project() || !authenticator_->can_remove_project())
     {
         QMessageBox::warning(this, "User Management", "You do not have access to Chip Manager!");
         return;
     }
-    OpenChipDialog open_dial(user_id_, chip_id_, this);
-    open_dial.exec();
+    OpenChipDialog open_chip_dialog(user_id_, chip_id_, this);
+    open_chip_dialog.exec();
 }
 
-void RegisterManager::on_actionHTML_triggered()
+void RegisterManager::on_actionDocument_triggered()
 {
-    QString path = QFileDialog::getSaveFileName(this, "Export HTML Document", "", "HTML files (*.html)");
-    if (path != "")
+    DocumentGenerationDialog generator(chip_id_, chip_name_, register_width_, address_width_, msb_first_, authenticator_, user_id_, this);
+    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
+    chip_setttings.beginGroup(chip_id_);
+    if (generator.exec() == QDialog::Accepted)
     {
-        QFile file(path);
-        if( !file.open(QIODevice::WriteOnly) )
+        if (GLOBAL_SIGNAL_NAMING.get_naming_template() != generator.get_signal_naming() || GLOBAL_REGISTER_NAMING.get_naming_template() != generator.get_register_naming())
         {
-          QMessageBox::warning(this, "Export HTML Document", "Unable to export document!");
-          return;
+            GLOBAL_SIGNAL_NAMING.set_naming_template(generator.get_signal_naming());
+            GLOBAL_REGISTER_NAMING.set_naming_template(generator.get_register_naming());
+            chip_setttings.setValue("signal_naming_template", generator.get_signal_naming());
+            chip_setttings.setValue("register_naming_template", generator.get_register_naming());
+            open_chip();
         }
-        QTextStream outputStream(&file);
-        outputStream << ui->docEditorView->generate_html_document();
-        file.close();
+        chip_setttings.setValue("image_caption_position", generator.get_image_caption_position());
+        chip_setttings.setValue("table_caption_position", generator.get_table_caption_position());
+        chip_setttings.setValue("show_paged_register", generator.get_show_paged_register());
+        generator.generate_document();
     }
 }
 
-void RegisterManager::on_actionDocEditorView_triggered()
+void RegisterManager::on_actionSPISourceCode_triggered()
 {
-    ui->frameDoc->setVisible(ui->actionDocEditorView->isChecked());
+    SPIGenerationDialog generator(chip_id_, chip_name_, register_width_, address_width_, this);
+    if (generator.exec() == QDialog::Accepted)
+    {
+        generator.generate_spi_interface();
+    }
+}
+
+void RegisterManager::on_actionDocEditor_triggered()
+{
+    if (ui->actionDocPreview->isChecked())
+    {
+        ui->actionDocPreview->setChecked(false);
+        ui->frameNavigator->setVisible(true);
+    }
+    ui->frameDoc->setVisible(ui->actionDocEditor->isChecked());
+    if (ui->actionDocEditor->isChecked()) ui->labelDocEditor->setText("Document Editor");
+    if (ui->frameDoc->isVisible())
+    {
+        ui->docEditorView->set_view(DocumentEditorView::EDITOR_VIEW);
+        if (chip_opened_) ui->docEditorView->display_documents();
+    }
+}
+
+void RegisterManager::on_actionDocPreview_triggered()
+{
+    if (ui->actionDocEditor->isChecked())
+    {
+        ui->actionDocEditor->setChecked(false);
+    }
+    ui->frameDoc->setVisible(ui->actionDocPreview->isChecked());
+    if (ui->actionDocPreview->isChecked()) ui->labelDocEditor->setText("Document Preview");
+    if (ui->frameDoc->isVisible())
+    {
+        ui->docEditorView->set_view(DocumentEditorView::PREVIEW);
+        if (chip_opened_) ui->docEditorView->display_overall_documents();
+    }
 }
 
 void RegisterManager::on_actionChipEditorView_triggered()
 {
     ui->frameChipEditor->setVisible(ui->actionChipEditorView->isChecked());
+    if (ui->frameChipEditor->isVisible() && chip_opened_)
+    {
+        if (current_block_id_ == "") ui->chipEditorView->display_chip_level_info();
+        else ui->chipEditorView->display_system_level_info(current_reg_id_, current_sig_id_);
+    }    
 }
 
 void RegisterManager::on_chipNavigator_chip_clicked()
 {
     ui->docEditorView->set_doc_level(LEVEL::CHIP);
+    ui->docEditorView->set_chip_id(chip_id_);
     ui->docEditorView->set_block_id("");
-    ui->docEditorView->display_documents();
+    if (ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 
     ui->chipEditorView->set_block_id("");
-    ui->chipEditorView->display_chip_level_info();
+    if (ui->frameChipEditor->isVisible()) ui->chipEditorView->display_chip_level_info();
+    current_block_id_ = "";
+    current_reg_id_ = "";
+    current_sig_id_ = "";
 }
+
 void RegisterManager::on_chipNavigator_block_clicked(QString block_id)
 {
     ui->docEditorView->set_doc_level(LEVEL::BLOCK);
     ui->docEditorView->set_block_id(block_id);
-    ui->docEditorView->display_documents();
+    if (ui->frameDoc->isVisible() && ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
 
     ui->chipEditorView->set_block_id(block_id);
-    ui->chipEditorView->display_system_level_info();
+    if (ui->frameChipEditor->isVisible()) ui->chipEditorView->display_system_level_info();
+    current_block_id_ = block_id;
+    current_reg_id_ = "";
+    current_sig_id_ = "";
 }
+
 void RegisterManager::on_chipNavigator_register_clicked(QString block_id, QString reg_id)
 {
     ui->docEditorView->set_doc_level(LEVEL::REGISTER);
+    ui->docEditorView->set_block_id(block_id);
     ui->docEditorView->set_register_id(reg_id);
-    ui->docEditorView->display_documents();
+    if (ui->frameDoc->isVisible() && ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
 
     ui->chipEditorView->set_block_id(block_id);
-    ui->chipEditorView->display_system_level_info(reg_id);
+    if (ui->frameChipEditor->isVisible()) ui->chipEditorView->display_system_level_info(reg_id);
+    current_block_id_ = block_id;
+    current_reg_id_ = reg_id;
+    current_sig_id_ = "";
 }
+
 void RegisterManager::on_chipNavigator_signal_clicked(QString block_id, QString sig_id)
 {
     ui->docEditorView->set_doc_level(LEVEL::SIGNAL);
+    ui->docEditorView->set_block_id(block_id);
     ui->docEditorView->set_signal_id(sig_id);
-    ui->docEditorView->display_documents();
+    if (ui->frameDoc->isVisible() && ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
 
     ui->chipEditorView->set_block_id(block_id);
-    ui->chipEditorView->display_system_level_info("", sig_id);
+    if (ui->frameChipEditor->isVisible()) ui->chipEditorView->display_system_level_info("", sig_id);
+    current_block_id_ = block_id;
+    current_reg_id_ = "";
+    current_sig_id_ = sig_id;
+}
+
+void RegisterManager::on_chipEditorView_chip_basics_edited(QString chip_name, QString chip_owner, QString chip_owner_id, int register_width, int address_width, bool msb_first)
+{
+    chip_name_ = chip_name;
+    msb_first_ = msb_first;
+    chip_owner_ = chip_owner;
+    chip_owner_id_ = chip_owner_id;
+    register_width_ = register_width;
+    address_width_ = address_width;
+    open_chip();
 }
 
 void RegisterManager::on_chipEditorView_block_added(QString block_id, QString block_name, QString block_abbr, QString responsible)
 {
     ui->chipNavigator->add_block(block_id, block_name, block_abbr, responsible);
+    set_completer();
 }
+
 void RegisterManager::on_chipEditorView_block_removed(int row)
 {
     ui->chipNavigator->remove_block(row);
+    set_completer();
 }
+
 void RegisterManager::on_chipEditorView_block_modified(int row, QString block_name, QString block_abbr, QString responsible)
 {
     ui->chipNavigator->modify_block(row, block_name, block_abbr, responsible);
+    set_completer();
 }
+
 void RegisterManager::on_chipEditorView_block_order_exchanged(int from, int to)
 {
     ui->chipNavigator->change_block_order(from, to);
 }
+
 void RegisterManager::on_chipEditorView_to_refresh_block()
 {
     ui->chipNavigator->refresh_block();
-}
-
-
-void RegisterManager::init_db()
-{
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QString dbname;
-    QVector<QVector<QString> > table_define;
-    QString primary_key;
-    QVector<QVector<QString> > foreign_keys;
-    QVector<QString> unique_keys;
-    QVector<QString> fields, values;
-
-    dbhandler.create_database(gDatabase);
-    // def_db_role
-    dbname = "def_db_role";
-    table_define = {{"db_role_id", "int", "not null auto_increment"},
-                {"db_role", "varchar(20)", "not null"},
-                {"add_user", "tinyint(1)", "not null"},
-                {"remove_user", "tinyint(1)", "not null"},
-                {"add_project", "tinyint(1)", "not null"},
-                {"remove_project", "tinyint(1)", "not null"}};
-    primary_key = "db_role_id";
-    unique_keys = {"db_role"};
-    dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-
-    fields = {"db_role", "add_user", "remove_user", "add_project", "remove_project"};
-    values = {"super user", "1", "1", "1", "1"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"standard user", "0", "0", "1", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-
-    // def_register_type
-    dbname = "def_register_type";
-    table_define = {{"reg_type_id", "int", "not null auto_increment"},
-                {"reg_type", "varchar(20)", "not null"},
-                {"description", "varchar(255)", "not null"}};
-    primary_key = "reg_type_id";
-    unique_keys = {"reg_type"};
-    dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-
-    fields = {"reg_type", "description"};
-    values = {"R/W", "Register for standard control signals"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"RO", "Read-only register for data provided by the ASIC"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"W/SC", "Register clears after being written"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"R/SC", "Register clears after being read"};
-    dbhandler.insert_item(dbname, fields, values);
-
-    // def_signal_type
-    dbname = "def_signal_type";
-    table_define = {{"sig_type_id", "int", "not null auto_increment"},
-                {"sig_type", "varchar(20)", "not null"},
-                {"regable", "tinyint(1)", "not null"}};
-    primary_key = "sig_type_id";
-    unique_keys = {"sig_type"};
-    dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-    fields = {"sig_type", "regable"};
-    values = {"Control Signal", "1"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"Info Signal", "1"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"TOP_A2A", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"TOP_A2D", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"TOP_D2A", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"TOP_D2D", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-
-
-    // def_sig_reg_type_mapping
-    dbname = "def_sig_reg_type_mapping";
-    table_define = {{"mapping_id", "int", "not null auto_increment"},
-                {"sig_type_id", "int", "not null"},
-                {"reg_type_id", "int", "not null"}};
-    primary_key = "mapping_id";
-    foreign_keys = {{"sig_type_id", "def_signal_type", "sig_type_id"},
-                    {"reg_type_id", "def_register_type", "reg_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-    fields = {"sig_type_id", "reg_type_id"};
-    dbhandler.insert_item(dbname, fields, {"1", "1"});
-    dbhandler.insert_item(dbname, fields, {"2", "2"});
-    dbhandler.insert_item(dbname, fields, {"1", "3"});
-    dbhandler.insert_item(dbname, fields, {"2", "4"});
-
-    // def_project_role
-    dbname = "def_project_role";
-    table_define = {{"project_role_id", "int", "not null auto_increment"},
-                {"project_role", "varchar(20)", "not null"},
-                {"add_block", "tinyint(1)", "not null"},
-                {"remove_his_block", "tinyint(1)", "not null"},
-                {"read_all_blocks", "tinyint(1)", "not null"},
-                {"compile_project", "tinyint(1)", "not null"},
-                {"add_chip_designer", "tinyint(1)", "not null"},
-                {"remove_chip_designer", "tinyint(1)", "not null"},
-                {"full_access_to_all_blocks", "tinyint(1)", "not null"}};
-    primary_key = "project_role_id";
-    unique_keys = {"project_role"};
-    dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-
-    fields = {"project_role", "add_block", "remove_his_block", "read_all_blocks", "compile_project", "add_chip_designer", "remove_chip_designer", "full_access_to_all_blocks"};
-    values = {"admin", "1", "1", "1", "1", "1", "1", "1"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"standard designer", "1", "1", "1", "1", "0", "0", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-    values = {"limited designer", "0", "0", "0", "0", "0", "0", "0"};
-    dbhandler.insert_item(dbname, fields, values);
-
-    // def_doc_type
-    dbname = "def_doc_type";
-    table_define = {{"doc_type_id", "int", "not null auto_increment"},
-                {"doc_type", "varchar(20)", "not null"}};
-    primary_key = "doc_type_id";
-    unique_keys = {"doc_type"};
-    dbhandler.create_table(dbname, table_define, primary_key, nullptr, &unique_keys);
-    dbhandler.insert_item(dbname, {"doc_type"}, {"Text"});
-    dbhandler.insert_item(dbname, {"doc_type"}, {"Image"});
-    dbhandler.insert_item(dbname, {"doc_type"}, {"Table"});
-
-
-    // global_user
-    dbname = "global_user";
-    table_define = {{"user_id", "int", "not null auto_increment"},
-                {"username", "varchar(256)", "not null"},
-                {"password", "varchar(256)", "not null"},
-                {"db_role_id", "int", "not null"}};
-    primary_key = "user_id";
-    foreign_keys = {{"db_role_id", "def_db_role", "db_role_id"}};
-    unique_keys = {"username"};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, &unique_keys);
-
-    dbname = "chip_chip";
-    table_define = {{"chip_id", "int", "not null auto_increment"},
-                {"chip_name", "varchar(256)", "not null"},
-                {"owner", "int", "not null"},
-                {"register_width", "int", "not null"},
-                {"address_width", "int", "not null"},
-                {"msb_first", "tinyint(1)", "not null"}};
-    primary_key = "chip_id";
-    foreign_keys = {{"owner", "global_user", "user_id"}};
-    unique_keys = {"chip_name"};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, &unique_keys);
-
-    dbname = "chip_designer";
-    table_define = {{"chip_designer_id", "int", "not null auto_increment"},
-                {"chip_id", "int", "not null"},
-                {"user_id", "int", "not null"},
-                {"project_role_id", "int", "not null"}};
-    primary_key = "chip_designer_id";
-    foreign_keys = {{"chip_id", "chip_chip", "chip_id"},
-                    {"user_id", "global_user", "user_id"},
-                    {"project_role_id", "def_project_role", "project_role_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "block_system_block";
-    table_define = {{"block_id", "int", "not null auto_increment"},
-                {"block_name", "varchar(256)", "not null"},
-                {"abbreviation", "varchar(32)", "not null"},
-                {"chip_id", "int", "not null"},
-                {"responsible", "int", "not null"},
-                {"start_address", "varchar(256)"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"}};
-    primary_key = "block_id";
-    foreign_keys = {{"chip_id", "chip_chip", "chip_id"},
-                    {"responsible", "global_user", "user_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    dbname = "signal_signal";
-    table_define = {{"sig_id", "int", "not null auto_increment"},
-                {"sig_name", "varchar(256)", "not null"},
-                {"block_id", "int", "not null"},
-                {"width", "int", "not null"},
-                {"sig_type_id", "int", "not null"},
-                {"add_port", "tinyint(1)", "not null"}};
-    primary_key = "sig_id";
-    foreign_keys = {{"block_id", "block_system_block", "block_id"},
-                    {"sig_type_id", "def_signal_type", "sig_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    dbname = "chip_register_page";
-    table_define = {{"page_id", "int", "not null auto_increment"},
-                {"page_name", "varchar(256)", "not null"},
-                {"chip_id", "int", "not null"},
-                {"ctrl_sig", "int", "not null"},
-                {"count", "int", "not null"}};
-    primary_key = "page_id";
-    foreign_keys = {{"chip_id", "chip_chip", "chip_id"},
-                    {"ctrl_sig", "signal_signal", "sig_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "block_register";
-    table_define = {{"reg_id", "int", "not null auto_increment"},
-                {"reg_name", "varchar(256)", "not null"},
-                {"block_id", "int", "not null"},
-                {"reg_type_id", "int", "not null"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"} };
-    primary_key = "reg_id";
-    foreign_keys = {{"block_id", "block_system_block", "block_id"},
-                    {"reg_type_id", "def_register_type", "reg_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    dbname = "chip_register_page_content";
-    table_define = {{"page_content_id", "int", "not null auto_increment"},
-                {"page_id", "int", "not null"},
-                {"reg_id", "int", "not null"}};
-    primary_key = "page_content_id";
-    foreign_keys = {{"page_id", "chip_register_page", "page_id"},
-                    {"reg_id", "block_register", "reg_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "signal_reg_signal";
-    table_define = {{"reg_sig_id", "int", "not null auto_increment"},
-                {"sig_id", "int", "not null"},
-                {"init_value", "varchar(256)", "not null"},
-                {"reg_type_id", "int", "not null"}};
-    primary_key = "reg_sig_id";
-    foreign_keys = {{"sig_id", "signal_signal", "sig_id"},
-                    {"reg_type_id", "def_register_type", "reg_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    dbname = "block_sig_reg_partition_mapping";
-    table_define = {{"sig_reg_part_mapping_id", "int", "not null auto_increment"},
-                {"reg_sig_id", "int", "not null"},
-                {"sig_lsb", "int", "not null"},
-                {"sig_msb", "int", "not null"},
-                {"reg_id", "int", "not null"},
-                {"reg_lsb", "int", "not null"},
-                {"reg_msb", "int", "not null"}};
-    primary_key = "sig_reg_part_mapping_id";
-    foreign_keys = {{"reg_sig_id", "signal_reg_signal", "reg_sig_id"},
-                    {"reg_id", "block_register", "reg_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    dbname = "doc_chip";
-    table_define = {{"chip_doc_id", "int", "not null auto_increment"},
-                {"chip_id", "int", "not null"},
-                {"doc_type_id", "int", "not null"},
-                {"content", "text", "not null"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"}};
-    primary_key = "chip_doc_id";
-    foreign_keys = {{"chip_id", "chip_chip", "chip_id"},
-                    {"doc_type_id", "def_doc_type", "doc_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "doc_block";
-    table_define = {{"block_doc_id", "int", "not null auto_increment"},
-                {"block_id", "int", "not null"},
-                {"doc_type_id", "int", "not null"},
-                {"content", "text", "not null"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"}};
-    primary_key = "block_doc_id";
-    foreign_keys = {{"block_id", "block_system_block", "block_id"},
-                    {"doc_type_id", "def_doc_type", "doc_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "doc_register";
-    table_define = {{"register_doc_id", "int", "not null auto_increment"},
-                {"reg_id", "int", "not null"},
-                {"doc_type_id", "int", "not null"},
-                {"content", "text", "not null"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"}};
-    primary_key = "register_doc_id";
-    foreign_keys = {{"reg_id", "block_register", "reg_id"},
-                    {"doc_type_id", "def_doc_type", "doc_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-    dbname = "doc_signal";
-    table_define = {{"signal_doc_id", "int", "not null auto_increment"},
-                {"sig_id", "int", "not null"},
-                {"doc_type_id", "int", "not null"},
-                {"content", "text", "not null"},
-                {"prev", "int", "not null"},
-                {"next", "int", "not null"}};
-    primary_key = "signal_doc_id";
-    foreign_keys = {{"sig_id", "signal_signal", "sig_id"},
-                    {"doc_type_id", "def_doc_type", "doc_type_id"}};
-    dbhandler.create_table(dbname, table_define, primary_key, &foreign_keys, nullptr);
-
-
-    // add admin
-    fields = {"username", "password", "db_role_id"};
-    values = {"admin", "admin", "1"};
-    dbhandler.insert_item("global_user", fields, values);
-
-}
-
-void RegisterManager::clear_db()
-{
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    dbhandler.delete_database(gDatabase);
+    set_completer();
 }

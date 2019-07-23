@@ -16,47 +16,47 @@
 EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_id, int register_width, bool msb_first, QWidget *parent) :
     QDialog(parent),
     EditSignalPartitionLogic(register_width, msb_first),
-    block_id_(block_id),
     ui(new Ui::EditSignalDialog),
+    chip_id_(chip_id),
+    block_id_(block_id),
     mode_(DIALOG_MODE::ADD),
-    enabled_(true),
-    chip_id_(chip_id)
+    enabled_(true)
+
 {
-    setup_ui();
+    bool success = setup_ui();
     setWindowTitle("Add Signal");
+    if (!success)
+        QMessageBox::warning(this, windowTitle(), "Unable to initialize signal editor due to database connection issue.\nPlease try again!");
 }
 
 EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first, bool enabled, QWidget *parent) :
     QDialog(parent),
     EditSignalPartitionLogic(register_width, msb_first),
+    ui(new Ui::EditSignalDialog),
+    chip_id_(chip_id),
     block_id_(block_id),
     signal_id_(sig_id),
     reg_sig_id_(reg_sig_id),
-    ui(new Ui::EditSignalDialog),
     mode_(DIALOG_MODE::EDIT),
-    enabled_(enabled),
-    chip_id_(chip_id)
+    enabled_(enabled)
 {
-    setup_ui();
+    bool success = setup_ui();
     setWindowTitle("Edit Signal");
 
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("signal_signal", {"sig_name", "width", "sig_type_id", "add_port"}, "sig_id", get_signal_id(), items);
+    success = success && DataBaseHandler::show_items("signal_signal", {"sig_name", "width", "sig_type_id", "add_port"}, "sig_id", get_signal_id(), items);
     assert (items.size() == 1);
-
 
     ui->checkBoxAddPort->setChecked(items[0][3] == "1");
     on_checkBoxAddPort_clicked(ui->checkBoxAddPort->isChecked());
-    QString sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_extended_name(items[0][0]) : items[0][0];
+    QString sig_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_extended_name(items[0][0]) : items[0][0];
     ui->lineEditSigName->setText(sig_name);
     ui->lineEditWidth->setText(items[0][1]);
     emit(ui->lineEditWidth->editingFinished());
 
-    original_shortened_signal_name_ = items[0][0];
+    original_signal_given_name_ = items[0][0];
     original_width_ = items[0][1];
     original_sig_type_id_ = items[0][2];
-
 
     for (int i = 0; i < ui->comboBoxSigType->count(); i++)
     {
@@ -68,14 +68,10 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
         }
     }
 
-    items.clear();
-    dbhandler.show_items("chip_register_page", {"page_id"}, "ctrl_sig", sig_id, items);
-    bool is_register_page_control_sig = items.size() > 0;
-
     if (is_register_signal())
     {
         items.clear();
-        dbhandler.show_items("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"}, "reg_sig_id", get_reg_sig_id(), items);
+        success = success && DataBaseHandler::show_items("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"}, "reg_sig_id", get_reg_sig_id(), items);
         assert (items.size() == 1 && items[0][0] == get_signal_id());
         ui->lineEditValue->setText(items[0][1]);
         original_value_ = items[0][1];
@@ -91,7 +87,7 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
         }
 
         ui->tableWidgetSigPart->setRowCount(0);
-        QVector<QString> ext_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
+        QVector<QString> extended_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
                                        "block_sig_reg_partition_mapping.sig_lsb",
                                        "block_sig_reg_partition_mapping.sig_msb",
                                        "block_register.reg_name",
@@ -99,15 +95,15 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
                                        "block_sig_reg_partition_mapping.reg_msb" };
 
         items.clear();
-        dbhandler.show_items_inner_join(ext_fields, {{{"block_sig_reg_partition_mapping", "reg_id"}, {"block_register", "reg_id"}}}, items, "block_sig_reg_partition_mapping.reg_sig_id = \"" + reg_sig_id + "\"");
-        if (msb_first_) qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[3] > b[3];});
-        else qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2] < b[2];});
+        success = success && DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_id"}, {"block_register", "reg_id"}}}, items, "block_sig_reg_partition_mapping.reg_sig_id = \"" + reg_sig_id + "\"");
+        if (msb_first_) qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[3].toInt() > b[3].toInt();});
+        else qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2].toInt() < b[2].toInt();});
         for (const auto& item : items)
         {
             int row = ui->tableWidgetSigPart->rowCount();
             ui->tableWidgetSigPart->insertRow(row);
             QString sig_reg_part_mapping_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5];
-            reg_name = REGISTER_NAMING.get_extended_name(reg_name);
+            reg_name = GLOBAL_REGISTER_NAMING.get_extended_name(reg_name);
             QString sig_part, reg_part;
             sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">";
             reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
@@ -144,30 +140,20 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
                     break;
                 }
             }
-
-
         }
     }
-    if (is_register_page_control_sig)
-    {
-        is_register_page_control_signal_ = true;
-        QVector<QWidget*> widgets = {ui->comboBoxSigType, ui->lineEditWidth,
-                                    ui->comboBoxRegType, ui->comboBoxReg, ui->comboBoxSigLeft, ui->comboBoxSigRight,
-                                     ui->pushButtonAddReg,
-                                    ui->comboBoxRegPart, ui->pushButtonAddSigPart, ui->pushButtonRemoveSigPart, ui->tableWidgetSigPart};
-        for (QWidget* w : widgets) w->setEnabled(false);
-
-    }
+    if (!success)
+        QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again!");
 }
 
-void EditSignalDialog::setup_ui()
+bool EditSignalDialog::setup_ui()
 {
     ui->setupUi(this);
     if (ui->checkBoxAddPort->isChecked())
     {
-        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
-        ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
-        ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(GLOBAL_SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+        ui->lineEditSigName->setText(GLOBAL_SIGNAL_NAMING.get_extended_name(""));
+        ui->lineEditSigName->setCursorPosition(GLOBAL_SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
     }
 
     comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
@@ -175,29 +161,45 @@ void EditSignalDialog::setup_ui()
     connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigLSB_currentIndexChanged(int)));
     connect(comboBoxSigMSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigMSB_currentIndexChanged(int)));
 
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
     QVector<QVector<QString> > items;
-    dbhandler.show_items("def_signal_type", {"sig_type_id", "sig_type"}, items, "", "order by sig_type_id");
+    bool success = true;
+    success = success && DataBaseHandler::show_items("def_signal_type", {"sig_type_id", "sig_type"}, items, "", "order by sig_type_id");
     for (const auto& item : items)
     {
         QString sig_type = item[1], id = item[0];
         sig_type2id_[sig_type] = id;
         sig_type_id2type_[id] = sig_type;
         ui->comboBoxSigType->addItem(sig_type);
-
     }
+
+
+    if (mode_ == DIALOG_MODE::EDIT)
+    {
+        items.clear();
+        success = success && DataBaseHandler::show_items("chip_register_page", {"page_id"}, "ctrl_sig", signal_id_, items);
+        for (const auto& item : items)
+        {
+            QString page_id = item[0];
+            QVector<QVector<QString> > regs;
+            success = success && DataBaseHandler::show_items("chip_register_page_content", {"reg_id"}, "page_id", page_id, regs);
+            for (const auto& reg : regs)
+                registers_in_page_.insert(reg[0]);
+        }
+    }
+
     items.clear();
-    dbhandler.show_items("def_register_type", {"reg_type_id", "reg_type"}, items, "", "order by reg_type_id");
+    success = success && DataBaseHandler::show_items("def_register_type", {"reg_type_id", "reg_type", "writable"}, items, "", "order by reg_type_id");
     for (const auto& item : items)
     {
         QString reg_type = item[1], id = item[0];
         reg_type2id_[reg_type] = id;
         reg_type_id2type_[id] = reg_type;
         ui->comboBoxRegType->addItem(reg_type);
+        if (item[2] == "1") writable_reg_types_.insert(reg_type);
     }
 
     items.clear();
-    dbhandler.show_items("def_sig_reg_type_mapping", {"sig_type_id", "reg_type_id"}, items, "", "order by mapping_id");
+    success = success && DataBaseHandler::show_items("def_sig_reg_type_mapping", {"sig_type_id", "reg_type_id"}, items, "", "order by mapping_id");
     for (const auto& item: items)
     {
         QString sig_type = sig_type_id2type_[item[0]];
@@ -220,8 +222,11 @@ void EditSignalDialog::setup_ui()
 
     QVector<QWidget*> widgets = {ui->lineEditSigName, ui->lineEditWidth, ui->comboBoxSigType, ui->lineEditValue,
                                 ui->comboBoxRegType, ui->comboBoxReg, ui->comboBoxSigLeft, ui->comboBoxSigRight, ui->checkBoxAddPort, ui->pushButtonAddReg,
-                                ui->comboBoxRegPart, ui->pushButtonAddSigPart, ui->pushButtonRemoveSigPart, ui->tableWidgetSigPart};
+                                ui->comboBoxRegPart, ui->pushButtonAddSigPart, ui->tableWidgetSigPart};
     for (QWidget* w : widgets) w->setEnabled(enabled_);
+    ui->pushButtonRemoveSigPart->setEnabled(enabled_ && ui->tableWidgetSigPart->currentRow() >= 0);
+    ui->tableWidgetSigPart->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    return success;
 }
 
 EditSignalDialog::~EditSignalDialog()
@@ -232,11 +237,6 @@ EditSignalDialog::~EditSignalDialog()
 QString EditSignalDialog::get_signal_name() const
 {
     return ui->lineEditSigName->text();
-}
-
-bool EditSignalDialog::add_port() const
-{
-    return ui->checkBoxAddPort->isChecked();
 }
 
 QString EditSignalDialog::get_signal_id() const
@@ -270,11 +270,6 @@ QString EditSignalDialog::get_signal_type_id() const
     return "";
 }
 
-bool EditSignalDialog::is_register_signal() const
-{
-    return sig_type2reg_types_.find(get_signal_type()) != sig_type2reg_types_.end();
-}
-
 QString EditSignalDialog::get_register_type() const
 {
     return ui->comboBoxRegType->currentText();
@@ -286,54 +281,26 @@ QString EditSignalDialog::get_register_type_id() const
     else return "";
 }
 
-int EditSignalDialog::get_current_signal_lsb()
+bool EditSignalDialog::is_register_signal() const
+{
+    return sig_type2reg_types_.find(get_signal_type()) != sig_type2reg_types_.end();
+}
+
+bool EditSignalDialog::add_port() const
+{
+    return ui->checkBoxAddPort->isChecked();
+}
+
+int EditSignalDialog::get_current_signal_lsb() const
 {
     if (comboBoxSigLSB_->currentIndex() >= 0) return comboBoxSigLSB_->currentText().toInt();
     else return -1;
 }
 
-int EditSignalDialog::get_current_signal_msb()
+int EditSignalDialog::get_current_signal_msb() const
 {
     if (comboBoxSigMSB_->currentIndex() >= 0) return comboBoxSigMSB_->currentText().toInt();
     else return -1;
-}
-
-
-QString EditSignalDialog::get_register_name()
-{
-    return ui->comboBoxReg->currentText();
-}
-
-QString EditSignalDialog::get_register_id()
-{
-    return reg_name2id_[get_register_name()];
-}
-
-void EditSignalDialog::make_occupied_register_parts(const QString &reg_id)
-{
-    EditSignalPartitionLogic::make_occupied_register_parts(reg_id);
-    /*
-    for (int row = 0; row < ui->tableWidgetSigPart->rowCount(); row++)
-    {
-        QString reg_name = ui->tableWidgetSigPart->item(row, 1)->text().split("<")[0];
-        if (get_register_name() == reg_name)
-        {
-            QString part = ui->tableWidgetSigPart->item(row, 1)->text().split("<")[1].replace(">", "");
-            int lsb, msb;
-            if (msb_first_)
-            {
-                msb = part.split(":")[0].toInt();
-                lsb = part.split(":")[1].toInt();
-            }
-            else {
-                lsb = part.split(":")[0].toInt();
-                msb = part.split(":")[1].toInt();
-            }
-            occupied_register_parts_.push_back({lsb, msb});
-        }
-    }
-    */
-
 }
 
 void EditSignalDialog::make_occupied_signal_parts()
@@ -372,13 +339,13 @@ void EditSignalDialog::display_available_register_parts()
     ui->comboBoxReg->setEnabled(enabled_ && (comboBoxSigLSB_->count() > 0 || comboBoxSigMSB_->count() > 0));
 }
 
-
-void EditSignalDialog::on_lineEditValue_editingFinished()
+void EditSignalDialog::on_lineEditWidth_editingFinished()
 {
-
+    on_lineEditWidth_textChanged(ui->lineEditWidth->text());
+    if (ui->lineEditWidth->text() != "") ui->lineEditWidth->clearFocus();
 }
 
-void EditSignalDialog::on_lineEditWidth_editingFinished()
+void EditSignalDialog::on_lineEditWidth_textChanged(const QString &arg1)
 {
     ui->lineEditValue->setValidator(new HexValueValidator(get_width().toInt()));
     if (!is_register_signal()) {
@@ -392,7 +359,7 @@ void EditSignalDialog::on_lineEditWidth_editingFinished()
         while (row_count > 0)
         {
             ui->tableWidgetSigPart->setCurrentCell(0, 0);
-            emit(ui->pushButtonRemoveSigPart->clicked());
+            on_pushButtonRemoveSigPart_clicked();
             row_count = ui->tableWidgetSigPart->rowCount();
         }
         ui->lineEditValue->setText("0x");
@@ -422,15 +389,10 @@ void EditSignalDialog::on_lineEditWidth_editingFinished()
 
     edit_partitions_ = !edit_partitions_;
     emit(ui->pushButtonEditSigParts->clicked());
-
 }
-
 
 void EditSignalDialog::on_comboBoxSigType_currentIndexChanged(int index)
 {
-    ui->lineEditValue->setEnabled(enabled_ && index>=0 && is_register_signal());
-    if (!is_register_signal()) ui->lineEditValue->setText("");
-    if (is_register_signal() && ui->lineEditValue->text() == "") ui->lineEditValue->setText("0x");
     ui->comboBoxSigType->setEnabled(enabled_ && index>=0);
     ui->comboBoxRegType->blockSignals(true);
     ui->comboBoxRegType->clear();
@@ -446,6 +408,10 @@ void EditSignalDialog::on_comboBoxSigType_currentIndexChanged(int index)
 void EditSignalDialog::on_comboBoxRegType_currentIndexChanged(int index)
 {
     ui->comboBoxRegType->setEnabled(enabled_ && index>=0);
+    ui->lineEditValue->setEnabled(enabled_ && index>=0 && writable_reg_types_.contains(ui->comboBoxRegType->currentText()));
+    if (!writable_reg_types_.contains(ui->comboBoxRegType->currentText())) ui->lineEditValue->setText("");
+    if (writable_reg_types_.contains(ui->comboBoxRegType->currentText()) && ui->lineEditValue->text() == "") ui->lineEditValue->setText("0x");
+
     int row_count = ui->tableWidgetSigPart->rowCount();
     while (row_count > 0)
     {
@@ -463,14 +429,16 @@ void EditSignalDialog::on_comboBoxRegType_currentIndexChanged(int index)
     ui->comboBoxReg->clear();
     if (index >= 0)
     {
-        DataBaseHandler dbhandler(gDBHost, gDatabase);
+
         QVector<QVector<QString> > items;
 
-        dbhandler.show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", get_register_type_id()}}, items);
+        if (!DataBaseHandler::show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", get_register_type_id()}}, items))
+            QMessageBox::warning(this, windowTitle(), "Unable to read register types from database.\nPlease try again.!");
         for (const auto& item : items)
         {
-            reg_name2id_[REGISTER_NAMING.get_extended_name(item[0])] = item[1];
-            ui->comboBoxReg->addItem(REGISTER_NAMING.get_extended_name(item[0]));
+            if (registers_in_page_.contains(item[1])) continue;
+            reg_name2id_[GLOBAL_REGISTER_NAMING.get_extended_name(item[0])] = item[1];
+            ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
         }
     }
     ui->comboBoxReg->blockSignals(false);
@@ -540,12 +508,6 @@ void EditSignalDialog::on_comboBoxSigMSB_currentIndexChanged(int index)
 }
 
 
-void EditSignalDialog::on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
-{
-    ui->pushButtonRemoveSigPart->setEnabled(enabled_ && currentRow >= 0);
-}
-
-
 void EditSignalDialog::on_pushButtonAddReg_clicked()
 {
     EditRegisterDialog new_reg(chip_id_, block_id_);
@@ -596,8 +558,6 @@ void EditSignalDialog::on_pushButtonAddSigPart_clicked()
     make_available_register_parts_by_length();
     emit(ui->lineEditWidth->editingFinished());
     //emit(ui->comboBoxSigType->currentIndexChanged(ui->comboBoxSigType->currentIndex()));
-
-
 }
 
 void EditSignalDialog::on_pushButtonRemoveSigPart_clicked()
@@ -630,6 +590,56 @@ void EditSignalDialog::on_pushButtonRemoveSigPart_clicked()
     emit(ui->lineEditWidth->editingFinished());
 }
 
+void EditSignalDialog::on_pushButtonEditSigParts_clicked()
+{
+    edit_partitions_ = !edit_partitions_;
+    ui->framePartition->setVisible(edit_partitions_);
+    int w = width();
+    if (edit_partitions_)
+    {
+        comboBoxSigLSB_->setVisible(get_width().toInt() != 1);
+        comboBoxSigMSB_->setVisible(get_width().toInt() != 1);
+        ui->tableWidgetSigPart->setVisible(get_width().toInt() != 1);
+        ui->pushButtonAddSigPart->setVisible(get_width().toInt() != 1);
+        ui->pushButtonRemoveSigPart->setVisible(get_width().toInt() != 1);
+        ui->pushButtonEditSigParts->setText("Hide");
+
+        if (get_width().toInt() == 1) resize(w, 300);
+        else resize(w, 560);
+    }
+    else
+    {
+        ui->pushButtonEditSigParts->setText("Edit Partitions");
+        resize(w, 235);
+    }
+}
+
+void EditSignalDialog::on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+{
+    ui->pushButtonRemoveSigPart->setEnabled(enabled_ && currentRow >= 0);
+}
+
+void EditSignalDialog::on_checkBoxAddPort_clicked(bool checked)
+{
+    if (checked)
+    {
+        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(GLOBAL_SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
+        ui->lineEditSigName->setText(GLOBAL_SIGNAL_NAMING.get_extended_name(""));
+        ui->lineEditSigName->setCursorPosition(GLOBAL_SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
+    }
+    else
+    {
+        delete ui->lineEditSigName->validator();
+        ui->lineEditSigName->setText("");
+    }
+}
+
+void EditSignalDialog::accept()
+{
+    if (!enabled_) return QDialog::reject();
+    if (sanity_check()) return QDialog::accept();
+}
+
 bool EditSignalDialog::sanity_check()
 {
     if (!check_name()) return false;
@@ -639,29 +649,29 @@ bool EditSignalDialog::sanity_check()
 
 bool EditSignalDialog::check_name()
 {
-    QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Signal" : "Edit Signal";
     if (ui->checkBoxAddPort->isChecked())
     {
-        QRegularExpression re(SIGNAL_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
+        QRegularExpression re(GLOBAL_SIGNAL_NAMING.get_extended_name("[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*"));
         QRegularExpressionMatch match = re.match(get_signal_name());
         if (!match.hasMatch())
         {
-            QMessageBox::warning(this, warning_title, "Signal name must match "+  SIGNAL_NAMING.get_extended_name("${NAME}") + " format!");
+            QMessageBox::warning(this, windowTitle(), "Signal name must match "+  GLOBAL_SIGNAL_NAMING.get_extended_name("${NAME}") + " format!");
             return false;
         }
     }
     if (mode_ == EDIT )
     {
-        QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
-        if (shortened_sig_name == original_shortened_signal_name_) return true;
+        QString sig_given_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_given_name(get_signal_name()) : get_signal_name();
+        if (sig_given_name == original_signal_given_name_) return true;
     }
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
+
     QVector<QVector<QString> > items;
-    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
-    dbhandler.show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", shortened_sig_name}}, items);
+    QString sig_given_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_given_name(get_signal_name()) : get_signal_name();
+    if (!DataBaseHandler::show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", sig_given_name}}, items))
+        QMessageBox::warning(this, "Signal Editor", "Unable to validate signal name due to database access issue.\nPlease try agai.!");
     if (items.size() > 0)
     {
-        QMessageBox::warning(this, warning_title, "Signal " + get_signal_name() + " already exists!");
+        QMessageBox::warning(this, windowTitle(), "Signal " + get_signal_name() + " already exists!");
         return false;
     }
     // anything else?
@@ -670,25 +680,18 @@ bool EditSignalDialog::check_name()
 
 bool EditSignalDialog::check_value()
 {
-    QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Signal" : "Edit Signal";
     // temporary solution
     if (get_value() == "")
     {
-        QMessageBox::warning(this, warning_title, "Value must not be empty!");
+        QMessageBox::warning(this, windowTitle(), "Value must not be empty!");
         return false;
     }
     int width = get_width().toInt();
-    bool ok;
-    uint64_t value = get_value().toULongLong(&ok, 16);
-    if (!ok)
-    {
-        QMessageBox::warning(this, warning_title, "Invalid signal value " + get_value());
-        return false;
-    }
-    uint64_t max_value = qRound64(qPow(2, width));
+    quint64 value = get_value().toULongLong(nullptr, 16);
+    quint64 max_value = static_cast<quint64>(qPow(2, width) + 0.5);
     if (value >= max_value)
     {
-        QMessageBox::warning(this, warning_title, "Signal value is too large!");
+        QMessageBox::warning(this, windowTitle(), "Signal value is too large!");
         return false;
     }
     return true;
@@ -697,39 +700,30 @@ bool EditSignalDialog::check_value()
 bool EditSignalDialog::check_partitions()
 {
     // TODO
-    QString warning_title = mode_ == DIALOG_MODE::ADD ? "Add Signal" : "Edit Signal";
     return true;
-}
-
-void EditSignalDialog::accept()
-{
-    if (!enabled_) return QDialog::reject();
-    if (sanity_check()) return QDialog::accept();
 }
 
 bool EditSignalDialog::add_signal()
 {
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QVector<QVector<QString> > items;
-    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
-    QVector<QString> fields = {"sig_name", "block_id", "width", "sig_type_id", "add_port"},
-                     values = {shortened_sig_name, block_id_, get_width(), get_signal_type_id(), add_port() ? "1" : "0"};
-    if (dbhandler.insert_item("signal_signal", fields, values) && \
-            dbhandler.show_items("signal_signal", {"sig_id"}, {{"sig_name", shortened_sig_name}, {"block_id", block_id_}}, items))
+    QString sig_given_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_given_name(get_signal_name()) : get_signal_name();
+
+    bool success = false;
+    if (DataBaseHandler::get_next_auto_increment_id("signal_signal", "sig_id", signal_id_) &&
+            DataBaseHandler::insert_item("signal_signal", {"sig_id", "sig_name", "block_id", "width", "sig_type_id", "add_port"},
+                                         {signal_id_, sig_given_name, block_id_, get_width(), get_signal_type_id(), add_port() ? "1" : "0"}) )
     {
-        signal_id_ = items[0][0];
+        success = true;
         if (is_register_signal())
         {
-            items.clear();
-            if (dbhandler.insert_item("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"}, {get_signal_id(), get_value(), get_register_type_id()}) && \
-                    dbhandler.show_items("signal_reg_signal", {"reg_sig_id"}, "sig_id", signal_id_, items))
+            if (DataBaseHandler::get_next_auto_increment_id("signal_reg_signal", "reg_sig_id", reg_sig_id_) &&
+                DataBaseHandler::insert_item("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"},
+                                    {get_signal_id(), get_value(), get_register_type_id()}))
             {
-                reg_sig_id_ = items[0][0];
                 if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                         && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
                         && ui->comboBoxRegPart->count() >0 && edit_partitions_ && ui->pushButtonAddSigPart->isEnabled())
                 {
-                    emit(ui->pushButtonAddSigPart->clicked());
+                    on_pushButtonAddSigPart_clicked();
                 }
 
                 for (int row = 0; row < ui->tableWidgetSigPart->rowCount(); row++)
@@ -751,55 +745,61 @@ bool EditSignalDialog::add_signal()
                         reg_lsb = reg_part.split(":")[0];
                         reg_msb = reg_part.split(":")[1];
                     }
-                    add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
+                    success = success && add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
                 }
-                return true;
             }
-            else return false;
+            else success = false;
         }
-        else return true;
     }
+    if (success)
+    {
+        DataBaseHandler::commit();
+        return true;
+    }
+    DataBaseHandler::rollback();
+    QMessageBox::warning(this, windowTitle(), "Unable to add signal.\nError massage: " + DataBaseHandler::get_error_message());
     return false;
 }
 
-
 bool EditSignalDialog::edit_signal()
 {
-    DataBaseHandler dbhandler(gDBHost, gDatabase);
-    QString shortened_sig_name = ui->checkBoxAddPort->isChecked() ? SIGNAL_NAMING.get_shortened_name(get_signal_name()) : get_signal_name();
-    if (!dbhandler.update_items("signal_signal", "sig_id", get_signal_id(),
-                                {{"sig_name", shortened_sig_name},
-                                {"width", get_width()}, {"sig_type_id", get_signal_type_id()}, {"add_port", add_port() ? "1" : "0"}})) return false;
-
-    if (is_register_page_control_signal_) return true;
-    bool originally_register_signal = (original_reg_type_id_ != "");
-    if (!originally_register_signal && !is_register_signal()) return true;
-
-    for (const QString& sig_reg_part_mapping_id : original_sig_reg_mapping_part_ids_)
-        dbhandler.delete_items("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id", sig_reg_part_mapping_id);
-
-    if (originally_register_signal && !is_register_signal())
+    QString sig_given_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_given_name(get_signal_name()) : get_signal_name();
+    if (!DataBaseHandler::update_items("signal_signal", "sig_id", get_signal_id(),
+                                {{"sig_name", sig_given_name},
+                                {"width", get_width()}, {"sig_type_id", get_signal_type_id()}, {"add_port", add_port() ? "1" : "0"}}))
     {
-        dbhandler.delete_items("signal_reg_signal", "reg_sig_id", get_reg_sig_id());
-        return true;
+        DataBaseHandler::rollback();
+        QMessageBox::warning(this, windowTitle(), "Unable to edit signal.\nError massage: " + DataBaseHandler::get_error_message());
+        return false;
     }
 
-    if (is_register_signal())
+    bool originally_register_signal = (original_reg_type_id_ != "");
+    bool success = true;
+
+    if (originally_register_signal)
+    {
+        for (const QString& sig_reg_part_mapping_id : original_sig_reg_mapping_part_ids_)
+            success = success && DataBaseHandler::delete_items("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id", sig_reg_part_mapping_id);
+    }
+
+    if (!is_register_signal() && originally_register_signal)
+        success = success && DataBaseHandler::delete_items("signal_reg_signal", "reg_sig_id", get_reg_sig_id());
+    else if (is_register_signal())
     {
         if (originally_register_signal)
-            dbhandler.update_items("signal_reg_signal", "reg_sig_id", get_reg_sig_id(), {{"init_value", get_value()}, {"reg_type_id", get_register_type_id()}});
+            success = success && DataBaseHandler::update_items("signal_reg_signal", "reg_sig_id", get_reg_sig_id(), {{"init_value", get_value()}, {"reg_type_id", get_register_type_id()}});
         else
         {
             QVector<QVector<QString> > items;
-            dbhandler.insert_item("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"}, {get_signal_id(), get_value(), get_register_type_id()});
-            dbhandler.show_items("signal_reg_signal", {"reg_sig_id"}, "sig_id", signal_id_, items);
+            success = success && DataBaseHandler::insert_item("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"}, {get_signal_id(), get_value(), get_register_type_id()});
+            success = success && DataBaseHandler::show_items("signal_reg_signal", {"reg_sig_id"}, "sig_id", signal_id_, items);
             reg_sig_id_ = items[0][0];
         }
         if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                 && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
                 && ui->comboBoxRegPart->count() >0 && edit_partitions_ && ui->pushButtonAddSigPart->isEnabled())
         {
-            emit(ui->pushButtonAddSigPart->clicked());
+            on_pushButtonAddSigPart_clicked();
         }
         for (int row = 0; row < ui->tableWidgetSigPart->rowCount(); row++)
         {
@@ -820,49 +820,15 @@ bool EditSignalDialog::edit_signal()
                 reg_lsb = reg_part.split(":")[0];
                 reg_msb = reg_part.split(":")[1];
             }
-            add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
+            success = success && add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
         }
     }
-    return true;
-}
-
-
-void EditSignalDialog::on_pushButtonEditSigParts_clicked()
-{
-    edit_partitions_ = !edit_partitions_;
-    ui->framePartition->setVisible(edit_partitions_);
-    int w = width();
-    if (edit_partitions_)
+    if (success)
     {
-        comboBoxSigLSB_->setVisible(get_width().toInt() != 1);
-        comboBoxSigMSB_->setVisible(get_width().toInt() != 1);
-        ui->tableWidgetSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonAddSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonRemoveSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonEditSigParts->setText("Hide");
-
-        if (get_width().toInt() == 1) resize(w, 290);
-        else resize(w, 560);
+        DataBaseHandler::commit();
+        return true;
     }
-    else
-    {
-        ui->pushButtonEditSigParts->setText("Edit Partitions");
-        resize(w, 235);
-    }
-
-}
-
-void EditSignalDialog::on_checkBoxAddPort_clicked(bool checked)
-{
-    if (checked)
-    {
-        ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
-        ui->lineEditSigName->setText(SIGNAL_NAMING.get_extended_name(""));
-        ui->lineEditSigName->setCursorPosition(SIGNAL_NAMING.get_extended_name("***").indexOf("***"));
-    }
-    else
-    {
-        delete ui->lineEditSigName->validator();
-        ui->lineEditSigName->setText("");
-    }
+    DataBaseHandler::rollback();
+    QMessageBox::warning(this, windowTitle(), "Unable to edit signal.\nError massage: " + DataBaseHandler::get_error_message());
+    return false;
 }

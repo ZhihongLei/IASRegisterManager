@@ -16,6 +16,7 @@ class EditSignalPartitionDialog : public QDialog,  public EditSignalPartitionLog
 
 public:
     explicit EditSignalPartitionDialog(const QString& block_id,
+                                       const QString& signal_id,
                                        const QString& reg_sig_id,
                                        const QString& reg_type_id,
                                        int signal_width,
@@ -33,19 +34,18 @@ public:
     QString get_sig_reg_part_mapping_id() const;
     bool add_signal_partition();
 
-private:
-    void make_occupied_signal_parts();
-    int get_current_signal_lsb();
-    int get_current_signal_msb();
-    void display_available_register_parts();
-    void accept();
-
 private slots:
     void on_comboBoxSigLSB_currentIndexChanged(int index);
     void on_comboBoxSigMSB_currentIndexChanged(int index);
     void on_comboBoxReg_currentIndexChanged(int index);
 
 private:
+    void make_occupied_signal_parts();
+    int get_current_signal_lsb() const;
+    int get_current_signal_msb() const;
+    void display_available_register_parts();
+    void accept();
+
     Ui::EditSignalPartitionDialog *ui;
     const QString block_id_, reg_type_id_, reg_sig_id_;
     const int signal_width_;

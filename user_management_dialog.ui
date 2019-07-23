@@ -54,6 +54,11 @@
      </attribute>
      <column>
       <property name="text">
+       <string>User ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Name</string>
       </property>
      </column>

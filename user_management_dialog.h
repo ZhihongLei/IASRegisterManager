@@ -11,18 +11,17 @@ class UserManagementDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit UserManagementDialog(const QString& myself, QWidget *parent = nullptr);
+    explicit UserManagementDialog(const QString& chip_id, const QString& myself, QWidget *parent = nullptr);
     ~UserManagementDialog();
 
 private slots:
     void on_pushButtonAddUser_clicked();
     void on_pushButtonRemoveUser_clicked();
-
     void on_tableWidgetUser_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 private:
     Ui::UserManagementDialog *ui;
-    const QString myself_;
+    const QString myself_, active_chip_id_;
 };
 
 #endif // USER_MANAGEMENT_DIALOG_H

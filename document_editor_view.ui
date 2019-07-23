@@ -35,9 +35,9 @@
       <enum>QFrame::Raised</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
-     <widget class="QWidget" name="pageDocOverview">
+     <widget class="QWidget" name="pageDocViewer">
       <layout class="QVBoxLayout" name="verticalLayout_13">
        <property name="leftMargin">
         <number>0</number>
@@ -52,7 +52,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QWebEngineView" name="webDocOverview" native="true"/>
+        <widget class="QWebEngineView" name="webDocViewer" native="true"/>
        </item>
       </layout>
      </widget>
@@ -111,7 +111,12 @@
           </attribute>
           <column>
            <property name="text">
-            <string>ID</string>
+            <string>Doc ID</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Type ID</string>
            </property>
           </column>
           <column>
@@ -219,7 +224,7 @@
   <customwidget>
    <class>EditDocumentDialog</class>
    <extends>QWidget</extends>
-   <header>edit_document_dialog.h</header>
+   <header location="global">edit_document_dialog.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
