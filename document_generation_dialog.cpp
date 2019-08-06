@@ -1,15 +1,14 @@
 #include "document_generation_dialog.h"
 #include "ui_document_generation_dialog.h"
-#include <QListWidgetItem>
+#include "document_generator.h"
 #include "naming_template_dialog.h"
-#include <QSettings>
 #include "global_variables.h"
 #include "database_handler.h"
 #include "data_utils.h"
 #include "authenticator.h"
+#include <QSettings>
 #include <QDebug>
 #include <QFileDialog>
-#include "document_generator.h"
 #include <QMessageBox>
 
 DocumentGenerationDialog::DocumentGenerationDialog(const QString& chip_id,
@@ -229,7 +228,7 @@ bool DocumentGenerationDialog::generate_document()
     else doc = chip_doc + doc;
     if (!generator.success())
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to generate document due to database connection error.\nError message: " + DataBaseHandler::get_error_message() + "!");
+        QMessageBox::warning(this, windowTitle(), "Unable to generate document.\nError message: " + DataBaseHandler::get_error_message() + "!");
         return false;
     }
 

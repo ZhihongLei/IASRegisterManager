@@ -5,7 +5,6 @@
 #include "global_variables.h"
 #include "database_utils.h"
 #include <QMessageBox>
-#include <QTableWidgetItem>
 
 UserManagementDialog::UserManagementDialog(const QString& chip_id, const QString& myself, QWidget *parent) :
     QDialog(parent),

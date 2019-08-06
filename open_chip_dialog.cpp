@@ -4,8 +4,6 @@
 #include "database_handler.h"
 #include "edit_chip_dialog.h"
 #include "database_utils.h"
-#include <QDialogButtonBox>
-#include <QPushButton>
 #include <QMessageBox>
 #include <QSettings>
 #include <QDebug>

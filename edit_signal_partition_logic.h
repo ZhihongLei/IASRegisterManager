@@ -2,8 +2,6 @@
 #define EDIT_SIGNAL_PARTITION_LOGIC_H
 
 #include <QHash>
-#include <QVector>
-#include "database_handler.h"
 
 typedef QPair<int, int> partition;
 typedef QVector<partition> partition_list;

@@ -2,14 +2,13 @@
 #define EDIT_SIGNAL_PARTITION_DIALOG_H
 
 #include <QDialog>
-#include <QHash>
 #include "edit_signal_partition_logic.h"
-#include <QComboBox>
 
 namespace Ui {
 class EditSignalPartitionDialog;
 }
 
+class QComboBox;
 class EditSignalPartitionDialog : public QDialog,  public EditSignalPartitionLogic
 {
     Q_OBJECT

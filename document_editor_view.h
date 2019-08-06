@@ -2,10 +2,6 @@
 #define DOCUMENT_EDITOR_VIEW_H
 
 #include <QWidget>
-#include <QMenu>
-#include <QTableWidget>
-#include "authenticator.h"
-#include "register_manager.h"
 #include "data_utils.h"
 
 namespace Ui {
@@ -13,6 +9,9 @@ class DocumentEditorView;
 }
 
 class QCompleter;
+class QMenu;
+class QTableWidget;
+class Authenticator;
 
 class DocumentEditorView : public QWidget
 {

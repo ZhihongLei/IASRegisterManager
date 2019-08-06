@@ -1,8 +1,6 @@
 #include "edit_signal_partition_logic.h"
 #include "global_variables.h"
 #include "database_handler.h"
-#include <iostream>
-#include <QtAlgorithms>
 #include <QMessageBox>
 
 EditSignalPartitionLogic::EditSignalPartitionLogic(int register_width, bool msb_first):

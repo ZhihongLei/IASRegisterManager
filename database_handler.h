@@ -1,6 +1,5 @@
 #ifndef DATABASE_HANDLER_H
 #define DATABASE_HANDLER_H
-#include <QString>
 #include <QVector>
 #include <memory>
 #include "mysql_connection.h"

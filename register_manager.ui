@@ -324,17 +324,15 @@
     <string>Close Chip</string>
    </property>
   </action>
-  <action name="actionVHDL">
-   <property name="text">
-    <string>VHDL</string>
-   </property>
-  </action>
   <action name="actionDocPreview">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
     <string>Document Preview</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
   <action name="actionRegisterNaming">

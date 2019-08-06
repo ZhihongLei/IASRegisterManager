@@ -33,10 +33,9 @@ void Authenticator::set_database_permissions(const QString &db_role_id)
     if (item[4] == "1") db_permissions_ |= DATABASE_PERMISSIONS::FULL_ACCESS_TO_ALL_PROJECTS;
 }
 
-void Authenticator::set_project_permissions(bool setting, bool frozen)
+void Authenticator::set_project_permissions(bool setting)
 {
     project_permissions_ = 0;
-    frozen_ = frozen;
     if (setting)
     {
         project_permissions_ |= PROJECT_PERMISSIONS::ADD_BLOCK;
@@ -48,10 +47,9 @@ void Authenticator::set_project_permissions(bool setting, bool frozen)
     }
 }
 
-void Authenticator::set_project_permissions(const QString& project_role_id, bool frozen)
+void Authenticator::set_project_permissions(const QString& project_role_id)
 {
     project_permissions_ = 0;
-    frozen_ = frozen;
     QVector<QString> item;
     DataBaseHandler::show_one_item("def_project_role", item, {"add_block", "remove_responsible_block", "read_all_blocks", "add_chip_designer", "remove_chip_designer", "full_access_to_all_blocks"}, "project_role_id", project_role_id);
     if (item.size() == 0)

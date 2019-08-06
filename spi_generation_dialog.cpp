@@ -1,14 +1,14 @@
 #include "spi_generation_dialog.h"
 #include "ui_spi_generation_dialog.h"
+#include "vhdl_generator.h"
+#include "database_handler.h"
+#include "data_utils.h"
+#include "global_variables.h"
 #include <QFileDialog>
 #include <QDebug>
 #include <QSettings>
-#include "vhdl_generator.h"
-#include <QMessageBox>
-#include "database_handler.h"
-#include "data_utils.h"
 #include <QtMath>
-#include "global_variables.h"
+#include <QMessageBox>
 
 SPIGenerationDialog::SPIGenerationDialog(const QString& chip_id, const QString& chip_name,
                                          int register_width, int address_width, QWidget *parent) :
@@ -281,7 +281,7 @@ bool SPIGenerationDialog::check_database()
                                      "chip_id", chip_id_, items))
     {
         QMessageBox::warning(this, windowTitle(),
-                             "Unable to check system block addresses due to database connection error, Please try again!\nError message: " + DataBaseHandler::get_error_message());
+                             "Unable to check system block addresses due to database connection error.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     return check_addresses(items) && check_signal_partitions(items) && check_register_partitions(items);
@@ -290,14 +290,20 @@ bool SPIGenerationDialog::check_database()
 bool SPIGenerationDialog::check_addresses(const QVector<QVector<QString> >& block_items)
 {
     QVector<QVector<QString> > start_addresses;
+    bool success = true;
     for (const auto& block_item : block_items)
     {
         QString block_id = block_item[0],
                 block_name = block_item[1],
                 start_address = block_item[3];
         QVector<QString> count;
-        DataBaseHandler::show_one_item("block_register", count, {"count(reg_id)"}, "block_id", block_id);
+        success = success && DataBaseHandler::show_one_item("block_register", count, {"count(reg_id)"}, "block_id", block_id);
         start_addresses.push_back({start_address, count[0], block_name});
+    }
+    if (!success)
+    {
+        QMessageBox::warning(this, windowTitle(), "Unable to check start address of the blocks due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
+        return false;
     }
     qSort(start_addresses.begin(),
           start_addresses.end(),
@@ -318,6 +324,7 @@ bool SPIGenerationDialog::check_addresses(const QVector<QVector<QString> >& bloc
 bool SPIGenerationDialog::check_signal_partitions(const QVector<QVector<QString> >& block_items)
 {
     NamingTemplate signal_naming = GLOBAL_SIGNAL_NAMING;
+    bool success = true;
     for (const auto& block_item : block_items)
     {
         QVector<QVector<QString> > signal_items;
@@ -326,9 +333,10 @@ bool SPIGenerationDialog::check_signal_partitions(const QVector<QVector<QString>
                 block_abbr = block_item[2];
         signal_naming.update_key("${BLOCK_NAME}", block_name);
         signal_naming.update_key("${BLOCK_ABBR}", block_abbr);
-        DataBaseHandler::show_items_inner_join({"signal_reg_signal.reg_sig_id", "signal_signal.sig_name", "signal_signal.width", "signal_signal.add_port"},
+        success = success && DataBaseHandler::show_items_inner_join({"signal_reg_signal.reg_sig_id", "signal_signal.sig_name", "signal_signal.width", "signal_signal.add_port"},
                                                 {{{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}},
                                                signal_items, "block_id", block_id);
+        if (!success) break;
 
         for (const auto& signal_item: signal_items)
         {
@@ -336,9 +344,10 @@ bool SPIGenerationDialog::check_signal_partitions(const QVector<QVector<QString>
             QString reg_sig_id = signal_item[0],
                     signal_width = signal_item[2];
             QVector<QVector<QString> > part_items;
-            DataBaseHandler::show_items("block_sig_reg_partition_mapping",
+            success = success && DataBaseHandler::show_items("block_sig_reg_partition_mapping",
                                         {"sig_lsb", "sig_msb", "reg_lsb", "reg_msb"},
                                         "reg_sig_id", reg_sig_id, part_items);
+            if (!success) break;
 
             qSort(part_items.begin(), part_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toInt() > b[1].toInt();});
             for (int i = 0; i < part_items.size(); i++)
@@ -370,12 +379,18 @@ bool SPIGenerationDialog::check_signal_partitions(const QVector<QVector<QString>
             }
         }
     }
+    if (!success)
+    {
+        QMessageBox::warning(this, windowTitle(), "Unable to check signal partitions due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
+        return false;
+    }
     return true;
 }
 
 bool SPIGenerationDialog::check_register_partitions(const QVector<QVector<QString> >& block_items)
 {
     NamingTemplate register_naming = GLOBAL_REGISTER_NAMING;
+    bool success = true;
     for (const auto& block_item : block_items)
     {
         QVector<QVector<QString> > register_items;
@@ -385,16 +400,17 @@ bool SPIGenerationDialog::check_register_partitions(const QVector<QVector<QStrin
         register_naming.update_key("${BLOCK_NAME}", block_name);
         register_naming.update_key("${BLOCK_ABBR}", block_abbr);
 
-        DataBaseHandler::show_items("block_register", {"reg_id", "reg_name"}, "block_id", block_id, register_items);
+        success = success && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name"}, "block_id", block_id, register_items);
+        if (!success) break;
         for (const auto& register_item: register_items)
         {
             QString reg_id = register_item[0],
                     reg_name = register_naming.get_extended_name(register_item[1]);
             QVector<QVector<QString> > part_items;
-            DataBaseHandler::show_items("block_sig_reg_partition_mapping",
+            success = success && DataBaseHandler::show_items("block_sig_reg_partition_mapping",
                                         {"sig_lsb", "sig_msb", "reg_lsb", "reg_msb"},
                                         "reg_id", reg_id, part_items);
-
+            if (!success) break;
             qSort(part_items.begin(), part_items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[3].toInt() > b[3].toInt();});
             for (int i = 0; i < part_items.size(); i++)
             {
@@ -425,6 +441,11 @@ bool SPIGenerationDialog::check_register_partitions(const QVector<QVector<QStrin
             }
         }
     }
+    if (!success)
+    {
+        QMessageBox::warning(this, windowTitle(), "Unable to check register partitions due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
+        return false;
+    }
     return true;
 }
 
@@ -442,7 +463,7 @@ bool SPIGenerationDialog::generate_spi_interface()
         spi_interface_path = ui->lineEditOutputSPI->text();
         if (!generator.success())
         {
-            QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface due to database connection error.\nError message: " + DataBaseHandler::get_error_message() + "!");
+            QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface.\nError message: " + DataBaseHandler::get_error_message() + "!");
             return false;
         }
     }

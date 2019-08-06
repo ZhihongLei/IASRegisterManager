@@ -6,20 +6,20 @@
 #include "global_variables.h"
 #include "edit_chip_dialog.h"
 #include "open_chip_dialog.h"
-#include <QMessageBox>
-#include <QFileDialog>
 #include "data_utils.h"
 #include "authenticator.h"
 #include "login_dialog.h"
 #include "naming_template_dialog.h"
 #include "document_generator.h"
-#include <QDebug>
-#include <QSettings>
-#include "qaesencryption.h"
-#include <QResizeEvent>
-#include <QCompleter>
 #include "document_generation_dialog.h"
 #include "spi_generation_dialog.h"
+#include "qaesencryption.h"
+#include <QDebug>
+#include <QSettings>
+#include <QCompleter>
+#include <QDir>
+#include <QMessageBox>
+
 
 RegisterManager::RegisterManager(QWidget *parent) :
     QMainWindow(parent),
@@ -29,8 +29,13 @@ RegisterManager::RegisterManager(QWidget *parent) :
     completer_(nullptr)
 {
     ui->setupUi(this);
-    //clear_db();
-    //init_db();
+    ui->actionNewChip->setShortcut(QKeySequence::New);
+    ui->actionOpenChip->setShortcut(QKeySequence::Open);
+    ui->actionCloseChip->setShortcut(QKeySequence::Close);
+
+    ui->actionDocEditor->setShortcut(QKeySequence("Ctrl+D").toString(QKeySequence::NativeText));
+    ui->actionChipEditorView->setShortcut(QKeySequence("Ctrl+E").toString(QKeySequence::NativeText));
+    ui->actionDocPreview->setShortcut(QKeySequence("Ctrl+P").toString(QKeySequence::NativeText));
 
     msb_first_ = true;
     chip_opened_ = false;
@@ -142,7 +147,6 @@ bool RegisterManager::initialize()
         }
         *templates[i] = default_templates[i];
     }
-
     return true;
 }
 
@@ -312,7 +316,7 @@ void RegisterManager::set_completer()
         if (f.open(QIODevice::ReadOnly))
         {
             QTextStream stream(&f);
-            while (!stream.atEnd()) words << stream.readLine().trimmed();
+            while (!stream.atEnd()) words << stream.readLine();
         }
     }
 
@@ -369,6 +373,7 @@ void RegisterManager::on_actionNewChip_triggered()
         chip_owner_id_ = user_id_;
         if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
         else authenticator_->set_project_permissions(new_chip.get_project_role_id());
+        authenticator_->freeze(false);
         ui->actionFreezeChip->setText("Freeze");
         open_chip();
     }
@@ -382,6 +387,7 @@ void RegisterManager::on_actionNewChipFrom_triggered()
         return;
     }
     OpenChipDialog open_chip_dialog(username_, user_id_, false, this);
+    open_chip_dialog.setWindowTitle("Select Chip");
     if (open_chip_dialog.exec() == QDialog::Accepted)
     {
         QString chip_id = open_chip_dialog.get_chip_id(),
@@ -390,28 +396,20 @@ void RegisterManager::on_actionNewChipFrom_triggered()
             register_width = open_chip_dialog.get_register_width();
         bool msb_first = open_chip_dialog.msb_first();
         EditChipDialog new_chip(username_, user_id_, chip_id, chip_name, register_width, address_width, msb_first, this);
-        if (new_chip.exec() == QDialog::Accepted)
+        if (new_chip.exec() == QDialog::Accepted && new_chip.add_chip_from())
         {
-            if (new_chip.add_chip_from())
-            {
-                QMessageBox::information(this, "New Chip", "Chip successfully created from " + chip_name + "!");
-                DataBaseHandler::commit();
-                chip_name_ = new_chip.get_chip_name();
-                chip_id_ = new_chip.get_chip_id();
-                address_width_ = new_chip.get_address_width();
-                register_width_ = new_chip.get_register_width();
-                chip_owner_ = username_;
-                chip_owner_id_ = user_id_;
-                if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
-                else authenticator_->set_project_permissions(new_chip.get_project_role_id());
-                ui->actionFreezeChip->setText("Freeze");
-                open_chip();
-            }
-            else
-            {
-                QMessageBox::information(this, "New Chip", "Unable to create chip from " + chip_name + ".\nError message: "+ DataBaseHandler::get_error_message());
-                DataBaseHandler::rollback();
-            }
+            QMessageBox::information(this, "New Chip", "Chip successfully created from " + chip_name + "!");
+            chip_name_ = new_chip.get_chip_name();
+            chip_id_ = new_chip.get_chip_id();
+            address_width_ = new_chip.get_address_width();
+            register_width_ = new_chip.get_register_width();
+            chip_owner_ = username_;
+            chip_owner_id_ = user_id_;
+            if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
+            else authenticator_->set_project_permissions(new_chip.get_project_role_id());
+            authenticator_->freeze(false);
+            ui->actionFreezeChip->setText("Freeze");
+            open_chip();
         }
     }
 }
@@ -429,8 +427,9 @@ void RegisterManager::on_actionOpenChip_triggered()
         msb_first_ = open_chip_dialog.msb_first();
         chip_owner_ = open_chip_dialog.get_owner();
         chip_owner_id_ = open_chip_dialog.get_owner_id();
-        if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true, open_chip_dialog.frozen());
-        else authenticator_->set_project_permissions(open_chip_dialog.get_project_role_id(), open_chip_dialog.frozen());
+        if (authenticator_->can_fully_access_all_projects()) authenticator_->set_project_permissions(true);
+        else authenticator_->set_project_permissions(open_chip_dialog.get_project_role_id());
+        authenticator_->freeze(open_chip_dialog.frozen());
         ui->actionFreezeChip->setText(open_chip_dialog.frozen() ? "Unfreeze" : "Freeze");
         open_chip();
     }
@@ -448,6 +447,7 @@ void RegisterManager::on_actionCloseChip_triggered()
 
     authenticator_->clear_project_permission();
     authenticator_->clear_block_permission();
+    authenticator_->freeze(false);
 
     ui->chipNavigator->close_chip();
     ui->docEditorView->close_chip();
@@ -470,6 +470,18 @@ void RegisterManager::on_actionSignalNaming_triggered()
     }
 }
 
+void RegisterManager::on_actionRegisterNaming_triggered()
+{
+    NamingTemplateDialog naming;
+    if (naming.exec() == QDialog::Accepted)
+    {
+        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
+        chip_setttings.beginGroup(chip_id_);
+        chip_setttings.setValue("register_naming_template", naming.get_naming_template());
+        open_chip();
+    }
+}
+
 void RegisterManager::on_actionFreezeChip_triggered()
 {
     if (DataBaseHandler::update_items("chip_chip", "chip_id", chip_id_, {{"freeze", ui->actionFreezeChip->text() == "Freeze" ? "1" : "0"}}))
@@ -485,19 +497,7 @@ void RegisterManager::on_actionFreezeChip_triggered()
         DataBaseHandler::rollback();
         QMessageBox::warning(this,
                              ui->actionFreezeChip->text() + " Chip",
-                             "Unable to " + ui->actionFreezeChip->text() + " chip due to database connection issue.\nPlease try again!\nError message: " + DataBaseHandler::get_error_message());
-    }
-}
-
-void RegisterManager::on_actionRegisterNaming_triggered()
-{
-    NamingTemplateDialog naming;
-    if (naming.exec() == QDialog::Accepted)
-    {
-        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-        chip_setttings.beginGroup(chip_id_);
-        chip_setttings.setValue("register_naming_template", naming.get_naming_template());
-        open_chip();
+                             "Unable to " + ui->actionFreezeChip->text() + " chip.\nError message: " + DataBaseHandler::get_error_message());
     }
 }
 
@@ -508,7 +508,7 @@ void RegisterManager::on_actionChipManagement_triggered()
         QMessageBox::warning(this, "User Management", "You do not have access to Chip Manager!");
         return;
     }
-    OpenChipDialog open_chip_dialog(user_id_, chip_id_, this);
+    OpenChipDialog open_chip_dialog(username_, user_id_, chip_id_, this);
     open_chip_dialog.exec();
 }
 
@@ -537,9 +537,9 @@ void RegisterManager::on_actionDocument_triggered()
 void RegisterManager::on_actionSPISourceCode_triggered()
 {
     SPIGenerationDialog generator(chip_id_, chip_name_, register_width_, address_width_, this);
-    if (generator.exec() == QDialog::Accepted)
+    if (generator.exec() == QDialog::Accepted && generator.generate_spi_interface())
     {
-        generator.generate_spi_interface();
+
     }
 }
 
@@ -655,27 +655,32 @@ void RegisterManager::on_chipEditorView_block_added(QString block_id, QString bl
 {
     ui->chipNavigator->add_block(block_id, block_name, block_abbr, responsible);
     set_completer();
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }
 
 void RegisterManager::on_chipEditorView_block_removed(int row)
 {
     ui->chipNavigator->remove_block(row);
     set_completer();
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }
 
 void RegisterManager::on_chipEditorView_block_modified(int row, QString block_name, QString block_abbr, QString responsible)
 {
     ui->chipNavigator->modify_block(row, block_name, block_abbr, responsible);
     set_completer();
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }
 
 void RegisterManager::on_chipEditorView_block_order_exchanged(int from, int to)
 {
     ui->chipNavigator->change_block_order(from, to);
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }
 
 void RegisterManager::on_chipEditorView_to_refresh_block()
 {
     ui->chipNavigator->refresh_block();
     set_completer();
+    if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }

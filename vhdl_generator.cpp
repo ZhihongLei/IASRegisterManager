@@ -3,9 +3,7 @@
 #include "database_handler.h"
 #include "data_utils.h"
 #include <QSettings>
-#include <QSet>
 #include <QFile>
-#include <QTextStream>
 #include <QMessageBox>
 #include <QDebug>
 

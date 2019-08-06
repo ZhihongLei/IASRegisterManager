@@ -2,14 +2,9 @@
 #include "ui_edit_system_block_dialog.h"
 #include "database_handler.h"
 #include "data_utils.h"
-#include <QDialogButtonBox>
-#include <QPushButton>
-#include <QIntValidator>
-#include <QRegExpValidator>
-#include <QRegExp>
-#include <QMessageBox>
 #include "edit_chip_designer_dialog.h"
 #include "global_variables.h"
+#include <QMessageBox>
 #include <QtMath>
 #include <QDebug>
 
@@ -218,22 +213,22 @@ bool EditSystemBlockDialog::check_start_address()
 
     i = 0;
     while (i < items.size() && items[i][0] != block_id_) i++;
-    int num_regs = 0, num_prev_regs = 0;
-    qlonglong start_addr = ui->lineEditStartAddr->text().toULongLong(nullptr, 16),
-                prev_start_addr = 0,
-                next_start_addr = (i == items.size() -1) ?  qRound64(qPow(2, address_width_)) : items[i+1][1].toULongLong(nullptr, 16);
+    qulonglong num_regs = 0, num_prev_regs = 0;
+    qulonglong start_addr = ui->lineEditStartAddr->text().toULongLong(nullptr, 16),
+               prev_start_addr = 0,
+               next_start_addr = (i == items.size() -1) ?  quint64(qPow(2, address_width_)+0.5) : items[i+1][1].toULongLong(nullptr, 16);
 
     if (mode_ == DIALOG_MODE::EDIT)
     {
         QVector<QString> item;
         success = success && DataBaseHandler::show_one_item("block_register", item, {"count(reg_id)"}, "block_id", block_id_);
-        num_regs = item[0].toInt();
+        num_regs = item[0].toULongLong();
     }
     if (i != 0)
     {
         QVector<QString> item;
         success = success && DataBaseHandler::show_one_item("block_register", item, {"count(reg_id)"}, "block_id", items[i-1][0]);
-        num_prev_regs = item[0].toInt();
+        num_prev_regs = item[0].toULongLong();
         prev_start_addr = items[i-1][1].toULongLong(nullptr, 16);
     }
 

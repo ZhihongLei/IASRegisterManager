@@ -4,10 +4,8 @@
 #include "global_variables.h"
 #include "data_utils.h"
 #include <QtMath>
-#include <QCompleter>
 #include <QMessageBox>
 #include <QIntValidator>
-#include <QDialogButtonBox>
 #include <QDebug>
 
 EditRegisterPageDialog::EditRegisterPageDialog(const QString& chip_id, QWidget *parent) :

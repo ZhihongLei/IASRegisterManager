@@ -2,14 +2,14 @@
 #define CHIP_EDITOR_VIEW_H
 
 #include <QWidget>
-#include <QMenu>
-#include <QTableWidget>
 #include "authenticator.h"
 
 namespace Ui {
 class ChipEditorView;
 }
 
+class QMenu;
+class QTableWidget;
 class ChipEditorView : public QWidget
 {
     Q_OBJECT

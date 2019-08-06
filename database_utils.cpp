@@ -25,7 +25,6 @@ bool DatabaseUtils::remove_signal(const QString& sig_id, const QString& reg_sig_
         success = success && DataBaseHandler::delete_items("block_sig_reg_partition_mapping", "reg_sig_id", reg_sig_id);
         success = success && DataBaseHandler::delete_items("signal_reg_signal", "reg_sig_id", reg_sig_id);
     }
-
     success = success && DataBaseHandler::delete_items("signal_signal", "sig_id", sig_id);
 
     return success;

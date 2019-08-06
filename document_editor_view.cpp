@@ -3,13 +3,15 @@
 #include "database_handler.h"
 #include "global_variables.h"
 #include "document_generator.h"
-#include "data_utils.h"
+#include "authenticator.h"
 #include <QDropEvent>
 #include <QMimeData>
 #include <QMessageBox>
 #include <QCompleter>
 #include <QDir>
 #include <QSettings>
+#include <QMenu>
+
 
 DocumentEditorView::DocumentEditorView(QWidget *parent) :
     QWidget(parent),

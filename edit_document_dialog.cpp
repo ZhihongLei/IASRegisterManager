@@ -1,13 +1,11 @@
 #include "edit_document_dialog.h"
 #include "ui_edit_document_dialog.h"
-#include <QFileDialog>
-#include <QRegExpValidator>
-#include <QRegExp>
 #include "global_variables.h"
 #include "database_handler.h"
-#include <QPushButton>
-#include <QMessageBox>
 #include "document_generator.h"
+#include <QFileDialog>
+#include <QRegExpValidator>
+#include <QMessageBox>
 
 EditDocumentDialog::EditDocumentDialog(QWidget *parent) :
     QWidget(parent),
@@ -204,109 +202,6 @@ QString EditDocumentDialog::get_content() const
     return "";
 }
 
-bool EditDocumentDialog::add_document()
-{
-
-    QVector<QVector<QString> > items;
-    QString doc_id_field, obj_field, table, obj_id;
-    if (level_ == LEVEL::CHIP)
-    {
-        table = "doc_chip";
-        doc_id_field = "chip_doc_id";
-        obj_field = "chip_id";
-        obj_id = chip_id_;
-    }
-    else if (level_ == LEVEL::BLOCK)
-    {
-        table = "doc_block";
-        doc_id_field = "block_doc_id";
-        obj_field = "block_id";
-        obj_id = block_id_;
-
-    }
-    else if (level_ == LEVEL::REGISTER)
-    {
-        table = "doc_register";
-        doc_id_field = "register_doc_id";
-        obj_field = "reg_id";
-        obj_id = register_id_;
-    }
-    else if (level_ == LEVEL::SIGNAL)
-    {
-        table = "doc_signal";
-        doc_id_field = "signal_doc_id";
-        obj_field = "sig_id";
-        obj_id = signal_id_;
-    }
-    else return false;
-
-    if (!DataBaseHandler::show_items(table, {doc_id_field}, {{"next", "-1"}, {obj_field, obj_id}}, items))
-    {
-        QMessageBox::warning(this, "Document Editor", "Unable to add document due to database connection issue.\nPlease try again.");
-        return false;
-    }
-    QString prev("-1");
-    if (items.size() == 1) prev = items[0][0];
-    items.clear();
-
-    ;
-    QString content = get_content();
-    content.replace("\\", "\\\\");
-
-    if (DataBaseHandler::get_next_auto_increment_id(table, doc_id_field, doc_id_) &&
-        DataBaseHandler::insert_item(table, {doc_id_field, obj_field, "doc_type_id", "content", "prev", "next"},
-                                    {doc_id_, obj_id, get_document_type_id(), content, prev, "-1"}))
-    {
-        bool success = true;
-        if (prev != "-1") success = success && DataBaseHandler::update_items(table, {{doc_id_field, prev}}, {{"next", doc_id_}});
-        if (success)
-        {
-            DataBaseHandler::commit();
-            return true;
-        }
-    }
-    DataBaseHandler::rollback();
-    QMessageBox::warning(this, "Document Editor", "Unable to add document.\nError message: " + DataBaseHandler::get_error_message());
-    return false;
-}
-
-bool EditDocumentDialog::edit_document()
-{
-    QString doc_id_field, obj_field, table;
-    if (level_ == LEVEL::CHIP)
-    {
-        table = "doc_chip";
-        doc_id_field = "chip_doc_id";
-    }
-    else if (level_ == LEVEL::BLOCK)
-    {
-        table = "doc_block";
-        doc_id_field = "block_doc_id";
-    }
-    else if (level_ == LEVEL::REGISTER)
-    {
-        table = "doc_register";
-        doc_id_field = "register_doc_id";
-    }
-    else if (level_ == LEVEL::SIGNAL)
-    {
-        table = "doc_signal";
-        doc_id_field = "signal_doc_id";
-    }
-    else return false;
-
-    QString content = get_content();
-    content.replace("\\", "\\\\");  // otherwise back slash will disapear when insert into the db
-    if (DataBaseHandler::update_items(table, {{doc_id_field, doc_id_}}, {{"doc_type_id", get_document_type_id()}, {"content", content}}))
-    {
-        DataBaseHandler::commit();
-        return true;
-    }
-    DataBaseHandler::rollback();
-    QMessageBox::warning(this, "Document Editor", "Unable to edit document.\nError message: " + DataBaseHandler::get_error_message());
-    return false;
-}
-
 void EditDocumentDialog::on_comboBoxDocType_currentIndexChanged(int index)
 {
     if (index < 0) return;
@@ -454,7 +349,6 @@ void EditDocumentDialog::on_buttonBox_rejected()
     setVisible(false);
 }
 
-
 bool EditDocumentDialog::sanity_check()
 {
     if (ui->stackedWidget->currentIndex() == 1) // imaage
@@ -471,6 +365,109 @@ bool EditDocumentDialog::sanity_check()
         }
     }
     return true;
+}
+
+bool EditDocumentDialog::add_document()
+{
+
+    QVector<QVector<QString> > items;
+    QString doc_id_field, obj_field, table, obj_id;
+    if (level_ == LEVEL::CHIP)
+    {
+        table = "doc_chip";
+        doc_id_field = "chip_doc_id";
+        obj_field = "chip_id";
+        obj_id = chip_id_;
+    }
+    else if (level_ == LEVEL::BLOCK)
+    {
+        table = "doc_block";
+        doc_id_field = "block_doc_id";
+        obj_field = "block_id";
+        obj_id = block_id_;
+
+    }
+    else if (level_ == LEVEL::REGISTER)
+    {
+        table = "doc_register";
+        doc_id_field = "register_doc_id";
+        obj_field = "reg_id";
+        obj_id = register_id_;
+    }
+    else if (level_ == LEVEL::SIGNAL)
+    {
+        table = "doc_signal";
+        doc_id_field = "signal_doc_id";
+        obj_field = "sig_id";
+        obj_id = signal_id_;
+    }
+    else return false;
+
+    if (!DataBaseHandler::show_items(table, {doc_id_field}, {{"next", "-1"}, {obj_field, obj_id}}, items))
+    {
+        QMessageBox::warning(this, "Document Editor", "Unable to add document due to database connection issue.\nPlease try again.");
+        return false;
+    }
+    QString prev("-1");
+    if (items.size() == 1) prev = items[0][0];
+    items.clear();
+
+    ;
+    QString content = get_content();
+    content.replace("\\", "\\\\");
+
+    if (DataBaseHandler::get_next_auto_increment_id(table, doc_id_field, doc_id_) &&
+        DataBaseHandler::insert_item(table, {doc_id_field, obj_field, "doc_type_id", "content", "prev", "next"},
+                                    {doc_id_, obj_id, get_document_type_id(), content, prev, "-1"}))
+    {
+        bool success = true;
+        if (prev != "-1") success = success && DataBaseHandler::update_items(table, {{doc_id_field, prev}}, {{"next", doc_id_}});
+        if (success)
+        {
+            DataBaseHandler::commit();
+            return true;
+        }
+    }
+    DataBaseHandler::rollback();
+    QMessageBox::warning(this, "Document Editor", "Unable to add document.\nError message: " + DataBaseHandler::get_error_message());
+    return false;
+}
+
+bool EditDocumentDialog::edit_document()
+{
+    QString doc_id_field, obj_field, table;
+    if (level_ == LEVEL::CHIP)
+    {
+        table = "doc_chip";
+        doc_id_field = "chip_doc_id";
+    }
+    else if (level_ == LEVEL::BLOCK)
+    {
+        table = "doc_block";
+        doc_id_field = "block_doc_id";
+    }
+    else if (level_ == LEVEL::REGISTER)
+    {
+        table = "doc_register";
+        doc_id_field = "register_doc_id";
+    }
+    else if (level_ == LEVEL::SIGNAL)
+    {
+        table = "doc_signal";
+        doc_id_field = "signal_doc_id";
+    }
+    else return false;
+
+    QString content = get_content();
+    content.replace("\\", "\\\\");  // otherwise back slash will disapear when insert into the db
+    if (DataBaseHandler::update_items(table, {{doc_id_field, doc_id_}}, {{"doc_type_id", get_document_type_id()}, {"content", content}}))
+    {
+        DataBaseHandler::commit();
+        return true;
+    }
+    DataBaseHandler::rollback();
+    QMessageBox::warning(this, "Document Editor", "Unable to edit document.\nError message: " + DataBaseHandler::get_error_message());
+    return false;
 }
 
 bool EditDocumentDialog::validate_delimiter(const QString& text)

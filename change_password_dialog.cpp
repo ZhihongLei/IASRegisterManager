@@ -1,6 +1,5 @@
 #include "change_password_dialog.h"
 #include "ui_change_password_dialog.h"
-#include "global_variables.h"
 #include "database_handler.h"
 #include <QMessageBox>
 #include <QDebug>

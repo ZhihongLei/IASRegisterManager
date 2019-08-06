@@ -11,13 +11,12 @@
 #include "edit_register_page_dialog.h"
 #include "edit_chip_dialog.h"
 #include "database_utils.h"
-#include <QTableWidgetItem>
 #include <QMimeData>
 #include <QDropEvent>
 #include <QMessageBox>
-#include <QTreeWidgetItem>
 #include <QDebug>
 #include <QSettings>
+#include <QMenu>
 
 ChipEditorView::ChipEditorView(QWidget *parent) :
     QWidget(parent),
@@ -63,7 +62,6 @@ ChipEditorView::ChipEditorView(QWidget *parent) :
     connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
     connect(actionRemove_, SIGNAL(triggered()), this, SLOT(on_actionRemove_triggered()));
     connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(on_actionRefresh_triggered()));
-
 
     ui->tableBlock->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeMode::ResizeToContents);
     ui->tableDesigner->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
@@ -568,7 +566,7 @@ void ChipEditorView::on_pushButtonRemoveRegPage_clicked()
     }
     else {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Register Page", "Unable to remove this register page.\nError massage: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Register Page", "Unable to remove register page.\nError massage: " + DataBaseHandler::get_error_message());
     }
 }
 
@@ -707,7 +705,7 @@ void ChipEditorView::on_tableRegPage_cellDoubleClicked(int row, int column)
     if (row < 0) return;
     if (!authenticator_->can_fully_access_all_blocks())
     {
-        QMessageBox::warning(this, "Remove Register Page", "You are not eligible to edit register pages!");
+        QMessageBox::warning(this, "Edit Register Page", "You are not eligible to edit register pages!");
         return;
     }
     QString page_id = ui->tableRegPage->item(row, 0)->text();

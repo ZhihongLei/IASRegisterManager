@@ -40,8 +40,8 @@ public:
     Authenticator();
 
     void set_database_permissions(const QString& db_role_id);
-    void set_project_permissions(const QString& project_role_id, bool frozon=false);
-    void set_project_permissions(bool setting, bool frozon=false);
+    void set_project_permissions(const QString& project_role_id);
+    void set_project_permissions(bool setting);
     void set_block_permissions(bool setting);
     void freeze(bool frozen=true);
 

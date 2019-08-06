@@ -2,14 +2,11 @@
 #define EDIT_SIGNAL_DIALOG_H
 
 #include <QDialog>
-#include <QHash>
 #include "edit_signal_partition_logic.h"
-#include <QValidator>
-#include <QRegExpValidator>
 #include "data_utils.h"
-#include <QComboBox>
 #include <QSet>
 
+class QComboBox;
 namespace Ui {
 class EditSignalDialog;
 }
@@ -49,7 +46,6 @@ private slots:
     void on_pushButtonAddReg_clicked();
     void on_pushButtonAddSigPart_clicked();
     void on_pushButtonRemoveSigPart_clicked();
-    void on_pushButtonEditSigParts_clicked();
 
     void on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void on_checkBoxAddPort_clicked(bool);
@@ -79,7 +75,6 @@ private:
     QVector<QString> original_sig_reg_mapping_part_ids_;
     QString original_signal_given_name_, original_sig_type_id_, original_width_, original_reg_type_id_, original_value_;
     int last_width_ = -1;
-    bool edit_partitions_ = true;
     QComboBox* comboBoxSigLSB_, *comboBoxSigMSB_;
     const bool enabled_;
     QSet<QString> registers_in_page_;

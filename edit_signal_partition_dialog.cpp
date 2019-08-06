@@ -243,6 +243,6 @@ bool EditSignalPartitionDialog::add_signal_partition()
         return true;
     }
     DataBaseHandler::rollback();
-    QMessageBox::warning(this, windowTitle(), "Unable to add signal partition.\nPlease try again!");
+    QMessageBox::warning(this, windowTitle(), "Unable to add signal partition.\nError message: " + DataBaseHandler::get_error_message());
     return false;
 }

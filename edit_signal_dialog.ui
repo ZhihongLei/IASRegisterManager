@@ -501,41 +501,17 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="layoutButtom">
-     <item>
-      <widget class="QPushButton" name="pushButtonEditSigParts">
-       <property name="text">
-        <string>Hide</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="spacerButtom">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QDialogButtonBox" name="buttonBox">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-       </property>
-       <property name="centerButtons">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+     <property name="centerButtons">
+      <bool>false</bool>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
@@ -553,7 +529,6 @@
   <tabstop>pushButtonRemoveSigPart</tabstop>
   <tabstop>pushButtonAddSigPart</tabstop>
   <tabstop>tableWidgetSigPart</tabstop>
-  <tabstop>pushButtonEditSigParts</tabstop>
  </tabstops>
  <resources/>
  <connections>

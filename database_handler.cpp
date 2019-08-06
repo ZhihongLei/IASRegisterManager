@@ -1,6 +1,4 @@
 #include "database_handler.h"
-#include <QString>
-#include <unordered_set>
 #include <QDebug>
 
 sql::Driver* DataBaseHandler::driver_ = get_driver_instance();
@@ -282,7 +280,6 @@ bool DataBaseHandler::show_items_inner_join(const QVector<QString>& extended_fie
                        table_1 + "." + field_1 + " = " + table_2 + "." + field_2);
     }
     QString statement = "SELECT " + to_select + " FROM " + tables;
-    qDebug() << statement.toUtf8().constData();
 
     if (constraint != "") statement += " WHERE " + constraint;
     if (additional != "") statement += (" " + additional);

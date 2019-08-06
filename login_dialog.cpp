@@ -3,7 +3,6 @@
 #include "global_variables.h"
 #include "database_handler.h"
 #include <QMessageBox>
-#include <iostream>
 
 LoginDialog::LoginDialog(QWidget *parent) :
     QDialog(parent),

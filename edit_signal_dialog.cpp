@@ -2,14 +2,12 @@
 #include "ui_edit_signal_dialog.h"
 #include "database_handler.h"
 #include "global_variables.h"
-#include <QRegExpValidator>
+#include "data_utils.h"
 #include "edit_signal_partition_dialog.h"
 #include "edit_register_dialog.h"
 #include <QMessageBox>
-#include <QPushButton>
-#include <QDialogButtonBox>
 #include <QtMath>
-#include "data_utils.h"
+#include <QRegExpValidator>
 #include <QDebug>
 
 
@@ -121,9 +119,7 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
             ui->tableWidgetSigPart->setCurrentCell(0, 0);
             QString reg_name = ui->tableWidgetSigPart->item(0, 1)->text().split("<")[0];
             QString reg_lsb = ui->tableWidgetSigPart->item(0, 1)->text().replace(">", "").split(":")[1];
-            //emit(ui->pushButtonRemoveSigPart->clicked());
             on_pushButtonRemoveSigPart_clicked();
-            //emit(ui->lineEditWidth->editingFinished());
             for (int i = 0; i < ui->comboBoxReg->count(); i++)
             {
                 if (ui->comboBoxReg->itemText(i) == reg_name)
@@ -387,8 +383,15 @@ void EditSignalDialog::on_lineEditWidth_textChanged(const QString &arg1)
         emit(comboBoxSigMSB_->currentIndexChanged(comboBoxSigMSB_->currentIndex()));
     }
 
-    edit_partitions_ = !edit_partitions_;
-    emit(ui->pushButtonEditSigParts->clicked());
+    int w = width();
+    comboBoxSigLSB_->setVisible(get_width().toInt() != 1);
+    comboBoxSigMSB_->setVisible(get_width().toInt() != 1);
+    ui->tableWidgetSigPart->setVisible(get_width().toInt() != 1);
+    ui->pushButtonAddSigPart->setVisible(get_width().toInt() != 1);
+    ui->pushButtonRemoveSigPart->setVisible(get_width().toInt() != 1);
+
+    if (get_width().toInt() == 1) resize(w, 290);
+    else resize(w, 560);
 }
 
 void EditSignalDialog::on_comboBoxSigType_currentIndexChanged(int index)
@@ -590,30 +593,6 @@ void EditSignalDialog::on_pushButtonRemoveSigPart_clicked()
     emit(ui->lineEditWidth->editingFinished());
 }
 
-void EditSignalDialog::on_pushButtonEditSigParts_clicked()
-{
-    edit_partitions_ = !edit_partitions_;
-    ui->framePartition->setVisible(edit_partitions_);
-    int w = width();
-    if (edit_partitions_)
-    {
-        comboBoxSigLSB_->setVisible(get_width().toInt() != 1);
-        comboBoxSigMSB_->setVisible(get_width().toInt() != 1);
-        ui->tableWidgetSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonAddSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonRemoveSigPart->setVisible(get_width().toInt() != 1);
-        ui->pushButtonEditSigParts->setText("Hide");
-
-        if (get_width().toInt() == 1) resize(w, 300);
-        else resize(w, 560);
-    }
-    else
-    {
-        ui->pushButtonEditSigParts->setText("Edit Partitions");
-        resize(w, 235);
-    }
-}
-
 void EditSignalDialog::on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
     ui->pushButtonRemoveSigPart->setEnabled(enabled_ && currentRow >= 0);
@@ -721,7 +700,7 @@ bool EditSignalDialog::add_signal()
             {
                 if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                         && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
-                        && ui->comboBoxRegPart->count() >0 && edit_partitions_ && ui->pushButtonAddSigPart->isEnabled())
+                        && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled())
                 {
                     on_pushButtonAddSigPart_clicked();
                 }
@@ -797,7 +776,7 @@ bool EditSignalDialog::edit_signal()
         }
         if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                 && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
-                && ui->comboBoxRegPart->count() >0 && edit_partitions_ && ui->pushButtonAddSigPart->isEnabled())
+                && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled())
         {
             on_pushButtonAddSigPart_clicked();
         }

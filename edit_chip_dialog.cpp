@@ -3,10 +3,9 @@
 #include "database_handler.h"
 #include "global_variables.h"
 #include "database_utils.h"
-#include <QRegExp>
+#include "authenticator.h"
 #include <QRegExpValidator>
 #include <QMessageBox>
-#include <authenticator.h>
 #include <QDebug>
 
 EditChipDialog::EditChipDialog(const QString& username, const QString& user_id, QWidget *parent) :
@@ -99,6 +98,7 @@ EditChipDialog::EditChipDialog(const QString& username, const QString& user_id,
     ui->checkBoxMSBFirst->setChecked(msb_first);
     original_address_width_ = address_width;
     original_register_width_ = register_width;
+    original_chip_name_ = chip_name;
     setWindowTitle("New Chip");
     if (!success)
     {
@@ -377,7 +377,14 @@ bool EditChipDialog::add_chip_from()
     for (const QString& sig_id : in_old2news["sig_id"].keys())
         success = success && DatabaseUtils::copy_row("doc_signal", "signal_doc_id", {"sig_id", "doc_type_id", "content"},
                                   in_old2news, out_old2new, true, "sig_id", sig_id);
-    return success;
+    if (success)
+    {
+        DataBaseHandler::commit();
+        return true;
+    }
+    QMessageBox::information(this, "New Chip", "Unable to create chip from " + original_chip_name_ + ".\nError message: "+ DataBaseHandler::get_error_message());
+    DataBaseHandler::rollback();
+    return false;
 }
 
 bool EditChipDialog::edit_chip()
@@ -408,6 +415,6 @@ bool EditChipDialog::edit_chip()
         return true;
     }
     DataBaseHandler::rollback();
-    QMessageBox::warning(this, "Edit Chip", "Unable to edit chip\nError message: " + DataBaseHandler::get_error_message());
+    QMessageBox::warning(this, "Edit Chip", "Unable to edit chip.\nError message: " + DataBaseHandler::get_error_message());
     return false;
 }

@@ -2,13 +2,13 @@
 #define CHIP_NAVIGATOR_H
 
 #include <QWidget>
-#include <QTreeWidgetItem>
 #include "authenticator.h"
 
 namespace Ui {
 class ChipNavigator;
 }
 
+class QTreeWidgetItem;
 class ChipNavigator : public QWidget
 {
     Q_OBJECT
