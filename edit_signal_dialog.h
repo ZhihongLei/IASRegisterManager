@@ -40,8 +40,9 @@ private slots:
     void on_comboBoxSigType_currentIndexChanged(int index);
     void on_comboBoxRegType_currentIndexChanged(int index);
     void on_comboBoxReg_currentIndexChanged(int index);
-    void on_comboBoxSigLSB_currentIndexChanged(int index);
-    void on_comboBoxSigMSB_currentIndexChanged(int index);
+    void sigLSB_currentIndexChanged(int index);
+    void sigMSB_currentIndexChanged(int index);
+    void on_checkBoxAddPartition_stateChanged(int arg1);
 
     void on_pushButtonAddReg_clicked();
     void on_pushButtonAddSigPart_clicked();
@@ -49,6 +50,7 @@ private slots:
 
     void on_tableWidgetSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void on_checkBoxAddPort_clicked(bool);
+
 
 private:
     bool setup_ui();
@@ -59,6 +61,7 @@ private:
 
     bool sanity_check();
     bool check_name();
+    bool check_width();
     bool check_value();
     bool check_partitions();
     void accept();

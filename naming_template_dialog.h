@@ -2,7 +2,7 @@
 #define NAMING_TEMPLATE_DIALOG_H
 
 #include <QDialog>
-#include <QSet>
+#include <QString>
 
 namespace Ui {
 class NamingTemplateDialog;
@@ -13,25 +13,19 @@ class NamingTemplateDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit NamingTemplateDialog(QWidget *parent = nullptr);
+    explicit NamingTemplateDialog(const QString& chip_id, QWidget *parent = nullptr);
+    QString get_signal_naming() const;
+    QString get_register_naming() const;
     ~NamingTemplateDialog();
-    QString get_naming_template() const;
 
 private slots:
-    void on_pushButtonAdd_clicked();
-    void on_pushButtonRemove_clicked();
-    void on_comboBoxType_currentIndexChanged(int index);
-    void on_listWidget_currentRowChanged(int currentRow);
-    void on_lineEditOther_textChanged(const QString &text);
+    void on_pushButtonRegNaming_clicked();
+
+    void on_pushButtonSigNaming_clicked();
 
 private:
-    void accept();
-    bool sanity_check();
-    bool check_name();
-    bool check_delimiter();
-
     Ui::NamingTemplateDialog *ui;
-    QSet<QString> reserved_types;
+    const QString chip_id_;
 };
 
 #endif // NAMING_TEMPLATE_DIALOG_H

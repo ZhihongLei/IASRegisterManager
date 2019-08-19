@@ -38,6 +38,7 @@ SOURCES += \
     document_generator.cpp \
     edit_chip_designer_dialog.cpp \
     edit_document_dialog.cpp \
+    edit_naming_template_dialog.cpp \
     edit_register_page_dialog.cpp \
     line_edit.cpp \
     main.cpp \
@@ -53,6 +54,7 @@ SOURCES += \
     change_password_dialog.cpp \
     edit_system_block_dialog.cpp \
     edit_register_dialog.cpp \
+    resources_base_dir_dialog.cpp \
     spi_generation_dialog.cpp \
     user_management_dialog.cpp \
     edit_chip_dialog.cpp \
@@ -72,6 +74,7 @@ HEADERS += \
     document_generator.h \
     edit_chip_designer_dialog.h \
     edit_document_dialog.h \
+    edit_naming_template_dialog.h \
     edit_register_page_dialog.h \
     line_edit.h \
     naming_template.h \
@@ -87,6 +90,7 @@ HEADERS += \
     change_password_dialog.h \
     edit_system_block_dialog.h \
     edit_register_dialog.h \
+    resources_base_dir_dialog.h \
     spi_generation_dialog.h \
     user_management_dialog.h \
     edit_chip_dialog.h \
@@ -103,6 +107,7 @@ FORMS += \
     document_generation_dialog.ui \
     edit_chip_designer_dialog.ui \
     edit_document_dialog.ui \
+    edit_naming_template_dialog.ui \
     edit_register_page_dialog.ui \
     naming_template_dialog.ui \
     register_manager.ui \
@@ -112,6 +117,7 @@ FORMS += \
     change_password_dialog.ui \
     edit_system_block_dialog.ui \
     edit_register_dialog.ui \
+    resources_base_dir_dialog.ui \
     spi_generation_dialog.ui \
     user_management_dialog.ui \
     edit_chip_dialog.ui \

@@ -160,7 +160,7 @@ QPair<QString, QString> VHDLGenerator::generate_interface_package_block(const QS
     signal_naming.update_key("${BLOCK_NAME}", block_name);
     signal_naming.update_key("${BLOCK_ABBR}", block_abbr);
 
-    QString headline = "  --" + block_abbr + "\n";
+    QString headline = "  -- " + block_abbr + "\n";
 
     QVector<QVector<QString> > registers;
     success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "reg_type_id", "prev", "next"}, "block_id", block_id, registers);
@@ -197,7 +197,7 @@ QVector<QString> VHDLGenerator::generate_interface_block(const QString &block_id
     signal_naming.update_key("${BLOCK_NAME}", block_name);
     signal_naming.update_key("${BLOCK_ABBR}", block_abbr);
 
-    QString headline = "--" + block_abbr + "\n";
+    QString headline = "-- " + block_abbr + "\n";
     QVector<QVector<QString> > register_items, signal_items;
     success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "reg_type_id", "prev", "next"}, "block_id", block_id, register_items);
     register_items = sort_doubly_linked_list(register_items);
@@ -221,7 +221,7 @@ QVector<QString> VHDLGenerator::generate_interface_block(const QString &block_id
         }
         else
         {
-            readonly_register_assignments = generate_assigning_value_to_readonly_register(reg_id, reg_name, signal_naming);
+            readonly_register_assignments += generate_assigning_value_to_readonly_register(reg_id, reg_name, signal_naming);
         }
         if (reg_id2page.contains(reg_id))
             paged_register_assignments += generate_assigning_value_to_paged_register(reg_id, reg_name, reg_id2page);
@@ -261,7 +261,8 @@ QString VHDLGenerator::generate_register_address_definition(const QString &reg_n
     QString reg_addr_name = reg_name + config_->value("address_suffix").toString();
     if (reg_addr_name.size() < 40) reg_addr_name = reg_addr_name + QString(40 - reg_addr_name.size(), ' ');
     QString logic = QString("std_logic_vector(${ADDR_WIDTH_VAR} - 1 downto 0)").replace("${ADDR_WIDTH_VAR}", config_->value("varname_address_width").toString());
-    QString address = "x\"" + reg_address + "\"";
+    //QString address = "x\"" + reg_address + "\"";
+    QString address = "x\"" + reg_address.right(reg_address.size()-2) + "\"";
     return "  constant " + reg_addr_name + " : " + logic + " := " + address + ";\n";
 }
 
@@ -283,9 +284,9 @@ QString VHDLGenerator::generate_register_init_definition(const QString &reg_id,
                                        "signal_signal.sig_id",
                                        "block_sig_reg_partition_mapping.sig_lsb",
                                        "block_sig_reg_partition_mapping.sig_msb",
-                                        "signal_reg_signal.init_value",
-                                        "signal_signal.width",
-                                        "signal_signal.add_port"};
+                                       "signal_reg_signal.init_value",
+                                       "signal_signal.width",
+                                       "signal_signal.add_port"};
     success_ = success_ && DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
                                                  {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, items, {{"block_sig_reg_partition_mapping.reg_id", reg_id}});
 
@@ -355,8 +356,8 @@ QString VHDLGenerator::generate_port_definition(const QString &sig_name,
     QString padded_sig_name = sig_name.size() < 40 ? sig_name + QString(40 - sig_name.size(), ' ') : sig_name;
     QString direction = output_signal_types.contains(sig_type_id) ? "out" : "in";
     QString logic =  sig_width == 1 ?  "std_logic" :
-                                    QString("std_logic_vector(${SIGNAL_WIDTH} - 1 downto 0)").replace("${SIGNAL_WIDTH}", QString::number(sig_width));
-    return "    " + padded_sig_name + " : " + direction + "  " + logic + ";\n";
+                                    QString("std_logic_vector(${SIGNAL_WIDTH}-1 downto 0)").replace("${SIGNAL_WIDTH}", QString::number(sig_width));
+    return "    " + padded_sig_name + " : " + direction.leftJustified(7, ' ') + logic + ";\n";
 }
 
 QString VHDLGenerator::generate_register_definition(const QString& reg_id,
@@ -430,7 +431,7 @@ QString VHDLGenerator::generate_writing_register(const QString &reg_id,
                 sig_value = sig_width > 1 ? "\"" + sig_value + "\"" : "\'" + sig_value + "\'";
             }
             else sig_value = "others";
-            statement += " when " +  sig_value + " => " + paged_reg_name + " <= " + spi_byte_signal + ";";
+            statement += " when " +  sig_value + " => " + paged_reg_name + " <= " + spi_byte_signal + " ;";
         }
         statement += " end case ;";
     }
@@ -449,7 +450,7 @@ QString VHDLGenerator::generate_reading_register(const QString &reg_name) const
     QString read_buffer_signal = config_->value("read_buffer_signal").toString();
     if (read_buffer_signal.size() < 40) read_buffer_signal = read_buffer_signal + QString(40 - read_buffer_signal.size(), ' ');
 
-    return QString(12, ' ') + "when " + reg_addr_name + " => " + read_buffer_signal + " <= " + reg_name +"\n";
+    return QString(12, ' ') + "when " + reg_addr_name + " => " + read_buffer_signal + " <= " + reg_name +";\n";
 }
 
 QString VHDLGenerator::generate_assigning_value_to_readonly_register(const QString &reg_id, const QString &reg_name, const NamingTemplate& signal_naming) const
@@ -464,8 +465,8 @@ QString VHDLGenerator::generate_assigning_value_to_readonly_register(const QStri
                                        "signal_signal.sig_name",
                                        "block_sig_reg_partition_mapping.sig_lsb",
                                        "block_sig_reg_partition_mapping.sig_msb",
-                                        "signal_signal.width",
-                                        "signal_signal.add_port"};
+                                       "signal_signal.width",
+                                       "signal_signal.add_port"};
     success_ = success_ && DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
                                                  {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, items, {{"block_sig_reg_partition_mapping.reg_id", reg_id}});
     qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2].toInt() > b[2].toInt();});
@@ -508,11 +509,11 @@ QString VHDLGenerator::generate_assigning_value_to_constrol_signal(const QString
     QString global_reset_signal = config_->value("global_reset_signal").toString();
 
     QVector<QString> extended_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
-                                           "block_sig_reg_partition_mapping.sig_lsb",
-                                           "block_sig_reg_partition_mapping.sig_msb",
-                                           "block_register.reg_name",
-                                           "block_sig_reg_partition_mapping.reg_lsb",
-                                           "block_sig_reg_partition_mapping.reg_msb"};
+                                        "block_sig_reg_partition_mapping.sig_lsb",
+                                        "block_sig_reg_partition_mapping.sig_msb",
+                                        "block_register.reg_name",
+                                        "block_sig_reg_partition_mapping.reg_lsb",
+                                        "block_sig_reg_partition_mapping.reg_msb"};
     success_ = success_ && DataBaseHandler::show_items_inner_join(extended_fields,
                                               {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
                                                 {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}},
@@ -621,8 +622,7 @@ QHash<QString, QVector<QString> > VHDLGenerator::get_register_id2page() const
                                             "chip_register_page.page_count",
                                             "signal_signal.add_port",
                                             "block_system_block.block_name",
-                                            "block_system_block.abbreviation"
-                                            },
+                                            "block_system_block.abbreviation"},
                                             {{{"chip_register_page", "ctrl_sig"}, {"signal_signal", "sig_id"}},
                                              {{"signal_signal", "block_id"}, {"block_system_block", "block_id"}}},
                                            items, "chip_register_page.chip_id", chip_id_, "");

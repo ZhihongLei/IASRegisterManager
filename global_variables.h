@@ -5,6 +5,9 @@
 class NamingTemplate;
 extern QString MATHJAX_ROOT;
 extern QString HTML_TEMPLATE, HTML_TEXT_TEMPLATE, HTML_IMAGE_TEMPLATE, HTML_TABLE_TEMPLATE;
+extern QString RECENT_REGISTER_ID;
+extern QString RESOURCES_BASE_DIR;
+extern QString LOG_PATH;
 
 const static QString DEFAULT_HTML_TEMPLATE = "\
         <html>\n\

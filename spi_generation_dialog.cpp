@@ -35,9 +35,9 @@ void SPIGenerationDialog::on_pushButtonSelectConfig_clicked()
     if (path != "")
     {
         ui->lineEditConfig->setText(path);
-        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-        chip_setttings.beginGroup(chip_id_);
-        chip_setttings.setValue("export_config_file", path);
+        QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+        chip_settings.beginGroup(chip_id_);
+        chip_settings.setValue("export_config_file", path);
         QSettings export_settings(ui->lineEditConfig->text(), QSettings::IniFormat);
         export_settings.beginGroup(ui->comboBoxType->currentText());
         if (ui->lineEditSPITemplate->text() != "") export_settings.setValue("spi_template_file", ui->lineEditSPITemplate->text());
@@ -123,14 +123,14 @@ void SPIGenerationDialog::on_pushButtonOutputPkg_clicked()
 
 void SPIGenerationDialog::on_comboBoxType_currentIndexChanged(int index)
 {
-    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-    chip_setttings.beginGroup(chip_id_);
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
     ui->lineEditConfig->clear();
     ui->lineEditSPITemplate->clear();
     ui->lineEditPackageTemplate->clear();
-    if (chip_setttings.value("export_config_file").toString() != "")
+    if (chip_settings.value("export_config_file").toString() != "")
     {
-        ui->lineEditConfig->setText(chip_setttings.value("export_config_file").toString());
+        ui->lineEditConfig->setText(chip_settings.value("export_config_file").toString());
         QSettings export_settings(ui->lineEditConfig->text(), QSettings::IniFormat);
         export_settings.beginGroup(ui->comboBoxType->currentText());
         ui->lineEditSPITemplate->setText(export_settings.value("spi_template_file").toString());
@@ -335,7 +335,7 @@ bool SPIGenerationDialog::check_signal_partitions(const QVector<QVector<QString>
         signal_naming.update_key("${BLOCK_ABBR}", block_abbr);
         success = success && DataBaseHandler::show_items_inner_join({"signal_reg_signal.reg_sig_id", "signal_signal.sig_name", "signal_signal.width", "signal_signal.add_port"},
                                                 {{{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}},
-                                               signal_items, "block_id", block_id);
+                                               signal_items, "block_id", block_id, "");
         if (!success) break;
 
         for (const auto& signal_item: signal_items)
@@ -463,7 +463,7 @@ bool SPIGenerationDialog::generate_spi_interface()
         spi_interface_path = ui->lineEditOutputSPI->text();
         if (!generator.success())
         {
-            QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface.\nError message: " + DataBaseHandler::get_error_message() + "!");
+            QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface.\nError message: " + DataBaseHandler::get_error_message());
             return false;
         }
     }
@@ -472,7 +472,7 @@ bool SPIGenerationDialog::generate_spi_interface()
     QFile spi_interface_file(spi_interface_path);
     if( !interface_package_file.open(QIODevice::WriteOnly) || !spi_interface_file.open(QIODevice::WriteOnly))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface due to IO error.\nPlease try again!");
+        QMessageBox::warning(this, windowTitle(), "Unable to generate SPI interface due to IO error.\nPlease try again.");
         interface_package_file.close();
         spi_interface_file.close();
         return false;

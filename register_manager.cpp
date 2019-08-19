@@ -10,6 +10,7 @@
 #include "authenticator.h"
 #include "login_dialog.h"
 #include "naming_template_dialog.h"
+#include "resources_base_dir_dialog.h"
 #include "document_generator.h"
 #include "document_generation_dialog.h"
 #include "spi_generation_dialog.h"
@@ -19,6 +20,7 @@
 #include <QCompleter>
 #include <QDir>
 #include <QMessageBox>
+#include <QDate>
 
 
 RegisterManager::RegisterManager(QWidget *parent) :
@@ -58,11 +60,11 @@ RegisterManager::RegisterManager(QWidget *parent) :
     ui->actionDocEditor->setChecked(false);
     ui->actionDocPreview->setChecked(false);
 
-    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
+    for (QAction* a : {ui->actionNaming, ui->actionResourcesBaseDir, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
         a->setEnabled(false);
     ui->actionFreezeChip->setText("Freeze");
 
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("user");
     bool save_password = settings.value("save_password").toBool();
     login_dialog_->set_save_password(save_password);
@@ -87,7 +89,7 @@ RegisterManager::~RegisterManager()
     DataBaseHandler::close();
 
     if (username_ == "") return;
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     settings.setValue("fullscreen", isFullScreen());
     settings.setValue("mainwindow_width", width());
@@ -106,15 +108,17 @@ RegisterManager::~RegisterManager()
 
 bool RegisterManager::initialize()
 {
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "global_settings");
     settings.beginGroup("database");
     QString host = settings.value("host").toString(),
+            port = settings.value("port").toString(),
             database = settings.value("database").toString(),
             username = settings.value("username").toString(),
             key = settings.value("key").toString(),
             encoded = settings.value("encrypted_password").toString(),
             password = QAESEncryption::decode(encoded, key);
     settings.endGroup();
+    if (port != "") host = host + ":" + port;
     if (!DataBaseHandler::initialize(host, database, username, password))
     {
         QMessageBox::warning(nullptr, "Register Manager", "Unable to login to database.\nError message: " + DataBaseHandler::get_error_message());
@@ -147,16 +151,28 @@ bool RegisterManager::initialize()
         }
         *templates[i] = default_templates[i];
     }
+    settings.endGroup();
+
+    settings.beginGroup("log");
+    LOG_PATH = settings.value("path").toString();
+    if (LOG_PATH == "")
+        QMessageBox::warning(nullptr, "Logger", "Log file path is not specified.\nLogging will not work properly.");
+    else {
+        if (QDir::isRelativePath(LOG_PATH)) LOG_PATH = QDir::home().absoluteFilePath(LOG_PATH);
+        qInstallMessageHandler(RegisterManager::LogMessageHandler);
+    }
+    settings.endGroup();
     return true;
 }
 
 void RegisterManager::on_loggedin(QString username)
 {
+    qInfo().noquote() << QString("Logged in as %1.").arg(username);
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items_inner_join({"global_user.user_id", "def_db_role.db_role", "def_db_role.db_role_id"},
                                     {{{"global_user", "db_role_id"}, {"def_db_role", "db_role_id"}}}, items, {{"username", username}}))
     {
-        QMessageBox::warning(this, "Login", "Unable to login due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Login", "Unable to login due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 
@@ -177,7 +193,7 @@ void RegisterManager::on_loggedin(QString username)
 
     login_dialog_->hide();
 
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("user");
     settings.setValue("username", username);
     settings.setValue("save_password", login_dialog_->save_password());
@@ -228,19 +244,21 @@ void RegisterManager::on_loggedin(QString username)
 
 void RegisterManager::open_chip()
 {
-    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-    chip_setttings.beginGroup(chip_id_);
-    QString reg_naming_template = chip_setttings.value("register_naming_template").toString();
-    QString sig_naming_template = chip_setttings.value("signal_naming_template").toString();
+    qInfo().noquote() << QString("Chip %2 [%3] opened.").arg(chip_name_, chip_id_);
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
+    RESOURCES_BASE_DIR = chip_settings.value("resources_base_dir").toString();
+    QString reg_naming_template = chip_settings.value("register_naming_template").toString();
+    QString sig_naming_template = chip_settings.value("signal_naming_template").toString();
     if (reg_naming_template == "")
     {
         reg_naming_template = DEFAULT_REGISTER_NAMING_TEMPLATE;
-        chip_setttings.setValue("register_naming_template", reg_naming_template);
+        chip_settings.setValue("register_naming_template", reg_naming_template);
     }
     if (sig_naming_template == "")
     {
         sig_naming_template = DEFAULT_SIGNAL_NAMING_TEMPLATE;
-        chip_setttings.setValue("signal_naming_template", sig_naming_template);
+        chip_settings.setValue("signal_naming_template", sig_naming_template);
     }
 
     GLOBAL_SIGNAL_NAMING.set_naming_template(sig_naming_template);
@@ -255,11 +273,11 @@ void RegisterManager::open_chip()
     else if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
     set_completer();
 
-    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip})
+    for (QAction* a : {ui->actionNaming, ui->actionResourcesBaseDir, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip})
         a->setEnabled(true);
-    ui->actionFreezeChip->setEnabled(chip_owner_ == username_);
+    ui->actionFreezeChip->setEnabled(chip_owner_ == username_ || authenticator_->can_fully_access_all_projects());
 
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("recent_projects");
     int pos = 1;
     QString candidate = settings.value("project" + QString::number(pos)).toString();
@@ -453,32 +471,37 @@ void RegisterManager::on_actionCloseChip_triggered()
     ui->docEditorView->close_chip();
     ui->chipEditorView->close_chip();
 
-    for (QAction* a : {ui->actionRegisterNaming, ui->actionSignalNaming, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
+    for (QAction* a : {ui->actionNaming, ui->actionResourcesBaseDir, ui->actionDocument, ui->actionSPISourceCode, ui->actionCloseChip, ui->actionFreezeChip})
         a->setEnabled(false);
     ui->actionFreezeChip->setText("Freeze");
+    RESOURCES_BASE_DIR = "";
 }
 
-void RegisterManager::on_actionSignalNaming_triggered()
+void RegisterManager::on_actionNaming_triggered()
 {
-    NamingTemplateDialog naming;
-    if (naming.exec() == QDialog::Accepted)
+    NamingTemplateDialog naming(chip_id_, this);
+    if (naming.exec() == QDialog::Accepted && (GLOBAL_SIGNAL_NAMING.get_naming_template() != naming.get_signal_naming() ||
+                                               GLOBAL_REGISTER_NAMING.get_naming_template() != naming.get_register_naming()))
     {
-        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-        chip_setttings.beginGroup(chip_id_);
-        chip_setttings.setValue("signal_naming_template", naming.get_naming_template());
+        QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+        chip_settings.beginGroup(chip_id_);
+        GLOBAL_SIGNAL_NAMING.set_naming_template(naming.get_signal_naming());
+        GLOBAL_REGISTER_NAMING.set_naming_template(naming.get_register_naming());
+        chip_settings.setValue("signal_naming_template", naming.get_signal_naming());
+        chip_settings.setValue("register_naming_template", naming.get_register_naming());
         open_chip();
     }
 }
 
-void RegisterManager::on_actionRegisterNaming_triggered()
+void RegisterManager::on_actionResourcesBaseDir_triggered()
 {
-    NamingTemplateDialog naming;
-    if (naming.exec() == QDialog::Accepted)
+    ResourcesBaseDirDialog dialog(RESOURCES_BASE_DIR, this);
+    if (dialog.exec() == QDialog::Accepted)
     {
-        QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-        chip_setttings.beginGroup(chip_id_);
-        chip_setttings.setValue("register_naming_template", naming.get_naming_template());
-        open_chip();
+        QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+        chip_settings.beginGroup(chip_id_);
+        chip_settings.setValue("resources_base_dir", dialog.get_base_dir());
+        RESOURCES_BASE_DIR = dialog.get_base_dir();
     }
 }
 
@@ -489,14 +512,16 @@ void RegisterManager::on_actionFreezeChip_triggered()
         DataBaseHandler::commit();
         authenticator_->freeze(ui->actionFreezeChip->text() == "Freeze");
         ui->actionFreezeChip->setText(ui->actionFreezeChip->text() == "Freeze" ? "Unfreeze" : "Freeze");
+        ui->chipNavigator->open_chip(chip_name_, chip_id_, msb_first_);
         ui->chipEditorView->open_chip(chip_name_, chip_id_, chip_owner_, chip_owner_id_, register_width_, address_width_, msb_first_);
         ui->docEditorView->open_chip(chip_name_, chip_id_, register_width_, address_width_, msb_first_);
+        if (ui->actionDocEditor->isChecked()) ui->docEditorView->display_documents();
+        else if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
     }
     else
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this,
-                             ui->actionFreezeChip->text() + " Chip",
+        QMessageBox::warning(this, ui->actionFreezeChip->text() + " Chip",
                              "Unable to " + ui->actionFreezeChip->text() + " chip.\nError message: " + DataBaseHandler::get_error_message());
     }
 }
@@ -515,21 +540,21 @@ void RegisterManager::on_actionChipManagement_triggered()
 void RegisterManager::on_actionDocument_triggered()
 {
     DocumentGenerationDialog generator(chip_id_, chip_name_, register_width_, address_width_, msb_first_, authenticator_, user_id_, this);
-    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-    chip_setttings.beginGroup(chip_id_);
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
     if (generator.exec() == QDialog::Accepted)
     {
         if (GLOBAL_SIGNAL_NAMING.get_naming_template() != generator.get_signal_naming() || GLOBAL_REGISTER_NAMING.get_naming_template() != generator.get_register_naming())
         {
             GLOBAL_SIGNAL_NAMING.set_naming_template(generator.get_signal_naming());
             GLOBAL_REGISTER_NAMING.set_naming_template(generator.get_register_naming());
-            chip_setttings.setValue("signal_naming_template", generator.get_signal_naming());
-            chip_setttings.setValue("register_naming_template", generator.get_register_naming());
+            chip_settings.setValue("signal_naming_template", generator.get_signal_naming());
+            chip_settings.setValue("register_naming_template", generator.get_register_naming());
             open_chip();
         }
-        chip_setttings.setValue("image_caption_position", generator.get_image_caption_position());
-        chip_setttings.setValue("table_caption_position", generator.get_table_caption_position());
-        chip_setttings.setValue("show_paged_register", generator.get_show_paged_register());
+        chip_settings.setValue("image_caption_position", generator.get_image_caption_position());
+        chip_settings.setValue("table_caption_position", generator.get_table_caption_position());
+        chip_settings.setValue("show_paged_register", generator.get_show_paged_register());
         generator.generate_document();
     }
 }
@@ -581,7 +606,7 @@ void RegisterManager::on_actionChipEditorView_triggered()
     {
         if (current_block_id_ == "") ui->chipEditorView->display_chip_level_info();
         else ui->chipEditorView->display_system_level_info(current_reg_id_, current_sig_id_);
-    }    
+    }
 }
 
 void RegisterManager::on_chipNavigator_chip_clicked()
@@ -678,9 +703,38 @@ void RegisterManager::on_chipEditorView_block_order_exchanged(int from, int to)
     if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
 }
 
-void RegisterManager::on_chipEditorView_to_refresh_block()
+void RegisterManager::on_chipEditorView_to_refresh_navigator_block()
 {
     ui->chipNavigator->refresh_block();
     set_completer();
     if (ui->actionDocPreview->isChecked()) ui->docEditorView->display_overall_documents();
+}
+
+void RegisterManager::LogMessageHandler(QtMsgType type, const QMessageLogContext &, const QString & msg)
+{
+    QString txt;
+    switch (type) {
+    case QtInfoMsg:
+        txt = QString("[%1] Info: %2").arg(QDateTime::currentDateTime().toString(), msg);
+        break;
+    case QtDebugMsg:
+        txt = QString("[%1] Debug: %2").arg(QDateTime::currentDateTime().toString(), msg);
+        break;
+    case QtWarningMsg:
+        txt = QString("[%1] Warning: %2").arg(QDateTime::currentDateTime().toString(), msg);
+        break;
+    case QtCriticalMsg:
+        txt = QString("[%1] Critical: %2").arg(QDateTime::currentDateTime().toString(), msg);
+        break;
+    case QtFatalMsg:
+        txt = QString("[%1] Fatal: %2").arg(QDateTime::currentDateTime().toString(), msg);
+        break;
+    }
+
+    QFile outFile(LOG_PATH);
+    if (outFile.open(QIODevice::WriteOnly | QIODevice::Append))
+    {
+        QTextStream ts(&outFile);
+        ts << txt << endl;
+    }
 }

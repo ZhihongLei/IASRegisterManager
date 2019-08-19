@@ -17,7 +17,7 @@ EditRegisterDialog::EditRegisterDialog(const QString& chip_id, const QString& bl
     bool success = setup_ui();
     setWindowTitle("Add Register");
     if (!success)
-       QMessageBox::warning(this, "Add Register", "Unable to initialize due to database connection issue.\nPlease try again.");
+       QMessageBox::warning(this, "Add Register", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditRegisterDialog::EditRegisterDialog(const QString& chip_id, const QString& block_id, const QString& reg_id, bool enabled, QWidget* parent):
@@ -41,7 +41,7 @@ EditRegisterDialog::EditRegisterDialog(const QString& chip_id, const QString& bl
      }
      else success = false;
      if (!success)
-        QMessageBox::warning(this, "Edit Register", "Unable to initialize due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, "Edit Register", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 bool EditRegisterDialog::setup_ui()
@@ -118,7 +118,7 @@ bool EditRegisterDialog::check_name()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("block_register", {"reg_name"}, {{"block_id", block_id_}, {"reg_name", get_reg_name()}}, items))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate register name due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate register name due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)
@@ -138,7 +138,7 @@ bool EditRegisterDialog::check_address()
 
     if (!DataBaseHandler::show_items("block_system_block", {"block_id", "start_address", "block_name"}, "chip_id", chip_id_, items))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toULongLong(nullptr, 16) < b[1].toULongLong(nullptr, 16);});
@@ -150,7 +150,7 @@ bool EditRegisterDialog::check_address()
     QVector<QString> item;
     if (!DataBaseHandler::show_one_item("block_register", item, {"count(reg_id)"}, "block_id", block_id_))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     num_regs = item[0].toULongLong();
@@ -162,7 +162,7 @@ bool EditRegisterDialog::check_address()
     item.clear();
     if (!DataBaseHandler::show_one_item("chip_chip", item, {"address_width"}, "chip_id", chip_id_))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate register address due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     address_width = item[0].toInt();
@@ -187,7 +187,7 @@ bool EditRegisterDialog::add_register()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("block_register", {"reg_id"}, {{"next", "-1"}, {"block_id", block_id_}}, items))
     {
-        QMessageBox::warning(this, "Add Register", "Unable to add register due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, "Add Register", "Unable to add register due to database connection issue.\nPlease try again..\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     QString prev("-1");

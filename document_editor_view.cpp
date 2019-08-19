@@ -45,15 +45,15 @@ DocumentEditorView::DocumentEditorView(QWidget *parent) :
     ui->splitterDoc->setCollapsible(0, false);
     ui->splitterDoc->setCollapsible(1, false);
 
-    connect(ui->documentEditor, SIGNAL(document_edited()), this, SLOT(on_document_edited()));
-    connect(ui->documentEditor, SIGNAL(document_added()), this, SLOT(on_document_added()));
+    connect(ui->documentEditor, SIGNAL(to_add_document()), this, SLOT(document_added()));
+    connect(ui->documentEditor, SIGNAL(to_edit_document()), this, SLOT(document_edited()));
 
-    connect(actionAdd_, SIGNAL(triggered()), this, SLOT(on_actionAdd_triggered()));
-    connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
-    connect(actionRemove_, SIGNAL(triggered()), this, SLOT(on_actionRemove_triggered()));
-    connect(actionCopy_, SIGNAL(triggered()), this, SLOT(on_actionCopy_triggered()));
-    connect(actionPaste_, SIGNAL(triggered()), this, SLOT(on_actionPaste_triggered()));
-    connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(on_actionRefresh_triggered()));
+    connect(actionAdd_, SIGNAL(triggered()), this, SLOT(to_add()));
+    connect(actionEdit_, SIGNAL(triggered()), this, SLOT(to_edit()));
+    connect(actionRemove_, SIGNAL(triggered()), this, SLOT(to_remove()));
+    connect(actionCopy_, SIGNAL(triggered()), this, SLOT(to_copy()));
+    connect(actionPaste_, SIGNAL(triggered()), this, SLOT(to_paste()));
+    connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(to_refresh()));
 
     ui->tableDoc->horizontalHeader()->setVisible(true);
     level_ = LEVEL::CHIP;
@@ -99,7 +99,7 @@ void DocumentEditorView::set_authenticator(Authenticator *authenticator)
 void DocumentEditorView::set_doc_level(const LEVEL& level)
 {
     level_ = level;
-    bool enabled = level_  == LEVEL::CHIP ? authenticator_->can_fully_access_all_blocks() : authenticator_->can_edit_document();
+    bool enabled = level_  == LEVEL::CHIP ? authenticator_->can_edit_chip_document() : authenticator_->can_edit_block_document();
     ui->documentEditor->set_doc_level(level_);
     set_install_event_filter(enabled);
     ui->pushButtonAddDoc->setEnabled(enabled);
@@ -165,7 +165,7 @@ void DocumentEditorView::display_documents()
 
     if (!success)
     {
-        QMessageBox::warning(this, "Document Editor", "Unable to read documents from database.\nPlease try again.");
+        QMessageBox::warning(this, "Document Editor", "Unable to read documents from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     items = sort_doubly_linked_list(items);
@@ -189,11 +189,11 @@ void DocumentEditorView::display_overall_documents()
 {
     ui->stackedWidgetDoc->setCurrentIndex(0);
     ui->webDocViewer->setHtml("", QUrl("file://"));
-    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-    chip_setttings.beginGroup(chip_id_);
-    QString img_pos = chip_setttings.value("image_caption_position").toString(),
-            tab_pos = chip_setttings.value("table_caption_position").toString(),
-            show_paged_reg = chip_setttings.value("show_paged_register").toString();
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
+    QString img_pos = chip_settings.value("image_caption_position").toString(),
+            tab_pos = chip_settings.value("table_caption_position").toString(),
+            show_paged_reg = chip_settings.value("show_paged_register").toString();
 
     QString html = DocumentGenerator(chip_id_,
                                      chip_name_,
@@ -211,30 +211,31 @@ void DocumentEditorView::display_overall_documents()
 void DocumentEditorView::on_tableDoc_customContextMenuRequested(QPoint pos)
 {
     QTableWidgetItem *current = ui->tableDoc->itemAt(pos);
-    actionEdit_->setEnabled(current && authenticator_->can_edit_document());
-    actionAdd_->setEnabled(authenticator_->can_edit_document());
-    actionRemove_->setEnabled(current && authenticator_->can_edit_document());
+    bool enabled = level_  == LEVEL::CHIP ? authenticator_->can_edit_chip_document() : authenticator_->can_edit_block_document();
+    actionEdit_->setEnabled(current && enabled);
+    actionAdd_->setEnabled(enabled);
+    actionRemove_->setEnabled(current && enabled);
     actionCopy_->setEnabled(current);
-    actionPaste_->setEnabled(authenticator_->can_edit_document() && copied_ != "");
+    actionPaste_->setEnabled(enabled && copied_ != "");
     context_menu_->popup(ui->tableDoc->viewport()->mapToGlobal(pos));
 }
 
-void DocumentEditorView::on_actionAdd_triggered()
+void DocumentEditorView::to_add()
 {
     if (ui->tableDoc->hasFocus()) on_pushButtonAddDoc_clicked();
 }
 
-void DocumentEditorView::on_actionEdit_triggered()
+void DocumentEditorView::to_edit()
 {
     if (ui->tableDoc->hasFocus()) on_tableDoc_cellDoubleClicked(ui->tableDoc->currentRow(), 0);
 }
 
-void DocumentEditorView::on_actionRemove_triggered()
+void DocumentEditorView::to_remove()
 {
     if (ui->tableDoc->hasFocus()) on_pushButtonRemoveDoc_clicked();
 }
 
-void DocumentEditorView::on_actionCopy_triggered()
+void DocumentEditorView::to_copy()
 {
     if (ui->tableDoc->hasFocus() && ui->tableDoc->currentRow() >= 0)
     {
@@ -244,7 +245,7 @@ void DocumentEditorView::on_actionCopy_triggered()
     }
 }
 
-void DocumentEditorView::on_actionPaste_triggered()
+void DocumentEditorView::to_paste()
 {
     on_pushButtonAddDoc_clicked();
     ui->documentEditor->setVisible(false);
@@ -254,11 +255,11 @@ void DocumentEditorView::on_actionPaste_triggered()
             content = copied_.right(copied_.size() - 2 * DOC_DELIMITER.size() - doc_type.size() - doc_type_id.size());
 
     ui->documentEditor->set_content("", doc_type, content);
-    if (ui->documentEditor->add_document()) on_document_added();
+    if (ui->documentEditor->add_document()) document_added();
     copied_ = "";
 }
 
-void DocumentEditorView::on_actionRefresh_triggered()
+void DocumentEditorView::to_refresh()
 {
     if (ui->tableDoc->hasFocus()) display_documents();
 }
@@ -323,14 +324,14 @@ void DocumentEditorView::on_pushButtonRemoveDoc_clicked()
         }
     }
     DataBaseHandler::rollback();
-    QMessageBox::warning(this, "Remove Document", "Unable to remove document.\nError message: " + DataBaseHandler::get_error_message());
+    QMessageBox::warning(this, "Remove Document", "Unable to remove the document.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 
 
 void DocumentEditorView::on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
-    bool enabled = level_ == LEVEL::CHIP ? authenticator_->can_fully_access_all_blocks() : authenticator_->can_edit_document();
+    bool enabled = level_ == LEVEL::CHIP ? authenticator_->can_edit_chip_document() : authenticator_->can_edit_block_document();
     ui->pushButtonRemoveDoc->setEnabled(enabled && currentRow>=0);
 }
 
@@ -339,7 +340,7 @@ void DocumentEditorView::on_tableDoc_cellDoubleClicked(int row, int column)
     if (row < 0) return;
     ui->documentEditor->clear_content();
     ui->documentEditor->set_mode(DIALOG_MODE::EDIT);
-    ui->documentEditor->setEnabled(level_ == LEVEL::CHIP ? authenticator_ ->can_fully_access_all_blocks() : authenticator_->can_edit_document());
+    ui->documentEditor->setEnabled(level_ == LEVEL::CHIP ? authenticator_ ->can_edit_chip_document() : authenticator_->can_edit_block_document());
     ui->documentEditor->setVisible(true);
 
     QString doc_id = ui->tableDoc->item(row, 0)->text(),
@@ -348,7 +349,7 @@ void DocumentEditorView::on_tableDoc_cellDoubleClicked(int row, int column)
     ui->documentEditor->set_content(doc_id, type, content);
 }
 
-void DocumentEditorView::on_document_added()
+void DocumentEditorView::document_added()
 {
     int row = ui->tableDoc->rowCount();
     ui->tableDoc->insertRow(row);
@@ -359,7 +360,7 @@ void DocumentEditorView::on_document_added()
     ui->tableDoc->resizeRowToContents(row);
 }
 
-void DocumentEditorView::on_document_edited()
+void DocumentEditorView::document_edited()
 {
     int row = ui->tableDoc->currentRow();
     ui->tableDoc->item(row, 1)->setText(ui->documentEditor->get_document_type_id());

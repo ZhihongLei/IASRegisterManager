@@ -41,8 +41,8 @@ public:
     bool edit_document();
 
 signals:
-    void document_added();
-    void document_edited();
+    void to_add_document();
+    void to_edit_document();
 
 private slots:
     void on_comboBoxDocType_currentIndexChanged(int index);

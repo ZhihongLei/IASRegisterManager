@@ -38,8 +38,6 @@ private:
     QVector<QString> reg_type_ids_;
     const bool enabled_;
     const DIALOG_MODE mode_;
-
-
 };
 
 #endif // EDIT_REGISTER_DIALOG_H

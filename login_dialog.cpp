@@ -62,7 +62,7 @@ bool LoginDialog::login()
     QVector<QString> item;
     if (!DataBaseHandler::show_one_item("global_user", item, {"password"}, "username", get_username()))
     {
-        QMessageBox::warning(this, "Login", "Unable to validate user account due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Login", "Unable to validate user account due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (item.empty())

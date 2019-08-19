@@ -38,10 +38,10 @@ private slots:
     void on_tableSigPart_customContextMenuRequested(QPoint pos);
     void on_tableRegPart_customContextMenuRequested(QPoint pos);
 
-    void on_actionAdd_triggered();
-    void on_actionRemove_triggered();
-    void on_actionEdit_triggered();
-    void on_actionRefresh_triggered();
+    void to_add();
+    void to_remove();
+    void to_edit();
+    void to_refresh();
 
     void on_tabWidget_currentChanged(int index);
 
@@ -92,7 +92,7 @@ signals:
     void block_removed(int row);
     void block_modified(int row, QString block_name, QString block_abbr, QString responsible);
     void block_order_exchanged(int from, int to);
-    void to_refresh_block();
+    void to_refresh_navigator_block();
 
 private:
     void open_chip();

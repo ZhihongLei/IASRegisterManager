@@ -19,7 +19,7 @@ UserManagementDialog::UserManagementDialog(const QString& chip_id, const QString
     if (!DataBaseHandler::show_items_inner_join({"global_user.user_id", "global_user.username", "def_db_role.db_role"},
                                     {{{"global_user","db_role_id"}, {"def_db_role", "db_role_id"}}}, items))
     {
-        QMessageBox::warning(this, "User Manager", "Unable to initialize user manager dialog due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, "User Manager", "Unable to initialize user manager dialog due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
     }
     for (auto item : items)
     {

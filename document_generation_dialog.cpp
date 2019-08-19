@@ -1,7 +1,7 @@
 #include "document_generation_dialog.h"
 #include "ui_document_generation_dialog.h"
 #include "document_generator.h"
-#include "naming_template_dialog.h"
+#include "edit_naming_template_dialog.h"
 #include "global_variables.h"
 #include "database_handler.h"
 #include "data_utils.h"
@@ -30,26 +30,26 @@ DocumentGenerationDialog::DocumentGenerationDialog(const QString& chip_id,
     authenticator_(authenticator)
 {
     ui->setupUi(this);
-    QSettings chip_setttings("chip_setttings.ini", QSettings::IniFormat);
-    chip_setttings.beginGroup(chip_id_);
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
 
-    if (chip_setttings.value("register_naming_template").toString() != "")
-        ui->lineEditRegNaming->setText(chip_setttings.value("register_naming_template").toString());
+    if (chip_settings.value("register_naming_template").toString() != "")
+        ui->lineEditRegNaming->setText(chip_settings.value("register_naming_template").toString());
     else ui->lineEditRegNaming->setText(DEFAULT_REGISTER_NAMING_TEMPLATE);
 
-    if (chip_setttings.value("signal_naming_template").toString() != "")
-        ui->lineEditSigNaming->setText(chip_setttings.value("signal_naming_template").toString());
+    if (chip_settings.value("signal_naming_template").toString() != "")
+        ui->lineEditSigNaming->setText(chip_settings.value("signal_naming_template").toString());
     else ui->lineEditSigNaming->setText(DEFAULT_SIGNAL_NAMING_TEMPLATE);
 
-    if (chip_setttings.value("image_caption_position").toString() == "top")
+    if (chip_settings.value("image_caption_position").toString() == "top")
         ui->radioButtonImgCapTop->setChecked(true);
     else ui->radioButtonImgCapBottom->setChecked(true);
 
-    if (chip_setttings.value("table_caption_position").toString() == "bottom")
+    if (chip_settings.value("table_caption_position").toString() == "bottom")
         ui->radioButtonTabCapBottom->setChecked(true);
     else ui->radioButtonTabCapTop->setChecked(true);
 
-    if (chip_setttings.value("show_paged_register").toString() == "page_name")
+    if (chip_settings.value("show_paged_register").toString() == "page_name")
         ui->radioButtonPageName->setChecked(true);
     else ui->radioButtonPageControlSignal->setChecked(true);
 
@@ -84,7 +84,7 @@ DocumentGenerationDialog::DocumentGenerationDialog(const QString& chip_id,
     ui->checkBoxSelectAll->setChecked(true);
 
     setWindowTitle("Document Generation");
-    if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 DocumentGenerationDialog::~DocumentGenerationDialog()
@@ -124,13 +124,13 @@ void DocumentGenerationDialog::on_comboBoxDocType_currentIndexChanged(int index)
 
 void DocumentGenerationDialog::on_pushButtonRegNaming_clicked()
 {
-    NamingTemplateDialog naming;
+    EditNamingTemplateDialog naming(this);
     if (naming.exec() == QDialog::Accepted) ui->lineEditRegNaming->setText(naming.get_naming_template());
 }
 
 void DocumentGenerationDialog::on_pushButtonSigNaming_clicked()
 {
-    NamingTemplateDialog naming;
+    EditNamingTemplateDialog naming(this);
     if (naming.exec() == QDialog::Accepted)
         ui->lineEditSigNaming->setText(naming.get_naming_template());
 }
@@ -228,7 +228,7 @@ bool DocumentGenerationDialog::generate_document()
     else doc = chip_doc + doc;
     if (!generator.success())
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to generate document.\nError message: " + DataBaseHandler::get_error_message() + "!");
+        QMessageBox::warning(this, windowTitle(), "Unable to generate document.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
 
@@ -236,7 +236,7 @@ bool DocumentGenerationDialog::generate_document()
     QFile file(path);
     if( !file.open(QIODevice::WriteOnly) )
     {
-      QMessageBox::warning(this, windowTitle(), "Unable to export document due to IO error.\nPlease try again!");
+      QMessageBox::warning(this, windowTitle(), "Unable to export document due to IO error.\nPlease try again.");
       return false;
     }
     QTextStream outputStream(&file);

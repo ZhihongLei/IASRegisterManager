@@ -23,7 +23,7 @@ EditChipDialog::EditChipDialog(const QString& username, const QString& user_id, 
     setWindowTitle("New Chip");
     if (!success)
     {
-        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 }
@@ -59,7 +59,7 @@ EditChipDialog::EditChipDialog(const QString& chip_id,
                                             "order by chip_designer.chip_designer_id");
     if (!success)
     {
-        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     for (const auto& item : items)
@@ -102,7 +102,7 @@ EditChipDialog::EditChipDialog(const QString& username, const QString& user_id,
     setWindowTitle("New Chip");
     if (!success)
     {
-        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Edit Chip", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 }
@@ -195,7 +195,7 @@ bool EditChipDialog::check_name()
     QVector<QVector<QString> >items;
     if (!DataBaseHandler::show_items("chip_chip", {"chip_name"}, "chip_name", get_chip_name(), items))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate chip name due to database connection issue.\nPlease try again,");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate chip name due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)
@@ -208,9 +208,9 @@ bool EditChipDialog::check_name()
 
 bool EditChipDialog::check_address_width()
 {
-    if (get_address_width() > 64 || get_address_width() <= 0)
+    if (get_address_width() >= 64 || get_address_width() <= 0)
     {
-        QMessageBox::warning(this, windowTitle(), "Address width must range from 1 to 64!");
+        QMessageBox::warning(this, windowTitle(), "Address width must range from 1 to 63!");
         return false;
     }
     if (get_address_width() < original_address_width_)
@@ -223,9 +223,9 @@ bool EditChipDialog::check_address_width()
 
 bool EditChipDialog::check_register_width()
 {
-    if (get_register_width() <= 0 || get_register_width() > 64)
+    if (get_register_width() <= 0 || get_register_width() >= 64)
     {
-        QMessageBox::warning(this, windowTitle(), "Register width must range from 1 to 64!");
+        QMessageBox::warning(this, windowTitle(), "Register width must range from 1 to 63!");
         return false;
     }
     if (get_register_width() < original_register_width_)
@@ -268,7 +268,7 @@ bool EditChipDialog::add_chip_from()
                                         {{{"def_project_role", "project_role_id"}, {"chip_designer", "project_role_id"}}},
                                            items, {{"chip_designer.chip_id", chip_id_}, {"chip_designer.user_id", get_owner_id()}}))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to add chip due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to add chip due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items[0][0] != "1" && (items.size() == 1 || items[1][0] != "1"))

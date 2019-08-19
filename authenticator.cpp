@@ -145,6 +145,11 @@ bool Authenticator::can_fully_access_all_blocks() const
     return (project_permissions_ & PROJECT_PERMISSIONS::FULL_ACCESS_TO_ALL_BLOCKS) != 0 && !frozen_;
 }
 
+bool Authenticator::can_edit_chip_document() const
+{
+    return (project_permissions_ & PROJECT_PERMISSIONS::FULL_ACCESS_TO_ALL_BLOCKS) != 0;
+}
+
 bool Authenticator::can_add_signal() const
 {
     return (block_permissions_ & BLOCK_PERMISSIONS::ADD_SIGNAL) != 0 && !frozen_;
@@ -175,7 +180,7 @@ bool Authenticator::can_edit_register_partition() const
     return (block_permissions_ & BLOCK_PERMISSIONS::EDIT_REGISTER_PARTITION) != 0 && !frozen_;
 }
 
-bool Authenticator::can_edit_document() const
+bool Authenticator::can_edit_block_document() const
 {
     return (block_permissions_ & BLOCK_PERMISSIONS::EDIT_DOCUMENT) != 0 || (project_permissions_ & PROJECT_PERMISSIONS::FULL_ACCESS_TO_ALL_BLOCKS);
 }

@@ -15,7 +15,7 @@ QValidator::State HexValueValidator::validate(QString &input, int &pos) const
     if (QRegExpValidator::validate(input, pos) == QValidator::Intermediate) return QValidator::Intermediate;
     if (QRegExpValidator::validate(input, pos) == QValidator::Acceptable)
     {
-        if (qRound64(qPow(2, bits_)) > input.toULongLong(nullptr, 16)) return QValidator::Acceptable;
+        if (bits_ < 64 && static_cast<quint64>(qPow(2, bits_) + 0.5) > input.toULongLong(nullptr, 16)) return QValidator::Acceptable;
     }
     return QValidator::Invalid;
 }

@@ -1,22 +1,26 @@
 #include "naming_template_dialog.h"
 #include "ui_naming_template_dialog.h"
-#include <QMessageBox>
+#include "edit_naming_template_dialog.h"
+#include "global_variables.h"
+#include <QSettings>
 
-NamingTemplateDialog::NamingTemplateDialog(QWidget *parent) :
+NamingTemplateDialog::NamingTemplateDialog(const QString& chip_id, QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::NamingTemplateDialog)
+    ui(new Ui::NamingTemplateDialog),
+    chip_id_(chip_id)
 {
     ui->setupUi(this);
-    for (QString type : {"CHIP_NAME", "BLOCK_NAME", "BLOCK_ABBR", "GIVEN_NAME", "Other"})
-    {
-        ui->comboBoxType->addItem(type);
-        reserved_types.insert(type);
-    }
-    ui->pushButtonAdd->setEnabled(true);
-    ui->pushButtonRemove->setEnabled(false);
-    ui->lineEditOther->setVisible(false);
-    ui->lineEditDelimiter->setText("_");
     setWindowTitle("Naming Template");
+    QSettings chip_settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "chip_settings");;
+    chip_settings.beginGroup(chip_id_);
+
+    if (chip_settings.value("register_naming_template").toString() != "")
+        ui->lineEditRegNaming->setText(chip_settings.value("register_naming_template").toString());
+    else ui->lineEditRegNaming->setText(DEFAULT_REGISTER_NAMING_TEMPLATE);
+
+    if (chip_settings.value("signal_naming_template").toString() != "")
+        ui->lineEditSigNaming->setText(chip_settings.value("signal_naming_template").toString());
+    else ui->lineEditSigNaming->setText(DEFAULT_SIGNAL_NAMING_TEMPLATE);
 }
 
 NamingTemplateDialog::~NamingTemplateDialog()
@@ -24,94 +28,26 @@ NamingTemplateDialog::~NamingTemplateDialog()
     delete ui;
 }
 
-QString NamingTemplateDialog::get_naming_template() const
+QString NamingTemplateDialog::get_signal_naming() const
 {
-    QString naming_template;
-    QString delimiter = ui->lineEditDelimiter->text();
-    for (int row = 0; row < ui->listWidget->count(); row++)
-    {
-        QString name = ui->listWidget->item(row)->text();
-        if (reserved_types.contains(name)) name = "${" + name + "}";
-        if (row > 0) naming_template += delimiter;
-        naming_template += name;
-    }
-    return naming_template;
+    return ui->lineEditSigNaming->text();
 }
 
-void NamingTemplateDialog::on_pushButtonAdd_clicked()
+QString NamingTemplateDialog::get_register_naming() const
 {
-    int index = ui->comboBoxType->currentIndex();
-    QString type;
-    if (index != ui->comboBoxType->count() - 1)
-    {
-        type = ui->comboBoxType->itemText(index);
-        ui->comboBoxType->removeItem(index);
-    }
-    else type = ui->lineEditOther->text();
-    ui->listWidget->addItem(type);
+    return ui->lineEditRegNaming->text();
 }
 
-void NamingTemplateDialog::on_pushButtonRemove_clicked()
+void NamingTemplateDialog::on_pushButtonRegNaming_clicked()
 {
-    int row = ui->listWidget->currentRow();
-    QString type = ui->listWidget->item(row)->text();
-    if (reserved_types.contains(type)) ui->comboBoxType->insertItem(0, type);
-    ui->listWidget->takeItem(row);
+    EditNamingTemplateDialog naming(this);
+    if (naming.exec() == QDialog::Accepted) ui->lineEditRegNaming->setText(naming.get_naming_template());
 }
 
-void NamingTemplateDialog::on_comboBoxType_currentIndexChanged(int index)
+void NamingTemplateDialog::on_pushButtonSigNaming_clicked()
 {
-    ui->lineEditOther->setVisible(index >= 0 && index == ui->comboBoxType->count() - 1);
-    ui->pushButtonAdd->setEnabled(ui->comboBoxType->currentIndex() != ui->comboBoxType->count() - 1 ||
-            ui->lineEditOther->text() != "");
+    EditNamingTemplateDialog naming(this);
+    if (naming.exec() == QDialog::Accepted)
+        ui->lineEditSigNaming->setText(naming.get_naming_template());
 }
 
-void NamingTemplateDialog::on_listWidget_currentRowChanged(int currentRow)
-{
-    ui->pushButtonRemove->setEnabled(currentRow >= 0);
-}
-
-void NamingTemplateDialog::on_lineEditOther_textChanged(const QString &text)
-{
-    ui->pushButtonAdd->setEnabled(ui->comboBoxType->currentIndex() != ui->comboBoxType->count() - 1 || text != "");
-}
-
-void NamingTemplateDialog::accept()
-{
-    if (sanity_check()) QDialog::accept();
-}
-
-bool NamingTemplateDialog::sanity_check()
-{
-    return check_name() && check_delimiter();
-}
-
-bool NamingTemplateDialog::check_name()
-{
-    bool has_given_name = false;
-    for (int row = 0; row < ui->listWidget->count(); row++)
-    {
-        if (ui->listWidget->item(row)->text() == "GIVEN_NAME")
-        {
-            has_given_name = true;
-            break;
-        }
-    }
-    if (!has_given_name)
-    {
-        QMessageBox::warning(this, "Naming Template", "GIVEN NAME must be added in the list!");
-        return false;
-    }
-    return true;
-}
-
-bool NamingTemplateDialog::check_delimiter()
-{
-    QString delimiter = ui->lineEditDelimiter->text();
-    if (delimiter == "")
-    {
-        QMessageBox::warning(this, "Naming Template", "Delimiter must not be empty!");
-        return false;
-    }
-    return true;
-}

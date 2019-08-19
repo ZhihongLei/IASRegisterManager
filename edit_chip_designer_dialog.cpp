@@ -15,7 +15,7 @@ EditChipDesignerDialog::EditChipDesignerDialog(const QString& chip_id, QWidget *
 {
     bool success = setup_ui();
     setWindowTitle("Add Chip Designer");
-    if (!success) QMessageBox::warning(this, "Add Chip Designer", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Add Chip Designer", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 
@@ -41,7 +41,7 @@ EditChipDesignerDialog::EditChipDesignerDialog(const QString& chip_id, const QSt
             break;
         }
     ui->tableWidgetUsers->setEnabled(false);
-    if (!success) QMessageBox::warning(this, "Edit Chip Designer", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Edit Chip Designer", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditChipDesignerDialog::~EditChipDesignerDialog()
@@ -121,7 +121,7 @@ bool EditChipDesignerDialog::sanity_check()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("chip_designer", {"chip_designer_id"}, {{"chip_id", chip_id_}, {"user_id", get_user_id()}}, items))
     {
-        QMessageBox::warning(this, "Add Chip Designer", "Unable to validate designer due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Add Chip Designer", "Unable to validate designer due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)
@@ -154,7 +154,7 @@ bool EditChipDesignerDialog::edit_designer()
     QVector<QString> item;
     if (!DataBaseHandler::show_one_item("chip_designer", item, {"chip_designer_id"}, {{"chip_id", chip_id_}, {"user_id", get_user_id()}}) || item.size() == 0)
     {
-        QMessageBox::warning(this, "Edit Chip Designer", "Unable to read designer ID due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Edit Chip Designer", "Unable to read designer ID due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     chip_designer_id_ = item[0];

@@ -89,7 +89,7 @@ void EditSignalPartitionLogic::make_occupied_register_parts(const QString& reg_i
     reg_id2occupied_register_parts_[reg_id] = partition_list();
 
     if (!DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, {{"reg_id", reg_id}}, items, "order by reg_lsb"))
-        QMessageBox::warning(nullptr, "Add Signal Partition", "Unable to read existing register partitions from database.\nExceptions might happen.\nPlease try again!");
+        QMessageBox::warning(nullptr, "Add Signal Partition", "Unable to read existing register partitions from database.\nExceptions might happen.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
     for (const auto& item : items)
     {
         reg_id2occupied_register_parts_[reg_id].push_back({item[0].toInt(), item[1].toInt()});

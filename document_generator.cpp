@@ -3,6 +3,7 @@
 #include "database_handler.h"
 #include "data_utils.h"
 #include "authenticator.h"
+#include <QDir>
 #include <QDebug>
 
 QVector<QString> DocumentGenerator::doc_types_;
@@ -66,8 +67,11 @@ QString DocumentGenerator::generate_text_html(const QString& text)
 
 QString DocumentGenerator::generate_image_html(const QString& caption, const QString& width, const QString& path, const CAPTION_POSITION& pos)
 {
+    QString absolute_path = path;
+    if (QDir::isRelativePath(absolute_path)) absolute_path = QDir(RESOURCES_BASE_DIR).absoluteFilePath(absolute_path);
+
     QString image = HTML_TABLE_TEMPLATE;
-    image.replace("${IMAGE}", path).replace("${WIDTH}", QString::number(static_cast<int>(width.toDouble() * 100)) + "%").replace("${CAPTION}", caption);
+    image.replace("${IMAGE}", absolute_path).replace("${WIDTH}", QString::number(static_cast<int>(width.toDouble() * 100)) + "%").replace("${CAPTION}", caption);
     if (pos == CAPTION_POSITION::TOP) image.replace("${CAPTION_TOP}", QString("<figcaption>${CAPTION}</figcaption>\n").replace("${CAPTION}", caption)).replace("${CAPTION_BOTTOM}", "");
     else image.replace("${CAPTION_TOP}", "").replace("${CAPTION_BOTTOM}", QString("<figcaption>${CAPTION}</figcaption>\n").replace("${CAPTION}", caption));
     return image;
@@ -212,7 +216,7 @@ QString DocumentGenerator::generate_table_tex(const QString &caption, const QVec
     content = header + content;
 
     QString table = "\\begin{tabular}{" + QString(cols, 'l') + "}\n" + content + "\\end{tabular}\n";
-    table = "\\begin{center}\n" + table + "\\end{center}\n";
+    table = "\\centering\n" + table;
     if (caption != "" && pos == CAPTION_POSITION::TOP)
         table = title + table;
     else if (caption != "" && pos == CAPTION_POSITION::BOTTOM)
@@ -223,13 +227,16 @@ QString DocumentGenerator::generate_table_tex(const QString &caption, const QVec
 
 QString DocumentGenerator::generate_image_tex(const QString &caption, const QString &width, const QString &path, const CAPTION_POSITION& pos)
 {
+    QString absolute_path = path;
+    if (QDir::isRelativePath(absolute_path)) absolute_path = QDir(RESOURCES_BASE_DIR).absoluteFilePath(absolute_path);
+
     QString image = "\\includegraphics[width = ${WIDTH}\\textwidth]{${PATH}}\n";
     if (caption != "" && pos == CAPTION_POSITION::TOP)
         image = "\\caption{${CAPTION}\\label{fig:${RAW_CAPTION}}}\n" + image;
     if (caption != "" && pos == CAPTION_POSITION::BOTTOM)
         image += "\\caption{${CAPTION}\\label{fig:${RAW_CAPTION}}}\n";
-    image.replace("${PATH}", path).replace("${CAPTION}", generate_text_tex(caption)).replace("${RAW_CAPTION}", caption).replace("${WIDTH}", width);
-    image = "\\begin{center}\n" + image + "\\end{center}\n";
+    image.replace("${PATH}", absolute_path).replace("${CAPTION}", generate_text_tex(caption)).replace("${RAW_CAPTION}", caption).replace("${WIDTH}", width);
+    image = "\\centering\n" + image;
     image = "\\begin{figure}[htbp]\n" + image + "\\end{figure}\n";
     return image;
 }

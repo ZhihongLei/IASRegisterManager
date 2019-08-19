@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
+    <width>662</width>
     <height>518</height>
    </rect>
   </property>
@@ -312,6 +312,13 @@
            <property name="sizeConstraint">
             <enum>QLayout::SetFixedSize</enum>
            </property>
+           <item>
+            <widget class="QCheckBox" name="checkBoxAddPartition">
+             <property name="text">
+              <string>Add Partition</string>
+             </property>
+            </widget>
+           </item>
            <item>
             <layout class="QHBoxLayout" name="layoutSigPart">
              <item>

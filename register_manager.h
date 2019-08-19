@@ -30,8 +30,8 @@ private slots:
     void on_actionOpenChip_triggered();
     void on_actionCloseChip_triggered();
     void on_actionFreezeChip_triggered();
-    void on_actionRegisterNaming_triggered();
-    void on_actionSignalNaming_triggered();
+    void on_actionNaming_triggered();
+    void on_actionResourcesBaseDir_triggered();
     void on_actionChipManagement_triggered();
 
     void on_actionDocument_triggered();
@@ -51,7 +51,9 @@ private slots:
     void on_chipEditorView_block_removed(int row);
     void on_chipEditorView_block_modified(int row, QString block_name, QString block_abbr, QString responsible);
     void on_chipEditorView_block_order_exchanged(int from, int to);
-    void on_chipEditorView_to_refresh_block();
+    void on_chipEditorView_to_refresh_navigator_block();
+
+    static void LogMessageHandler(QtMsgType type, const QMessageLogContext &, const QString & msg);
 
 public slots:
     void on_loggedin(QString);

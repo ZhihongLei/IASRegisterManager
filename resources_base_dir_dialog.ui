@@ -1,76 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>NamingTemplateDialog</class>
- <widget class="QDialog" name="NamingTemplateDialog">
+ <class>ResourcesBaseDirDialog</class>
+ <widget class="QDialog" name="ResourcesBaseDirDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>422</width>
-    <height>186</height>
+    <width>416</width>
+    <height>151</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
    <property name="topMargin">
     <number>30</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
    </property>
    <property name="bottomMargin">
     <number>40</number>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Register</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="lineEditRegNaming">
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButtonRegNaming">
-       <property name="text">
-        <string>Edit</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label">
-       <property name="minimumSize">
-        <size>
-         <width>50</width>
-         <height>0</height>
-        </size>
-       </property>
        <property name="text">
-        <string>Signal</string>
+        <string>Base Dir</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="lineEditSigNaming">
+      <widget class="QLineEdit" name="lineEdit">
        <property name="readOnly">
         <bool>true</bool>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButtonSigNaming">
+      <widget class="QPushButton" name="pushButton">
        <property name="text">
-        <string>Edit</string>
+        <string>Select</string>
        </property>
       </widget>
      </item>
@@ -93,7 +68,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>NamingTemplateDialog</receiver>
+   <receiver>ResourcesBaseDirDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -109,7 +84,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>NamingTemplateDialog</receiver>
+   <receiver>ResourcesBaseDirDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

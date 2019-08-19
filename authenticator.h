@@ -56,6 +56,7 @@ public:
     bool can_add_chip_designer() const;
     bool can_remove_chip_designer() const;
     bool can_fully_access_all_blocks() const;
+    bool can_edit_chip_document() const;
     bool frozen() const;
     bool can_add_signal() const;
     bool can_remove_signal() const;
@@ -63,7 +64,8 @@ public:
     bool can_remove_register() const;
     bool can_edit_signal_partition() const;
     bool can_edit_register_partition() const;
-    bool can_edit_document() const;
+    bool can_edit_block_document() const;
+
 
     void clear_database_permission();
     void clear_project_permission();

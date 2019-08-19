@@ -42,12 +42,12 @@ public:
 private slots:
     void on_tableDoc_customContextMenuRequested(QPoint pos);
 
-    void on_actionAdd_triggered();
-    void on_actionRemove_triggered();
-    void on_actionEdit_triggered();
-    void on_actionCopy_triggered();
-    void on_actionPaste_triggered();
-    void on_actionRefresh_triggered();
+    void to_add();
+    void to_remove();
+    void to_edit();
+    void to_copy();
+    void to_paste();
+    void to_refresh();
 
     void on_stackedWidgetDoc_currentChanged(int index);
     void on_pushButtonAddDoc_clicked();
@@ -55,8 +55,8 @@ private slots:
     void on_tableDoc_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void on_tableDoc_cellDoubleClicked(int row, int column);
 
-    void on_document_edited();
-    void on_document_added();
+    void document_added();
+    void document_edited();
 
 private:
     void set_install_event_filter(bool enabled=true);

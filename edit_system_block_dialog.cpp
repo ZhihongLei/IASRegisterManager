@@ -19,7 +19,7 @@ EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, int address
     bool success = setup_ui();
     ui->pushButtonAddDesigner->setEnabled(enabled_ && can_add_designer);
     setWindowTitle("New System Block");
-    if (!success) if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.");
+    if (!success) if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, const QString& block_id, int address_width, bool can_add_designer, bool enabled, QWidget *parent) :
@@ -52,7 +52,7 @@ EditSystemBlockDialog::EditSystemBlockDialog(const QString& chip_id, const QStri
             break;
         }
     }
-    if (!success) if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.");
+    if (!success) if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 bool EditSystemBlockDialog::setup_ui()
@@ -157,7 +157,7 @@ bool EditSystemBlockDialog::check_block_name()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("block_system_block", {"block_id"}, {{"chip_id", chip_id_}, {"block_name", get_block_name()}}, items))
     {
-        QMessageBox::warning(this, "System Block Editor", "Unable to validate block name due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, "System Block Editor", "Unable to validate block name due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)
@@ -180,7 +180,7 @@ bool EditSystemBlockDialog::check_block_abbreviation()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("block_system_block", {"block_id"}, {{"chip_id", chip_id_}, {"abbreviation", get_block_abbr()}}, items))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate block abbreviation due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate block abbreviation due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)
@@ -234,7 +234,7 @@ bool EditSystemBlockDialog::check_start_address()
 
     if (!success)
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate start address due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate start address due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
 
@@ -259,7 +259,7 @@ bool EditSystemBlockDialog::add_system_block()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("block_system_block", {"block_id"}, {{"next", "-1"}, {"chip_id", chip_id_}}, items))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to add system block due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to add system block due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     assert (items.size() <= 1);

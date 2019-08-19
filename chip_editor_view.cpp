@@ -58,10 +58,10 @@ ChipEditorView::ChipEditorView(QWidget *parent) :
     context_menu_->addSeparator();
     context_menu_->addAction(actionRefresh_);
 
-    connect(actionAdd_, SIGNAL(triggered()), this, SLOT(on_actionAdd_triggered()));
-    connect(actionEdit_, SIGNAL(triggered()), this, SLOT(on_actionEdit_triggered()));
-    connect(actionRemove_, SIGNAL(triggered()), this, SLOT(on_actionRemove_triggered()));
-    connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(on_actionRefresh_triggered()));
+    connect(actionAdd_, SIGNAL(triggered()), this, SLOT(to_add()));
+    connect(actionEdit_, SIGNAL(triggered()), this, SLOT(to_edit()));
+    connect(actionRemove_, SIGNAL(triggered()), this, SLOT(to_remove()));
+    connect(actionRefresh_, SIGNAL(triggered()), this, SLOT(to_refresh()));
 
     ui->tableBlock->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeMode::ResizeToContents);
     ui->tableDesigner->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
@@ -75,7 +75,15 @@ ChipEditorView::ChipEditorView(QWidget *parent) :
     ui->tableRegister->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeMode::ResizeToContents);
     ui->tableRegPart->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
 
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    for (QTableWidget* t: {ui->tableBlock, ui->tableDesigner, ui->tableRegPage, ui->tableSignal, ui->tableRegister})
+    {
+        t->verticalHeader()->setVisible(true);
+        t->verticalHeader()->setMinimumWidth(25);
+    }
+    ui->tableSignal->setSortingEnabled(true);
+    ui->tableSignal->sortByColumn(3, Qt::SortOrder::AscendingOrder);
+
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     ui->splitterBlocks->setSizes({settings.value("table_block_height").toInt(),
                                   settings.value("table_designer_height").toInt()});
@@ -148,6 +156,7 @@ void ChipEditorView::display_system_level_info(const QString& reg_id, const QStr
 {
     int prev_tab_index = ui->tabWidget->currentIndex(), prev_stack_index = ui->stackedWidgetChipEditor->currentIndex();
     ui->stackedWidgetChipEditor->setCurrentIndex(1);
+    set_install_event_filter_register();
 
     if (sig_id != "") ui->tabWidget->setCurrentIndex(0);
     else if (reg_id != "") ui->tabWidget->setCurrentIndex(1);
@@ -160,7 +169,6 @@ void ChipEditorView::display_system_level_info(const QString& reg_id, const QStr
     else if (!(prev_stack_index == 1 && prev_tab_index == 1 && block_id_ == previous_block_id_))
     {
         display_registers();
-        set_install_event_filter_register();
     }
     if (sig_id != "")
     {
@@ -248,7 +256,7 @@ void ChipEditorView::on_tableRegPart_customContextMenuRequested(QPoint pos)
     */
 }
 
-void ChipEditorView::on_actionAdd_triggered()
+void ChipEditorView::to_add()
 {
     if (ui->tableBlock->hasFocus()) on_pushButtonAddBlock_clicked();
     else if (ui->tableDesigner->hasFocus()) on_pushButtonAddDesigner_clicked();
@@ -259,7 +267,7 @@ void ChipEditorView::on_actionAdd_triggered()
     // else if (ui->tableRegPart->hasFocus())
 }
 
-void ChipEditorView::on_actionEdit_triggered()
+void ChipEditorView::to_edit()
 {
     if (ui->tableBlock->hasFocus()) on_tableBlock_cellDoubleClicked(ui->tableBlock->currentRow(), ui->tableBlock->currentColumn());
     else if (ui->tableDesigner->hasFocus()) on_tableDesigner_cellDoubleClicked(ui->tableDesigner->currentRow(), ui->tableDesigner->currentColumn());
@@ -270,7 +278,7 @@ void ChipEditorView::on_actionEdit_triggered()
     // else if (ui->tableRegPart->hasFocus())
 }
 
-void ChipEditorView::on_actionRemove_triggered()
+void ChipEditorView::to_remove()
 {
     if (ui->tableBlock->hasFocus()) on_pushButtonRemoveBlock_clicked();
     else if (ui->tableDesigner->hasFocus()) on_pushButtonRemoveDesigner_clicked();
@@ -281,7 +289,7 @@ void ChipEditorView::on_actionRemove_triggered()
     // else if (ui->tableRegPart->hasFocus())
 }
 
-void ChipEditorView::on_actionRefresh_triggered()
+void ChipEditorView::to_refresh()
 {
     if (ui->tableBlock->hasFocus()) display_system_blocks();
     else if (ui->tableDesigner->hasFocus()) display_designers();
@@ -389,6 +397,7 @@ void ChipEditorView::on_pushButtonAddSig_clicked()
     EditSignalDialog new_signal(chip_id_, block_id_, register_width_, msb_first_, this);
     if (new_signal.exec() == QDialog::Accepted && new_signal.add_signal())
     {
+        ui->tableSignal->setSortingEnabled(false);
         int row = ui->tableSignal->rowCount();
         QVector<QVector<QString> > items;
         ui->tableSignal->insertRow(row);
@@ -403,7 +412,8 @@ void ChipEditorView::on_pushButtonAddSig_clicked()
         ui->tableSignal->setCurrentCell(row, 0);
 
         if (new_signal.is_register_signal())
-            emit(to_refresh_block());
+            emit(to_refresh_navigator_block());
+        ui->tableSignal->setSortingEnabled(true);
     }
 }
 
@@ -424,7 +434,7 @@ void ChipEditorView::on_pushButtonAddReg_clicked()
         ui->tableRegister->setItem(row, 2, new QTableWidgetItem(new_reg.get_reg_type()));
         ui->tableRegister->setItem(row, 3, new QTableWidgetItem(new_reg.get_address()));
         ui->tableRegister->setCurrentCell(row, 0);
-        emit(to_refresh_block());
+        emit(to_refresh_navigator_block());
     }
 }
 
@@ -443,22 +453,8 @@ void ChipEditorView::on_pushButtonAddSigPart_clicked()
     EditSignalPartitionDialog new_sig_part(block_id_, sig_id, reg_sig_id, reg_type_id, signal_width, register_width_, msb_first_, this);
     if (new_sig_part.exec() == QDialog::Accepted && new_sig_part.add_signal_partition())
     {
-        QString sig_lsb = new_sig_part.get_signal_lsb();
-        QString sig_msb = new_sig_part.get_signal_msb();
-        QString reg_lsb = new_sig_part.get_register_lsb();
-        QString reg_msb = new_sig_part.get_register_msb();
-        QString reg_name = new_sig_part.get_register_name();
-        QString reg_id = new_sig_part.get_register_id();
-
-        QString sig_reg_part_mapping_id = new_sig_part.get_sig_reg_part_mapping_id();
-        int row = ui->tableSigPart->rowCount();
-        ui->tableSigPart->insertRow(row);
-        ui->tableSigPart->setItem(row, 0, new QTableWidgetItem(sig_reg_part_mapping_id));
-        QString sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">",
-                reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
-        ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
-        ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
-        emit(to_refresh_block());
+        display_signal_partitions();
+        emit(to_refresh_navigator_block());
     }
 }
 
@@ -482,7 +478,7 @@ void ChipEditorView::on_pushButtonRemoveBlock_clicked()
     if (!DatabaseUtils::remove_block(block_id))
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove System Block", "Unable to remove system block.\nError message: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove System Block", "Unable to remove the system block.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     DataBaseHandler::commit();
@@ -524,7 +520,7 @@ void ChipEditorView::on_pushButtonRemoveDesigner_clicked()
             if (!DataBaseHandler::update_items("block_system_block", "block_id", block_id, {{"responsible", chip_owner_id_}}))
             {
                 DataBaseHandler::rollback();
-                QMessageBox::warning(this, "Remove Designer", "Unable to remove designer.\nError message: " + DataBaseHandler::get_error_message());
+                QMessageBox::warning(this, "Remove Designer", "Unable to remove the designer.\nError message: " + DataBaseHandler::get_error_message());
                 return;
             }
         }
@@ -541,7 +537,7 @@ void ChipEditorView::on_pushButtonRemoveDesigner_clicked()
     else
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Designer", "Unable to remove designer.\nError message: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Designer", "Unable to remove the designer.\nError message: " + DataBaseHandler::get_error_message());
     }
 }
 
@@ -566,7 +562,7 @@ void ChipEditorView::on_pushButtonRemoveRegPage_clicked()
     }
     else {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Register Page", "Unable to remove register page.\nError massage: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Register Page", "Unable to remove the register page.\nError massage: " + DataBaseHandler::get_error_message());
     }
 }
 
@@ -590,14 +586,17 @@ void ChipEditorView::on_pushButtonRemoveSig_clicked()
     if (!DatabaseUtils::remove_signal(sig_id, reg_sig_id))
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Signal", "Unable to remove signal.\nError message: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Signal", "Unable to remove the signal.\nError message: " + DataBaseHandler::get_error_message());
+
         return;
     }
 
+    ui->tableSignal->setSortingEnabled(false);
     DataBaseHandler::commit();
     if (reg_sig_id != "") ui->tableSigPart->setRowCount(0);
     ui->tableSignal->removeRow(row);
-    emit(to_refresh_block());
+    ui->tableSignal->setSortingEnabled(true);
+    emit(to_refresh_navigator_block());
 }
 
 void ChipEditorView::on_pushButtonRemoveReg_clicked()
@@ -625,7 +624,7 @@ void ChipEditorView::on_pushButtonRemoveReg_clicked()
     DataBaseHandler::commit();
     ui->tableRegPart->setRowCount(0);
     ui->tableRegister->removeRow(row);
-    emit(to_refresh_block());
+    emit(to_refresh_navigator_block());
 }
 
 void ChipEditorView::on_pushButtonRemoveSigPart_clicked()
@@ -641,13 +640,13 @@ void ChipEditorView::on_pushButtonRemoveSigPart_clicked()
     if (DataBaseHandler::delete_items("block_sig_reg_partition_mapping", "sig_reg_part_mapping_id", sig_reg_part_mapping_id))
     {
         DataBaseHandler::commit();
-        ui->tableSigPart->removeRow(row);
-        emit(to_refresh_block());
+        display_signal_partitions();
+        emit(to_refresh_navigator_block());
     }
     else
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Signal Partition", "Unable to remove signal partition.\nError message: "+ DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Signal Partition", "Unable to remove the signal partition.\nError message: "+ DataBaseHandler::get_error_message());
     }
 }
 
@@ -732,6 +731,7 @@ void ChipEditorView::on_tableSignal_cellDoubleClicked(int row, int column)
     EditSignalDialog edit_signal(chip_id_, block_id_, sig_id, reg_sig_id, register_width_, msb_first_, authenticator_->can_add_signal() && authenticator_->can_remove_signal(), this);
     if (edit_signal.exec() == QDialog::Accepted && edit_signal.edit_signal())
     {
+        ui->tableSignal->setSortingEnabled(false);
         QVector<QString> values = {ui->tableSignal->item(row, 0)->text(), edit_signal.get_reg_sig_id(),
                                    edit_signal.get_register_type_id(), edit_signal.get_signal_name(),
                                    edit_signal.get_width(), edit_signal.get_signal_type(),
@@ -739,10 +739,10 @@ void ChipEditorView::on_tableSignal_cellDoubleClicked(int row, int column)
                                    edit_signal.is_register_signal() ? edit_signal.get_value() : "",
                                    edit_signal.add_port() ? "true" : "false"};
         for (int i = 0; i < values.size(); i++) ui->tableSignal->item(row, i)->setText(values[i]);
-        emit(to_refresh_block());
-
+        emit(to_refresh_navigator_block());
+        emit(ui->tableSignal->currentCellChanged(row, column, row, column));
+        ui->tableSignal->setSortingEnabled(true);
     }
-    emit(ui->tableSignal->currentCellChanged(row, column, row, column));
 }
 
 void ChipEditorView::on_tableSignal_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
@@ -760,7 +760,7 @@ void ChipEditorView::on_tableRegister_cellDoubleClicked(int row, int column)
     if (edit_reg.exec() == QDialog::Accepted && edit_reg.edit_register())
     {
         ui->tableRegister->item(row, 1)->setText(edit_reg.get_reg_name());
-        emit(to_refresh_block());
+        emit(to_refresh_navigator_block());
     }
 }
 
@@ -772,7 +772,9 @@ void ChipEditorView::on_tableRegister_currentCellChanged(int currentRow, int cur
 
 void ChipEditorView::on_tableSigPart_currentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
 {
-    ui->pushButtonRemoveSigPart->setEnabled(authenticator_->can_edit_signal_partition() && currentRow >= 0);
+    ui->pushButtonRemoveSigPart->setEnabled(authenticator_->can_edit_signal_partition() && \
+                                            currentRow >= 0 && \
+                                            ui->tableSigPart->item(currentRow, 0)->text() != "-1");
 }
 
 void ChipEditorView::display_chip_basics()
@@ -807,7 +809,7 @@ void ChipEditorView::display_system_blocks()
                                     items, key_value_pairs,
                                     "order by block_system_block.block_id"))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read system blocks from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read system blocks from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     if (authenticator_->can_read_all_blocks()) items = sort_doubly_linked_list(items);
@@ -841,7 +843,7 @@ void ChipEditorView::display_designers()
                                     items, {{"chip_designer.chip_id", chip_id_}},
                                     "order by chip_designer.chip_designer_id"))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read registers from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read registers from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     for (const auto& item : items)
@@ -864,7 +866,7 @@ void ChipEditorView::display_register_pages()
                                    "block_system_block.block_name", "block_system_block.abbreviation", "signal_signal.add_port"};
     if (!DataBaseHandler::show_items_inner_join(extended_fields, {{{"chip_register_page", "ctrl_sig"}, {"signal_signal", "sig_id"}}, {{"signal_signal", "block_id"}, {"block_system_block", "block_id"}}}, items, {{"chip_register_page.chip_id", chip_id_}}))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read register pages from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read register pages from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     NamingTemplate signal_naming = GLOBAL_SIGNAL_NAMING;
@@ -882,6 +884,7 @@ void ChipEditorView::display_register_pages()
 
 void ChipEditorView::display_signals()
 {
+    ui->tableSignal->setSortingEnabled(false);
     ui->pushButtonAddSig->setEnabled(authenticator_->can_add_signal());
     ui->pushButtonRemoveSig->setEnabled(false);
 
@@ -894,7 +897,7 @@ void ChipEditorView::display_signals()
                                     items,
                                     {{"signal_signal.block_id", block_id_}}))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read signals from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read signals from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     for (const auto& item : items)
@@ -914,7 +917,7 @@ void ChipEditorView::display_signals()
                                         {{{"signal_reg_signal", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
                                         items_reg_sig, {{"signal_reg_signal.sig_id", item[0]}}))
         {
-            QMessageBox::warning(this, "Chip Editor", "Unable to read signals from database.\nPlease try again!");
+            QMessageBox::warning(this, "Chip Editor", "Unable to read signals from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
             break;
         }
 
@@ -929,6 +932,7 @@ void ChipEditorView::display_signals()
         for (int i = 0; i < ui->tableSignal->columnCount(); i++)
             ui->tableSignal->setItem(row, i, new QTableWidgetItem(values[i]));
     }
+    ui->tableSignal->setSortingEnabled(true);
 }
 
 void ChipEditorView::display_registers()
@@ -943,7 +947,7 @@ void ChipEditorView::display_registers()
                                     {{{"block_register", "reg_type_id"}, {"def_register_type", "reg_type_id"}}},
                                     items, {{"block_register.block_id", block_id_}}))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read registers from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read registers from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 
@@ -988,24 +992,87 @@ void ChipEditorView::display_signal_partitions()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_id"}, {"block_register", "reg_id"}}}, items,  {{"block_sig_reg_partition_mapping.reg_sig_id", reg_sig_id}}))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read signal partitions from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read signal partitions from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 
     if (msb_first_) qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2].toInt() > b[2].toInt();});
     else qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toInt() < b[1].toInt();});
-    for (const auto& item : items)
+
+    int signal_width = ui->tableSignal->item(row, 4)->text().toInt();
+    int occupied_bits = 0;
+
+    if (items.size() == 0)
     {
+        QString sig_part = msb_first_ ? "<" + QString::number(signal_width-1) + ":"+ "0>" :
+                                        "<0:"+ QString::number(signal_width-1) + ">";
         int row = ui->tableSigPart->rowCount();
         ui->tableSigPart->insertRow(row);
-        QString sig_reg_part_mapping_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5];
-        reg_name = GLOBAL_REGISTER_NAMING.get_extended_name(reg_name);
-        ui->tableSigPart->setItem(row, 0, new QTableWidgetItem(sig_reg_part_mapping_id));
-        QString sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">",
-                reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
+        ui->tableSigPart->setItem(row, 0, new QTableWidgetItem("-1"));
         ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
-        ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
+        ui->tableSigPart->setItem(row, 2, new QTableWidgetItem("NaN"));
     }
+    else {
+        for (int i = 0; i < items.size(); i++)
+        {
+            const auto& item = items[i];
+            QString sig_reg_part_mapping_id = item[0], sig_lsb = item[1], sig_msb = item[2], reg_name = item[3], reg_lsb = item[4], reg_msb = item[5];
+            if (i == 0)
+            {
+                QString sig_part;
+                if (msb_first_ && sig_msb.toInt() < signal_width - 1)
+                    sig_part = "<" + QString::number(signal_width-1) + ":"+ QString::number(sig_msb.toInt()+1) + ">";
+                if (!msb_first_ && sig_lsb.toInt() > 0)
+                    sig_part = "<0:"+ QString::number(sig_lsb.toInt()-1) + ">";
+                if (sig_part != "")
+                {
+                    int row = ui->tableSigPart->rowCount();
+                    ui->tableSigPart->insertRow(row);
+                    ui->tableSigPart->setItem(row, 0, new QTableWidgetItem("-1"));
+                    ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
+                    ui->tableSigPart->setItem(row, 2, new QTableWidgetItem("NaN"));
+                }
+            }
+
+            int row = ui->tableSigPart->rowCount();
+            ui->tableSigPart->insertRow(row);
+            reg_name = GLOBAL_REGISTER_NAMING.get_extended_name(reg_name);
+            ui->tableSigPart->setItem(row, 0, new QTableWidgetItem(sig_reg_part_mapping_id));
+            QString sig_part = msb_first_ ? "<" + sig_msb + ":"+ sig_lsb + ">" : "<" + sig_lsb + ":"+ sig_msb + ">",
+                    reg_part = msb_first_ ? reg_name + "<" + reg_msb + ":"+ reg_lsb +">" : reg_name + "<" + reg_lsb + ":"+ reg_msb +">";
+            ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
+            ui->tableSigPart->setItem(row, 2, new QTableWidgetItem(reg_part));
+            occupied_bits += sig_msb.toInt() - sig_lsb.toInt() + 1;
+
+            sig_part = "";
+            if (i < items.size() - 1)
+            {
+                const auto& next = items[i+1];
+                QString next_sig_lsb = next[1], next_sig_msb = next[2];
+                if (msb_first_ && sig_lsb.toInt() - 1 > next_sig_msb.toInt())
+                    sig_part = "<" + QString::number(sig_lsb.toInt() - 1) + ":"+ QString::number(next_sig_msb.toInt() + 1) + ">";
+                if (!msb_first_ && sig_msb.toInt() + 1 < next_sig_lsb.toInt())
+                    sig_part = "<" + QString::number(sig_msb.toInt() + 1) + ":"+ QString::number(next_sig_lsb.toInt() - 1) + ">";
+            }
+            if (i == items.size() - 1)
+            {
+                if (msb_first_ && sig_lsb.toInt() > 0)
+                    sig_part = "<" + QString::number(sig_lsb.toInt() - 1) + ":0>";
+                if (!msb_first_ && sig_msb.toInt() < signal_width - 1)
+                    sig_part = "<" + QString::number(sig_msb.toInt() + 1) + ":"+ QString::number(signal_width - 1) + ">";
+            }
+            if (sig_part != "")
+            {
+                int row = ui->tableSigPart->rowCount();
+                ui->tableSigPart->insertRow(row);
+                ui->tableSigPart->setItem(row, 0, new QTableWidgetItem("-1"));
+                ui->tableSigPart->setItem(row, 1, new QTableWidgetItem(sig_part));
+                ui->tableSigPart->setItem(row, 2, new QTableWidgetItem("NaN"));
+            }
+
+        }
+    }
+    if (occupied_bits == signal_width) ui->pushButtonAddSigPart->setEnabled(false);
 }
 
 void ChipEditorView::display_register_partitions()
@@ -1016,34 +1083,100 @@ void ChipEditorView::display_register_partitions()
     QString reg_id = ui->tableRegister->item(row, 0)->text();
 
     QVector<QString> extended_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
-                                   "block_sig_reg_partition_mapping.reg_lsb",
-                                   "block_sig_reg_partition_mapping.reg_msb",
-                                   "signal_signal.sig_name",
-                                   "block_sig_reg_partition_mapping.sig_lsb",
-                                   "block_sig_reg_partition_mapping.sig_msb",
-                                  "signal_signal.add_port"};
+                                        "block_sig_reg_partition_mapping.reg_lsb",
+                                        "block_sig_reg_partition_mapping.reg_msb",
+                                        "signal_signal.sig_name",
+                                        "block_sig_reg_partition_mapping.sig_lsb",
+                                        "block_sig_reg_partition_mapping.sig_msb",
+                                        "signal_signal.add_port",
+                                        "signal_signal.width",
+                                        "signal_reg_signal.init_value"};
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
                                                  {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, items, {{"block_sig_reg_partition_mapping.reg_id", reg_id}}))
     {
-        QMessageBox::warning(this, "Chip Editor", "Unable to read register partitions from database.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Editor", "Unable to read register partitions from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
 
     if (msb_first_) qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[2].toInt() > b[2].toInt();});
     else qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[1].toInt() < b[1].toInt();});
-    for (const auto& item : items)
+
+    if (items.size() == 0)
     {
+        QString reg_part = msb_first_ ? "<" + QString::number(register_width_-1) + ":"+ "0>" :
+                                        "<0:"+ QString::number(register_width_-1) + ">";
         int row = ui->tableRegPart->rowCount();
         ui->tableRegPart->insertRow(row);
-        QString sig_reg_part_mapping_id = item[0], reg_lsb = item[1], reg_msb = item[2], sig_name = item[3], sig_lsb = item[4], sig_msb = item[5];
-        sig_name =  item[6]=="1" ? GLOBAL_SIGNAL_NAMING.get_extended_name(sig_name) : sig_name;
-        ui->tableRegPart->setItem(row, 0, new QTableWidgetItem(sig_reg_part_mapping_id));
-        QString reg_part = msb_first_ ? "<" + reg_msb + ":"+ reg_lsb + ">" : "<" + reg_lsb + ":"+ reg_msb + ">",
-                sig_part = msb_first_ ? sig_name + "<" + sig_msb + ":"+ sig_lsb +">" : sig_name + "<" + sig_lsb + ":"+ sig_msb +">";
-
+        ui->tableRegPart->setItem(row, 0, new QTableWidgetItem("-1"));
         ui->tableRegPart->setItem(row, 1, new QTableWidgetItem(reg_part));
-        ui->tableRegPart->setItem(row, 2, new QTableWidgetItem(sig_part));
+        ui->tableRegPart->setItem(row, 2, new QTableWidgetItem("NaN"));
+        ui->tableRegPart->setItem(row, 3, new QTableWidgetItem("NaN"));
+    }
+    else {
+        for (int i = 0; i < items.size(); i++)
+        {
+            const auto& item = items[i];
+            QString sig_reg_part_mapping_id = item[0], reg_lsb = item[1], reg_msb = item[2],
+                    sig_name = item[3], sig_lsb = item[4], sig_msb = item[5], sig_width = item[7], sig_init_value = item[8];
+            sig_name =  item[6]=="1" ? GLOBAL_SIGNAL_NAMING.get_extended_name(sig_name) : sig_name;
+
+            if (i == 0)
+            {
+                QString reg_part;
+                if (msb_first_ && reg_msb.toInt() < register_width_ - 1)
+                    reg_part = "<" + QString::number(register_width_-1) + ":"+ QString::number(reg_msb.toInt()+1) + ">";
+                if (!msb_first_ && reg_lsb.toInt() > 0)
+                    reg_part = "<0:"+ QString::number(reg_lsb.toInt()-1) + ">";
+                if (reg_part != "")
+                {
+                    int row = ui->tableRegPart->rowCount();
+                    ui->tableRegPart->insertRow(row);
+                    ui->tableRegPart->setItem(row, 0, new QTableWidgetItem("-1"));
+                    ui->tableRegPart->setItem(row, 1, new QTableWidgetItem(reg_part));
+                    ui->tableRegPart->setItem(row, 2, new QTableWidgetItem("NaN"));
+                    ui->tableRegPart->setItem(row, 3, new QTableWidgetItem("NaN"));
+                }
+            }
+
+            int row = ui->tableRegPart->rowCount();
+            ui->tableRegPart->insertRow(row);
+            ui->tableRegPart->setItem(row, 0, new QTableWidgetItem(sig_reg_part_mapping_id));
+            QString reg_part = msb_first_ ? "<" + reg_msb + ":"+ reg_lsb + ">" : "<" + reg_lsb + ":"+ reg_msb + ">",
+                    sig_part = sig_width == "1" ? sig_name : (msb_first_ ? sig_name + "<" + sig_msb + ":"+ sig_lsb +">" : sig_name + "<" + sig_lsb + ":"+ sig_msb +">");
+
+            ui->tableRegPart->setItem(row, 1, new QTableWidgetItem(reg_part));
+            ui->tableRegPart->setItem(row, 2, new QTableWidgetItem(sig_part));
+            ui->tableRegPart->setItem(row, 3, new QTableWidgetItem(sig_init_value));
+
+            reg_part = "";
+            if (i < items.size() - 1)
+            {
+                const auto& next = items[i+1];
+                QString next_reg_lsb = next[1], next_reg_msb = next[2];
+                if (msb_first_ && reg_lsb.toInt() - 1 > next_reg_msb.toInt())
+                    reg_part = "<" + QString::number(reg_lsb.toInt() - 1) + ":"+ QString::number(next_reg_msb.toInt() + 1) + ">";
+                if (!msb_first_ && reg_msb.toInt() + 1 < next_reg_lsb.toInt())
+                    reg_part = "<" + QString::number(reg_msb.toInt() + 1) + ":"+ QString::number(next_reg_lsb.toInt() - 1) + ">";
+            }
+            if (i == items.size() - 1)
+            {
+                if (msb_first_ && reg_lsb.toInt() > 0)
+                    reg_part = "<" + QString::number(reg_lsb.toInt() - 1) + ":0>";
+                if (!msb_first_ && reg_msb.toInt() < register_width_ - 1)
+                    reg_part = "<" + QString::number(reg_msb.toInt() + 1) + ":"+ QString::number(register_width_ - 1) + ">";
+            }
+            if (reg_part != "")
+            {
+                int row = ui->tableRegPart->rowCount();
+                ui->tableRegPart->insertRow(row);
+                ui->tableRegPart->setItem(row, 0, new QTableWidgetItem("-1"));
+                ui->tableRegPart->setItem(row, 1, new QTableWidgetItem(reg_part));
+                ui->tableRegPart->setItem(row, 2, new QTableWidgetItem("NaN"));
+                ui->tableRegPart->setItem(row, 3, new QTableWidgetItem("NaN"));
+            }
+
+        }
     }
 }
 
@@ -1095,7 +1228,7 @@ bool ChipEditorView::eventFilter(QObject *obj, QEvent *eve)
                 {
                     table_drop_event_handling(ui->tableRegister, "block_register", "reg_id", row, pDropItem->row());
                     ui->tableRegister->setCurrentCell(pDropItem->row(), 0);
-                    emit(to_refresh_block());
+                    emit(to_refresh_navigator_block());
                 }
                 if (obj == ui->tableBlock->viewport())
                 {
@@ -1147,23 +1280,25 @@ void ChipEditorView::table_drop_event_handling(QTableWidget* table, const QStrin
 
     QVector<QString> from_items;
     for (int col = 0; col < table->columnCount(); col++) from_items.push_back(table->item(from_row, col)->text());
+    int cols = table->columnCount();
+    if (table == ui->tableRegister) cols--;
     if (to_row < from_row)
         for (int row = from_row; row > to_row; row--)
         {
-            for (int col = 0; col < table->columnCount(); col++) table->item(row, col)->setText(table->item(row-1, col)->text());
+            for (int col = 0; col < cols; col++) table->item(row, col)->setText(table->item(row-1, col)->text());
         }
     else {
         for (int row = from_row; row < to_row; row++)
         {
-            for (int col = 0; col < table->columnCount(); col++) table->item(row, col)->setText(table->item(row+1, col)->text());
+            for (int col = 0; col < cols; col++) table->item(row, col)->setText(table->item(row+1, col)->text());
         }
     }
-    for (int col = 0; col < table->columnCount(); col++) table->item(to_row, col)->setText(from_items[col]);
+    for (int col = 0; col < cols; col++) table->item(to_row, col)->setText(from_items[col]);
 }
 
 void ChipEditorView::on_splitterSignal_splitterMoved(int pos, int index)
 {
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     settings.setValue("table_signal_height", ui->splitterSignal->sizes()[0]);
     settings.setValue("table_signal_partition_height", ui->splitterSignal->sizes()[1]);
@@ -1171,7 +1306,7 @@ void ChipEditorView::on_splitterSignal_splitterMoved(int pos, int index)
 
 void ChipEditorView::on_splitterRegister_splitterMoved(int pos, int index)
 {
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     settings.setValue("table_register_height", ui->splitterRegister->sizes()[0]);
     settings.setValue("table_register_partition_height", ui->splitterRegister->sizes()[1]);
@@ -1179,7 +1314,7 @@ void ChipEditorView::on_splitterRegister_splitterMoved(int pos, int index)
 
 void ChipEditorView::on_splitterBlocks_splitterMoved(int pos, int index)
 {
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     settings.setValue("table_block_height", ui->splitterBlocks->sizes()[0]);
     settings.setValue("table_designer_height", ui->splitterBlocks->sizes()[1]);
@@ -1187,7 +1322,7 @@ void ChipEditorView::on_splitterBlocks_splitterMoved(int pos, int index)
 
 void ChipEditorView::on_splitterDesignerRegPage_splitterMoved(int pos, int index)
 {
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("ui");
     settings.setValue("table_designer_width", ui->splitterDesignerRegPage->sizes()[0]);
     settings.setValue("table_register_page_width", ui->splitterDesignerRegPage->sizes()[1]);

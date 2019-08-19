@@ -20,7 +20,7 @@ CreateUserDialog::CreateUserDialog(QWidget *parent) :
         ui->comboBoxDBRole->addItem(QString(item[1]));
     }
     if (ui->comboBoxDBRole->count() == 0) ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
-    if (!success) QMessageBox::warning(this, "Create User", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Create User", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 CreateUserDialog::~CreateUserDialog()
@@ -69,7 +69,7 @@ bool CreateUserDialog::check_name()
     QVector<QVector<QString> > items;
     if (!DataBaseHandler::show_items("global_user", {"username"}, "username", get_username(), items))
     {
-        QMessageBox::warning(this, "Create User", "Unable to validate username due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Create User", "Unable to validate username due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0)

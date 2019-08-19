@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1188</width>
-    <height>658</height>
+    <height>704</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -225,19 +225,14 @@
     <property name="title">
      <string>Chip</string>
     </property>
-    <widget class="QMenu" name="menuNaming">
-     <property name="title">
-      <string>Naming</string>
-     </property>
-     <addaction name="actionRegisterNaming"/>
-     <addaction name="actionSignalNaming"/>
-    </widget>
     <addaction name="actionNewChip"/>
     <addaction name="actionNewChipFrom"/>
     <addaction name="actionOpenChip"/>
     <addaction name="actionCloseChip"/>
     <addaction name="separator"/>
-    <addaction name="menuNaming"/>
+    <addaction name="actionNaming"/>
+    <addaction name="separator"/>
+    <addaction name="actionResourcesBaseDir"/>
     <addaction name="separator"/>
     <addaction name="actionFreezeChip"/>
     <addaction name="separator"/>
@@ -363,6 +358,16 @@
   <action name="actionFreezeChip">
    <property name="text">
     <string>Freeze</string>
+   </property>
+  </action>
+  <action name="actionResourcesBaseDir">
+   <property name="text">
+    <string>Resources Base Dir</string>
+   </property>
+  </action>
+  <action name="actionNaming">
+   <property name="text">
+    <string>Naming</string>
    </property>
   </action>
  </widget>

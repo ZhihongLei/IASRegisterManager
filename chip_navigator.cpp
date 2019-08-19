@@ -62,7 +62,7 @@ void ChipNavigator::display_nagivator()
     else key_value_pairs = {{"block_system_block.chip_id", chip_id_}, {"block_system_block.responsible", user_id_}};
     if (!DataBaseHandler::show_items("block_system_block", {"block_id", "block_name", "abbreviation", "responsible", "prev", "next"}, key_value_pairs, items, "order by block_id"))
     {
-        QMessageBox::warning(this, "Chip Navigator", "Unable to initialize due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Navigator", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     if (authenticator_->can_read_all_blocks()) items = sort_doubly_linked_list(items);
@@ -203,7 +203,7 @@ void ChipNavigator::refresh_block(QTreeWidgetItem *block_item)
 
     if (!DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_item->text(1), registers))
     {
-        QMessageBox::warning(this, "Chip Navigator", "Unable to refresh due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Chip Navigator", "Unable to refresh due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     registers = sort_doubly_linked_list(registers);
@@ -234,7 +234,7 @@ void ChipNavigator::refresh_block(QTreeWidgetItem *block_item)
         if (!DataBaseHandler::show_items_inner_join(extended_fields, {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}},
                                                      {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}}, signal_items, {{"block_sig_reg_partition_mapping.reg_id", reg[0]}}))
         {
-            QMessageBox::warning(this, "Chip Navigator", "Unable to refresh due to database connection issue.\nPlease try again!");
+            QMessageBox::warning(this, "Chip Navigator", "Unable to refresh due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
             break;
         }
 

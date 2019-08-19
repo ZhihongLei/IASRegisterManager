@@ -24,7 +24,7 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
     bool success = setup_ui();
     setWindowTitle("Add Signal");
     if (!success)
-        QMessageBox::warning(this, windowTitle(), "Unable to initialize signal editor due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, windowTitle(), "Unable to initialize signal editor due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_id, const QString& sig_id, const QString& reg_sig_id, int register_width, bool msb_first, bool enabled, QWidget *parent) :
@@ -139,12 +139,14 @@ EditSignalDialog::EditSignalDialog(const QString& chip_id, const QString& block_
         }
     }
     if (!success)
-        QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 bool EditSignalDialog::setup_ui()
 {
     ui->setupUi(this);
+    resize(600, height());
+    ui->checkBoxAddPartition->setChecked(true);
     if (ui->checkBoxAddPort->isChecked())
     {
         ui->lineEditSigName->setValidator(new QRegExpValidator(QRegExp(GLOBAL_SIGNAL_NAMING.get_extended_name("_?[a-zA-Z0-9]+(_[a-zA-Z0-9]+)*_?"))));
@@ -154,8 +156,8 @@ bool EditSignalDialog::setup_ui()
 
     comboBoxSigLSB_ = msb_first_ ? ui->comboBoxSigRight : ui->comboBoxSigLeft;
     comboBoxSigMSB_ = msb_first_ ? ui->comboBoxSigLeft : ui->comboBoxSigRight;
-    connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigLSB_currentIndexChanged(int)));
-    connect(comboBoxSigMSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxSigMSB_currentIndexChanged(int)));
+    connect(comboBoxSigLSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(sigLSB_currentIndexChanged(int)));
+    connect(comboBoxSigMSB_, SIGNAL(currentIndexChanged(int)), this, SLOT(sigMSB_currentIndexChanged(int)));
 
     QVector<QVector<QString> > items;
     bool success = true;
@@ -327,7 +329,7 @@ void EditSignalDialog::display_available_register_parts()
     for (const auto& segment : parts)
     {
         if (msb_first_)
-            ui->comboBoxRegPart->insertItem(0, "<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
+            ui->comboBoxRegPart->addItem("<" + QString::number(segment.second) + ":" + QString::number(segment.first) + ">");
         else
             ui->comboBoxRegPart->addItem("<" + QString::number(segment.first) + ":" + QString::number(segment.second) + ">");
     }
@@ -343,6 +345,7 @@ void EditSignalDialog::on_lineEditWidth_editingFinished()
 
 void EditSignalDialog::on_lineEditWidth_textChanged(const QString &arg1)
 {
+    ui->checkBoxAddPartition->setChecked(true);
     ui->lineEditValue->setValidator(new HexValueValidator(get_width().toInt()));
     if (!is_register_signal()) {
         last_width_ = get_width().toInt();
@@ -392,6 +395,7 @@ void EditSignalDialog::on_lineEditWidth_textChanged(const QString &arg1)
 
     if (get_width().toInt() == 1) resize(w, 290);
     else resize(w, 560);
+    ui->checkBoxAddPartition->setVisible(get_width().toInt() == 1);
 }
 
 void EditSignalDialog::on_comboBoxSigType_currentIndexChanged(int index)
@@ -432,16 +436,28 @@ void EditSignalDialog::on_comboBoxRegType_currentIndexChanged(int index)
     ui->comboBoxReg->clear();
     if (index >= 0)
     {
-
         QVector<QVector<QString> > items;
-
         if (!DataBaseHandler::show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", get_register_type_id()}}, items))
-            QMessageBox::warning(this, windowTitle(), "Unable to read register types from database.\nPlease try again.!");
+            QMessageBox::warning(this, windowTitle(), "Unable to read registers from database.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
+
+        qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[0] < b[0];});
         for (const auto& item : items)
         {
+            QVector<QVector<QString> > partitions;
+            DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, "reg_id", item[1], partitions);
+            int occupied_bits = 0;
+            for (const auto& part : partitions) occupied_bits += part[1].toInt() - part[0].toInt() + 1;
             if (registers_in_page_.contains(item[1])) continue;
             reg_name2id_[GLOBAL_REGISTER_NAMING.get_extended_name(item[0])] = item[1];
-            ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
+            if (occupied_bits < register_width_) ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
+        }
+        for (int i = 0; i < ui->comboBoxReg->count(); i++)
+        {
+            if (reg_name2id_[ui->comboBoxReg->itemText(i)] == RECENT_REGISTER_ID)
+            {
+                ui->comboBoxReg->setCurrentIndex(i);
+                break;
+            }
         }
     }
     ui->comboBoxReg->blockSignals(false);
@@ -470,7 +486,7 @@ void EditSignalDialog::on_comboBoxReg_currentIndexChanged(int index)
 }
 
 
-void EditSignalDialog::on_comboBoxSigLSB_currentIndexChanged(int index)
+void EditSignalDialog::sigLSB_currentIndexChanged(int index)
 {
     ui->pushButtonAddSigPart->setEnabled(enabled_ && index != -1);
     comboBoxSigLSB_->setEnabled(enabled_ && index != -1);
@@ -490,7 +506,7 @@ void EditSignalDialog::on_comboBoxSigLSB_currentIndexChanged(int index)
     emit(comboBoxSigMSB_->currentIndexChanged(comboBoxSigMSB_->currentIndex()));
 }
 
-void EditSignalDialog::on_comboBoxSigMSB_currentIndexChanged(int index)
+void EditSignalDialog::sigMSB_currentIndexChanged(int index)
 {
     ui->pushButtonAddSigPart->setEnabled(enabled_ && index != -1);
     //comboBoxSigLSB_->setEnabled(enabled_ && index != -1);
@@ -510,6 +526,17 @@ void EditSignalDialog::on_comboBoxSigMSB_currentIndexChanged(int index)
     emit(comboBoxSigLSB_->currentIndexChanged(comboBoxSigLSB_->currentIndex()));
 }
 
+void EditSignalDialog::on_checkBoxAddPartition_stateChanged(int state)
+{
+    if (get_width().toInt() == 1)
+    {
+        ui->comboBoxSigLeft->setEnabled(state);
+        ui->comboBoxSigRight->setEnabled(state);
+        ui->comboBoxReg->setEnabled(state);
+        ui->comboBoxRegPart->setEnabled(state);
+        ui->pushButtonAddReg->setEnabled(state);
+    }
+}
 
 void EditSignalDialog::on_pushButtonAddReg_clicked()
 {
@@ -621,7 +648,7 @@ void EditSignalDialog::accept()
 
 bool EditSignalDialog::sanity_check()
 {
-    if (!check_name()) return false;
+    if (!check_name() || !check_width()) return false;
     if (is_register_signal()) return check_value() && check_partitions();
     return true;
 }
@@ -647,13 +674,23 @@ bool EditSignalDialog::check_name()
     QVector<QVector<QString> > items;
     QString sig_given_name = ui->checkBoxAddPort->isChecked() ? GLOBAL_SIGNAL_NAMING.get_given_name(get_signal_name()) : get_signal_name();
     if (!DataBaseHandler::show_items("signal_signal", {"sig_name"}, {{"block_id", block_id_}, {"sig_name", sig_given_name}}, items))
-        QMessageBox::warning(this, "Signal Editor", "Unable to validate signal name due to database access issue.\nPlease try agai.!");
+        QMessageBox::warning(this, "Signal Editor", "Unable to validate signal name due to database access issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
     if (items.size() > 0)
     {
         QMessageBox::warning(this, windowTitle(), "Signal " + get_signal_name() + " already exists!");
         return false;
     }
     // anything else?
+    return true;
+}
+
+bool EditSignalDialog::check_width()
+{
+    if (get_width().toInt() >= 64)
+    {
+        QMessageBox::warning(this, windowTitle(), "Signal width must range from 1 to 63!");
+        return false;
+    }
     return true;
 }
 
@@ -666,9 +703,7 @@ bool EditSignalDialog::check_value()
         return false;
     }
     int width = get_width().toInt();
-    quint64 value = get_value().toULongLong(nullptr, 16);
-    quint64 max_value = static_cast<quint64>(qPow(2, width) + 0.5);
-    if (value >= max_value)
+    if (width >= 64 || get_value().toULongLong(nullptr, 16) >= static_cast<quint64>(qPow(2, width) + 0.5))
     {
         QMessageBox::warning(this, windowTitle(), "Signal value is too large!");
         return false;
@@ -695,12 +730,13 @@ bool EditSignalDialog::add_signal()
         if (is_register_signal())
         {
             if (DataBaseHandler::get_next_auto_increment_id("signal_reg_signal", "reg_sig_id", reg_sig_id_) &&
-                DataBaseHandler::insert_item("signal_reg_signal", {"sig_id", "init_value", "reg_type_id"},
-                                    {get_signal_id(), get_value(), get_register_type_id()}))
+                DataBaseHandler::insert_item("signal_reg_signal", {"reg_sig_id", "sig_id", "init_value", "reg_type_id"},
+                                    {reg_sig_id_, get_signal_id(), get_value(), get_register_type_id()}))
             {
                 if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                         && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
-                        && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled())
+                        && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled() \
+                        && ui->checkBoxAddPartition->isChecked())
                 {
                     on_pushButtonAddSigPart_clicked();
                 }
@@ -725,6 +761,7 @@ bool EditSignalDialog::add_signal()
                         reg_msb = reg_part.split(":")[1];
                     }
                     success = success && add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
+                    RECENT_REGISTER_ID = reg_name2id_[reg_name];
                 }
             }
             else success = false;
@@ -776,7 +813,8 @@ bool EditSignalDialog::edit_signal()
         }
         if (get_width().toInt() == 1 && comboBoxSigLSB_->count() > 0 \
                 && comboBoxSigMSB_->count() > 0 && ui->comboBoxReg->count() > 0 \
-                && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled())
+                && ui->comboBoxRegPart->count() >0 && ui->pushButtonAddSigPart->isEnabled() \
+                && ui->checkBoxAddPartition->isChecked())
         {
             on_pushButtonAddSigPart_clicked();
         }
@@ -800,6 +838,7 @@ bool EditSignalDialog::edit_signal()
                 reg_msb = reg_part.split(":")[1];
             }
             success = success && add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, reg_name2id_[reg_name], reg_sig_id_);
+            RECENT_REGISTER_ID = reg_name2id_[reg_name];
         }
     }
     if (success)

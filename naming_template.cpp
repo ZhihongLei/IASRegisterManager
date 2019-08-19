@@ -40,7 +40,7 @@ QString NamingTemplate::get_given_name(const QString &extended_name) const
 
 void NamingTemplate::set_naming_template(const QString &naming_template)
 {
-    NamingTemplate::naming_template = naming_template;
+    this->naming_template = naming_template;
 }
 
 QString NamingTemplate::get_naming_template() const

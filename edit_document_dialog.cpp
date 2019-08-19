@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include <QRegExpValidator>
 #include <QMessageBox>
+#include <QSettings>
 
 EditDocumentDialog::EditDocumentDialog(QWidget *parent) :
     QWidget(parent),
@@ -18,7 +19,7 @@ EditDocumentDialog::EditDocumentDialog(QWidget *parent) :
     mode_ = DIALOG_MODE::ADD;
     bool success = setup_ui();
     on_comboBoxDocType_currentIndexChanged(0);
-    if (!success) QMessageBox::warning(this, "Document Editor", "Unable to initialize due to database access issue.\nPlease try again.");
+    if (!success) QMessageBox::warning(this, "Document Editor", "Unable to initialize due to database access issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditDocumentDialog::~EditDocumentDialog()
@@ -40,6 +41,7 @@ bool EditDocumentDialog::setup_ui()
     ui->splitter->setSizes({INT_MAX, INT_MAX});
     ui->lineEditTableRow->setValidator(new QRegExpValidator(QRegExp("[1-9][0-9]*"), this));
     ui->lineEditTableColumn->setValidator(new QRegExpValidator(QRegExp("[1-9][0-9]*"), this));
+    ui->lineEditImageWidth->setText("1");
 
     ui->lineEditTableRow->setText("3");
     ui->lineEditTableColumn->setText("3");
@@ -236,12 +238,13 @@ void EditDocumentDialog::on_textEditText_textChanged()
 
 void EditDocumentDialog::on_pushButtonSelectImage_clicked()
 {
-    //DocumentGenerator generator(chip_id_, chip_)
-    QString path = QFileDialog::getOpenFileName(this, "Select an image", "", "Image file (*.jpg *.jpeg *.png *.pdf);; All Files (*.* *)");
+    QString path = QFileDialog::getOpenFileName(this, "Select an image", RESOURCES_BASE_DIR, "Image file (*.jpg *.jpeg *.png *.pdf);; All Files (*.* *)");
     if (path == "") return;
+    if (path.startsWith(RESOURCES_BASE_DIR)) path = QDir(RESOURCES_BASE_DIR).relativeFilePath(path);
     QString caption = ui->lineEditImageCaption->text(),
             width = ui->lineEditImageWidth->text();
     ui->lineEditImagePath->setText(path);
+
     QString image = DocumentGenerator::generate_image_html(caption, width, path);
     QString html = HTML_TEMPLATE;
     html.replace("${HTML}", image).replace("${MATHJAX_ROOT}", MATHJAX_ROOT);
@@ -259,6 +262,7 @@ void EditDocumentDialog::on_lineEditImageCaption_editingFinished()
         QMessageBox::warning(this, "Document Editor", "Caption must not contain delimiter " + DOC_DELIMITER + "!");
         return;
     }
+
     QString image = DocumentGenerator::generate_image_html(caption, width, path);
     QString html = HTML_TEMPLATE;
     html.replace("${HTML}", image).replace("${MATHJAX_ROOT}", MATHJAX_ROOT);
@@ -338,8 +342,8 @@ void EditDocumentDialog::on_buttonBox_accepted()
         if ((mode_ == DIALOG_MODE::ADD && add_document()) || (mode_ == DIALOG_MODE::EDIT && edit_document()))
         {
             setVisible(false);
-            if (mode_ == DIALOG_MODE::ADD) emit(document_added());
-            else if (mode_ == DIALOG_MODE::EDIT) emit(document_edited());
+            if (mode_ == DIALOG_MODE::ADD) emit(to_add_document());
+            else if (mode_ == DIALOG_MODE::EDIT) emit(to_edit_document());
         }
     }
 }
@@ -405,7 +409,7 @@ bool EditDocumentDialog::add_document()
 
     if (!DataBaseHandler::show_items(table, {doc_id_field}, {{"next", "-1"}, {obj_field, obj_id}}, items))
     {
-        QMessageBox::warning(this, "Document Editor", "Unable to add document due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, "Document Editor", "Unable to add document due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     QString prev("-1");

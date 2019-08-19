@@ -1239,6 +1239,11 @@
                    <string>Signal Partition</string>
                   </property>
                  </column>
+                 <column>
+                  <property name="text">
+                   <string>Signal Init</string>
+                  </property>
+                 </column>
                 </widget>
                </item>
               </layout>

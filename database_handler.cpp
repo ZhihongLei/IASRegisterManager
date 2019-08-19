@@ -23,6 +23,8 @@ bool DataBaseHandler::initialize(const QString &hostname, const QString &databas
         return true;
     } catch (sql::SQLException &e) {
         error_message_ = e.what();
+        qCritical().noquote() << QString("Database initialization error.");
+        qCritical().noquote() << QString("Error massage: %1").arg(error_message_);
         return false;
     }
 }
@@ -36,6 +38,33 @@ bool DataBaseHandler::use_database(const QString &database)
     } catch (sql::SQLException &e) {
         error_message_ = e.what();
         return false;
+    }
+}
+
+bool DataBaseHandler::execute(const QString &statement)
+{
+    qInfo().noquote() << QString("Database execution: %1").arg(statement);
+    try {
+        stmt_->executeUpdate(statement.toUtf8().constData());
+        return true;
+    } catch (sql::SQLException &e) {
+        error_message_ = e.what();
+        qCritical().noquote() << QString("Database execution error: %1").arg(statement);
+        qCritical().noquote() << QString("Error massage: %1").arg(error_message_);
+      return false;
+    }
+}
+
+bool DataBaseHandler::execute_query(const QString &statement)
+{
+    try {
+        res_.reset(stmt_->executeQuery(statement.toUtf8().constData()));
+        return true;
+    } catch (sql::SQLException &e) {
+        error_message_ = e.what();
+        qCritical().noquote() << QString("Database querry error: %1").arg(statement);
+        qCritical().noquote() << QString("Error massage: %1").arg(error_message_);
+      return false;
     }
 }
 
@@ -369,26 +398,4 @@ bool DataBaseHandler::get_next_auto_increment_id(const QString &tablename, const
     if (!success) return false;
     id = QString::number(item[0].toInt() + 1);
     return true;
-}
-
-bool DataBaseHandler::execute(const QString &statement)
-{
-    try {
-        stmt_->execute(statement.toUtf8().constData());
-        return true;
-    } catch (sql::SQLException &e) {
-        error_message_ = e.what();
-      return false;
-    }
-}
-
-bool DataBaseHandler::execute_query(const QString &statement)
-{
-    try {
-        res_.reset(stmt_->executeQuery(statement.toUtf8().constData()));
-        return true;
-    } catch (sql::SQLException &e) {
-        error_message_ = e.what();
-      return false;
-    }
 }

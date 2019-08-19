@@ -48,13 +48,27 @@ EditSignalPartitionDialog::EditSignalPartitionDialog(const QString& block_id,
 
     items.clear();
     success = success && DataBaseHandler::show_items("block_register", {"reg_name", "reg_id"}, {{"block_id", block_id_}, {"reg_type_id", reg_type_id_}}, items);
+    qSort(items.begin(), items.end(), [](const QVector<QString>& a, const QVector<QString>& b) {return a[0] < b[0];});
     for (const auto& item : items)
     {
+        QVector<QVector<QString> > partitions;
+        DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"reg_lsb", "reg_msb"}, "reg_id", item[1], partitions);
+        int occupied_bits = 0;
+        for (const auto& part : partitions) occupied_bits += part[1].toInt() - part[0].toInt() + 1;
+
         if (registers_in_page.contains(item[1])) continue;
-        ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
         reg_name2id_[GLOBAL_REGISTER_NAMING.get_extended_name(item[0])] = item[1];
+        if (occupied_bits < register_width) ui->comboBoxReg->addItem(GLOBAL_REGISTER_NAMING.get_extended_name(item[0]));
     }
-    if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.");
+    for (int i = 0; i < ui->comboBoxReg->count(); i++)
+    {
+        if (reg_name2id_[ui->comboBoxReg->itemText(i)] == RECENT_REGISTER_ID)
+        {
+            ui->comboBoxReg->setCurrentIndex(i);
+            break;
+        }
+    }
+    if (!success) QMessageBox::warning(this, windowTitle(), "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 
     make_occupied_signal_parts();
     make_available_signal_parts(signal_width);
@@ -122,7 +136,7 @@ void EditSignalPartitionDialog::make_occupied_signal_parts()
     QVector<QVector<QString> > items;
 
     if (!DataBaseHandler::show_items("block_sig_reg_partition_mapping", {"sig_lsb", "sig_msb"}, "reg_sig_id", reg_sig_id_, items))
-        QMessageBox::warning(this, windowTitle(), "Unable to read existing signal partitions from database.\nExceptions might happen.\nPlease try again!");
+        QMessageBox::warning(this, windowTitle(), "Unable to read existing signal partitions from database.\nExceptions might happen.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
     for (const auto& item : items)
     {
         occupied_signal_parts_.push_back({item[0].toInt(), item[1].toInt()});
@@ -237,8 +251,9 @@ bool EditSignalPartitionDialog::add_signal_partition()
             sig_msb = comboBoxSigMSB_->currentText();
     QString reg_lsb = get_register_lsb(),
             reg_msb = get_register_msb();
-    if(EditSignalPartitionLogic::add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, get_register_id(), reg_sig_id_))
+    if (EditSignalPartitionLogic::add_signal_partition(sig_lsb, sig_msb, reg_lsb, reg_msb, get_register_id(), reg_sig_id_))
     {
+        RECENT_REGISTER_ID = get_register_id();
         DataBaseHandler::commit();
         return true;
     }

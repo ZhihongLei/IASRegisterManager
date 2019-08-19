@@ -17,7 +17,7 @@ OpenChipDialog::OpenChipDialog(const QString& username, const QString& user_id, 
 {
     bool success = setup_ui();
     ui->pushButtonAddChip->setVisible(can_add_chip);
-    if (!success) QMessageBox::warning(this, "Open Chip", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Open Chip", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 OpenChipDialog::OpenChipDialog(const QString& username, const QString& user_id, QString active_chip_id, QWidget *parent):
@@ -33,7 +33,7 @@ OpenChipDialog::OpenChipDialog(const QString& username, const QString& user_id, 
     ui->pushButtonRemoveChip->setVisible(true);
     setWindowTitle("Chip Manager");
     ui->buttonBox->setStandardButtons(QDialogButtonBox::Ok);
-    if (!success) QMessageBox::warning(this, "Chip Manager", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Chip Manager", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 OpenChipDialog::~OpenChipDialog()
@@ -58,7 +58,7 @@ bool OpenChipDialog::setup_ui()
     success = success && DataBaseHandler::show_items_inner_join(extended_fields, {{{"chip_chip", "owner"}, {"global_user", "user_id"}}}, items, "", "order by chip_id");
 
     QHash<QString, int> recents;
-    QSettings settings("global_settings.ini", QSettings::IniFormat);
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "user_settings");
     settings.beginGroup("recent_projects");
 
     int i = 1;
@@ -166,7 +166,8 @@ void OpenChipDialog::on_pushButtonAddChip_clicked()
                                   new_chip.get_owner_id(),
                                   QString::number(new_chip.get_register_width()),
                                   QString::number(new_chip.get_address_width()),
-                                  new_chip.msb_first() ? "true" : "false"};
+                                  new_chip.msb_first() ? "true" : "false",
+                                 "false"};
 
         int row = ui->tableWidgetChip->rowCount();
         ui->tableWidgetChip->insertRow(row);
@@ -192,7 +193,7 @@ void OpenChipDialog::on_pushButtonRemoveChip_clicked()
     if (!DatabaseUtils::remove_chip(chip_id))
     {
         DataBaseHandler::rollback();
-        QMessageBox::warning(this, "Remove Chip", "Unable to remove this chip.Error Message: " + DataBaseHandler::get_error_message());
+        QMessageBox::warning(this, "Remove Chip", "Unable to remove this chip.\nError Message: " + DataBaseHandler::get_error_message());
         return;
     }
     DataBaseHandler::commit();
@@ -228,7 +229,7 @@ bool OpenChipDialog::check_project_role()
     if (!DataBaseHandler::show_items_inner_join({"def_db_role.full_access_to_all_projects"}, {{{"def_db_role", "db_role_id"}, {"global_user", "db_role_id"}}}, items, "global_user.user_id", user_id_, "") ||
         !DataBaseHandler::show_one_item("chip_designer", item, {"project_role_id"}, {{"chip_id", get_chip_id()}, {"user_id", user_id_}}))
     {
-        QMessageBox::warning(this, "Open Chip", "Unable to validate project role due to database connection issue.\nPlease try again!");
+        QMessageBox::warning(this, "Open Chip", "Unable to validate project role due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (items.size() > 0 && items[0][0] == "1") return true;

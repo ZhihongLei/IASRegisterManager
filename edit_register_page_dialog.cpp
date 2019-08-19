@@ -17,7 +17,7 @@ EditRegisterPageDialog::EditRegisterPageDialog(const QString& chip_id, QWidget *
     ui->setupUi(this);
     bool success = setup_ui();
     setWindowTitle("Add Register Page");
-    if (!success) QMessageBox::warning(this, "Add Register Page", "Unable to initialize due to database connection issue.\nPlease try again!");
+    if (!success) QMessageBox::warning(this, "Add Register Page", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 
@@ -45,7 +45,7 @@ EditRegisterPageDialog::EditRegisterPageDialog(const QString& chip_id, const QSt
 
     if (items.size() == 0)
     {
-        QMessageBox::warning(this, "Edit Register Page", "Unable to open register page!");
+        QMessageBox::warning(this, "Edit Register Page", "Unable to open register pages.\nError message: " + DataBaseHandler::get_error_message());
         ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(ui->comboBoxControlSignal->count() > 0);
         ui->tableWidgetAll->setEnabled(false);
         ui->tableWidgetSelected->setEnabled(false);
@@ -88,8 +88,7 @@ EditRegisterPageDialog::EditRegisterPageDialog(const QString& chip_id, const QSt
         ui->tableWidgetSelected->setItem(row, 0, new QTableWidgetItem(item[0]));
         ui->tableWidgetSelected->setItem(row, 1, new QTableWidgetItem(register_naming.get_extended_name(item[1])));
     }
-    if (!success) QMessageBox::warning(this, "Add Register Page", "Unable to initialize due to database connection issue.\nPlease try again!");
-
+    if (!success) QMessageBox::warning(this, "Add Register Page", "Unable to initialize due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
 }
 
 EditRegisterPageDialog::~EditRegisterPageDialog()
@@ -101,8 +100,6 @@ bool EditRegisterPageDialog::setup_ui()
 {
     ui->tableWidgetAll->setColumnHidden(0, true);
     ui->tableWidgetSelected->setColumnHidden(0, true);
-
-
     QVector<QVector<QString> > items;
 
     if (!DataBaseHandler::show_items("block_system_block", {"block_id", "block_name", "abbreviation", "prev", "next"}, "chip_id", chip_id_, items))
@@ -128,8 +125,6 @@ bool EditRegisterPageDialog::setup_ui()
         for (const auto& reg_item : reg_items) regs_in_pages.insert(reg_item[0]);
         reg_items.clear();
 
-
-
         success = success && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "reg_type_id", "prev", "next"}, "block_id", item[0], reg_items);
         reg_items = sort_doubly_linked_list(reg_items);
         for (const auto& reg_item : reg_items)
@@ -139,12 +134,11 @@ bool EditRegisterPageDialog::setup_ui()
             reg_id2name_[reg_item[0]] = register_naming.get_extended_name(reg_item[1]);
         }
 
-
         QVector<QVector<QString> > sig_items;
         success = success && DataBaseHandler::show_items("signal_signal", {"sig_id", "sig_name", "width", "add_port", "sig_type_id"}, "block_id", item[0], sig_items);
         for (const auto& sig_item : sig_items)
         {
-            QString sig_type_id = item[4];
+            QString sig_type_id = sig_item[4];
             if (!available_sig_types.contains(sig_type_id)) continue;
             QString sig_id = sig_item[0],
                     sig_name = sig_item[3]=="1" ? signal_naming.get_extended_name(sig_item[1]) : sig_item[1];
@@ -159,7 +153,6 @@ bool EditRegisterPageDialog::setup_ui()
                 ui->comboBoxControlSignal->addItem(sig_name);
             }
         }
-
     }
 
     ui->pushButton->setEnabled(false);
@@ -195,6 +188,7 @@ QString EditRegisterPageDialog::get_page_count() const
 
 void EditRegisterPageDialog::on_comboBoxControlSignal_currentIndexChanged(int index)
 {
+    ui->tableWidgetSelected->setRowCount(0);
     int width = sig_name2width_[ui->comboBoxControlSignal->currentText()];
     ui->lineEditPageCount->setValidator(new QIntValidator(1, qRound(qPow(2, width)), this));
     ui->lineEditPageCount->setText(QString::number(qRound(qPow(2, width))));
@@ -204,7 +198,7 @@ void EditRegisterPageDialog::on_comboBoxControlSignal_currentIndexChanged(int in
                                     {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}}, {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}},
                                     items, {{"signal_signal.sig_id", get_control_signal_id()}}))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to filter out ineligible registers due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to filter out ineligible registers due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return;
     }
     QSet<QString> regs;
@@ -218,8 +212,8 @@ void EditRegisterPageDialog::on_comboBoxControlSignal_currentIndexChanged(int in
         {
             int row = ui->tableWidgetAll->rowCount();
             ui->tableWidgetAll->insertRow(row);
-             ui->tableWidgetAll->setItem(row, 0, new QTableWidgetItem(reg_id));
-             ui->tableWidgetAll->setItem(row, 1, new QTableWidgetItem(reg_id2name_[reg_id]));
+            ui->tableWidgetAll->setItem(row, 0, new QTableWidgetItem(reg_id));
+            ui->tableWidgetAll->setItem(row, 1, new QTableWidgetItem(reg_id2name_[reg_id]));
         }
     }
 }
@@ -311,17 +305,30 @@ void EditRegisterPageDialog::accept()
 bool EditRegisterPageDialog::sanity_check()
 {
     if (!check_name()) return false;
-
-    QVector<QVector<QString> > sig_part_items;
     QString sig_id = sig_name2id_[ui->comboBoxControlSignal->currentText()];
-    if (!DataBaseHandler::show_items_inner_join({"block_sig_reg_partition_mapping.sig_reg_part_mapping_id"},
+
+    QVector<QVector<QString> > items;
+    if (!DataBaseHandler::show_items_inner_join({"block_sig_reg_partition_mapping.reg_id"},
                                     {{{"block_sig_reg_partition_mapping", "reg_sig_id"}, {"signal_reg_signal", "reg_sig_id"}}, {{"signal_reg_signal", "sig_id"}, {"signal_signal", "sig_id"}}},
-                                    sig_part_items, {{"signal_signal.sig_id", sig_id}}))
+                                    items, {{"signal_signal.sig_id", get_control_signal_id()}}))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate control signal due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate control signal due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
-    if (sig_part_items.size() > 0) return false;
+    QSet<QString> regs;
+    for (const auto &item : items)
+        regs.insert(item[0]);
+
+    for (int i = 0; i < ui->tableWidgetSelected->rowCount(); i++)
+    {
+        QString reg_id = ui->tableWidgetSelected->item(i, 0)->text();
+        if (regs.contains(reg_id))
+        {
+            QMessageBox::warning(this,  windowTitle(), "The control signal cannot be mapped to selected registers!");
+            return false;
+        }
+    }
+
     int width = sig_name2width_[ui->comboBoxControlSignal->currentText()];
     if (quint64(qPow(2, width) + 0.5) < ui->lineEditPageCount->text().toULongLong())
     {
@@ -344,7 +351,7 @@ bool EditRegisterPageDialog::check_name()
 
     if (!DataBaseHandler::show_one_item("chip_register_page", item, {"page_id"}, {{"chip_id", chip_id_}, {"page_name", page_name}}))
     {
-        QMessageBox::warning(this, windowTitle(), "Unable to validate register page name due to database connection issue.\nPlease try again.");
+        QMessageBox::warning(this, windowTitle(), "Unable to validate register page name due to database connection issue.\nPlease try again.\nError message: " + DataBaseHandler::get_error_message());
         return false;
     }
     if (item.size() > 0)
@@ -384,8 +391,8 @@ QSet<QString> EditRegisterPageDialog::get_available_paged_register_types() const
 bool EditRegisterPageDialog::add_register_page()
 {
     if (DataBaseHandler::get_next_auto_increment_id("chip_register_page", "page_id", page_id_) &&
-        DataBaseHandler::insert_item("chip_register_page", {"page_name", "chip_id", "ctrl_sig", "page_count"},
-        {get_register_page_name(), chip_id_, get_control_signal_id(), get_page_count()}))
+        DataBaseHandler::insert_item("chip_register_page", {"page_id", "page_name", "chip_id", "ctrl_sig", "page_count"},
+        {page_id_, get_register_page_name(), chip_id_, get_control_signal_id(), get_page_count()}))
     {
         bool success = true;
         for (int i = 0; i < ui->tableWidgetSelected->rowCount(); i++)
