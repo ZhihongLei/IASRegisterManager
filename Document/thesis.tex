@@ -1,0 +1,779 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = <none>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  _____           _____ 
+% |_   _|   /\    / ____|
+%   | |    /  \  | (___  
+%   | |   / /\ \  \___ \ 
+%  _| |_ / ____ \ ____) |
+% |_____/_/    \_\_____/ 
+%                        
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This the main document of the diploma thesis template
+% Created by Josua Arndt 29.04.2016
+% TEMPLATE VERSION 1.5
+% TEMPLATE DATE 30.11.2017
+%
+% - Do not change anything in this document without the permission of your supervisor
+% - Compile the document for further information
+% 
+% For questions and comments contact johannes.bastl@ias.rwth-aachen.de
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%\RequirePackage[log, major-version]{snapshot} % This will produce a dependency list in a file \jobname.dep.
+% checks if all packages are available and are in the same major-version as listet 
+%\RequireVersions[]{ 
+%	% here should be the input of the original_A_Template_BA_MA.dep_x
+%	}
+% nag check if you use some deprecated packages
+\RequirePackage[l2tabu, orthodox]{nag}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SUPPRESSED WARNINGS %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Pdf files from MS Office Products with misleading page group
+% pdfTeX warning: pdflatex.exe (file <FILENAME>.pdf): PDF inclusion: multiple pdfs with page group included in a single page>]
+\pdfsuppresswarningpagegroup=1  
+
+% Use KOMA-Skript scrbook for documentclass produces nice PDFs
+\documentclass[
+% draft, % set all packages to draft mode for fast compiling
+fontsize=12pt, 		% Fontsize
+open=right, 		% the Chapter begins on right side, a Blank page will be included if neccesary  
+toc=bibliography, 	% Include Bibliography to Table Of Contents (TOC)
+toc=listof, 		% Include list o figures to Table Of Contents
+headsepline, 		% A Line under the Headers
+%headinclude=false, 	% Headers are calculated as part of the Textarea 
+%footinclude=false, 	% Footers are calculated as part of the Textarea 
+cleardoublepage=empty, % With this option, you may define the page style of the interleaf pages created by the \cleardoublepage to break until the wanted page. empty adds Empty Pages before Next chapter if needed. So a Blank Page, no Header, No Footer, No Page Number. \cleardoublepage is called automatically after each chapter to flush pending floating Objects.
+numbers=noendperiod, % No Period after the Number oin the Header
+chapterprefix = false, % don´t Use Chpater X before the Chapter Titel
+% scrbook uses "flushbottom " because in double-sided documents, it is preferred to have the same visual baseline, opposite is "raggedbottom"
+parskip=half, % Makes some withspaces between Paragrafs and no ident
+usegeometry, % use package geometry to change page layout
+]{scrbook}
+% change linespacing 
+\usepackage[onehalfspacing]{setspace}
+
+\setcounter{secnumdepth}{3} % Number subsubsection depth
+
+% ##################################################################################
+% # KOMA Hack to implement some newer feature to Packages wich does't use them     #
+% # In this Document until now the warning of listings that doesn't use 'tocbasic' #
+% ##################################################################################
+\usepackage{scrhack}
+
+% #######################################
+% # Header and Footer                   #
+% #######################################
+% Komascript substitute for Fancyheadings Paket
+\usepackage[markcase=used,automark,autooneside=false,headsepline]{scrlayer-scrpage} %\\
+
+% ##################################################
+% # Input encoding, Output encoding, File Encoding #
+% ##################################################
+%
+% !!! Attention !!! Make sure your file Encoding is UTF8
+%
+% The microtype package improves the spacing between words and letters. It does a lot more and most % people won`t notice the difference. But still, the resulting document will be easier to read and % looks better when microtype is loaded. Load this package after fonts, if any, as the package  
+% behavior is dependent on this font.
+\AtBeginDocument{%
+	\IfFileExists{type1ec.sty}
+	{%
+		\usepackage{type1ec} % required to use micotype
+		\RequirePackage{microtype}%
+	}
+	{%
+		\PackageWarning{Josua Arndt}{%
+			\MessageBreak Package cm-super not available, therefore microtype not used.\MessageBreak
+			Install cm-super to get better text layout.\MessageBreak
+		}%
+	}%
+}
+
+% The two packages are not connected, though it is best to call fontenc first and then inputenc
+% 1. fontenc is oriented to output, that is, what fonts to use for printing characters.
+\usepackage[T1]{fontenc} % Character Coding set to Type1
+% 2. Inputenc for Input encoding, allows the user to input accented, as ä,ö,ü,é  characters directly from the keyboard
+% Josua old = latin = ISO-8859-1. will make Problems 
+% change to utf8 = utf8 encoding for inputed charactes from keyboard.
+\usepackage[utf8]{inputenc} % 
+%\usepackage[latin1]{inputenc}
+
+
+% #######################################
+% # Conditionals                   		#
+% #######################################
+%% Do not change the Conditionals here, 
+% change them in the Settings.tex file
+\usepackage{etoolbox}
+\newbool{PrintVersion}
+\newbool{NoLogo}
+\newbool{IsEnglish} 
+\newbool{ConfidentialVersion}
+\newbool{secondSupervisor}
+
+\newcommand{\confidential}[2]{ \ifbool{ConfidentialVersion}{#1}{#2}} 
+
+%%%%%%%%%% MODIFY THE SETTINGS IN THIS FILE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TODO SETTINGS change the settings in the settings file
+\input{settings.tex}
+%\pdfminorversion=3			%Could help in case the printery is unable to print
+%\pdfobjcompresslevel=0		%Could help in case the printery is unable to print
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TODO COMMENT OUT the next line. It forces the compilation to not work and shows if you worked throhgt the TODOs and the README_Template PDF.
+%\usepackage{iHaveNotWorkThroughTheTodos}
+
+% ##################################################################
+% # Configuration of Language 									   #
+% ##################################################################
+\ifbool{IsEnglish}
+{
+	\usepackage[english]{babel}
+	\selectlanguage{english}
+}
+{
+	\usepackage[ngerman]{babel}
+	\selectlanguage{ngerman}
+}
+
+
+%This package provides advanced facilities for inline and display quotations. It is designed for a wide range of tasks ranging from the most simple applications to the more complex demands of formal quotations. The facilities include commands, environments, and userdefinable ‘smart quotes’ which dynamically adjust to their context. Quotation marks are switched automatically if quotations are nested and they can be adjusted to the current language if the babel package is available. There are additional facilities designed to cope with the more specific demands of academic writing, especially in the humanities and the social sciences. All quote styles as well as the optional active quotes are freely configurable.
+\usepackage{csquotes} 
+
+% ################################################################
+% # Configuration of Colors and Colors of Links for data in PDF  #
+% ################################################################
+%COLORS 68 dvips colors, see https://en.wikibooks.org/wiki/LaTeX/Colors
+\usepackage[pdftex,table,dvipsnames]{xcolor}
+% Changed color of links for the online version
+
+% Colors for the links
+\definecolor{blueLink}{cmyk}{0.965,0.601,0,0.322}
+\definecolor{lightBlueLink}{cmyk}{0.727,0.455,0,0.267}
+\definecolor{darkBlueLink}{cmyk}{0.922,0.922,0,0.498}
+\definecolor{lightGray}{cmyk}{0,0,0,0.627}
+
+
+%COLORS use this
+% Some Definitions for plot colors used in the 
+% Thesis of IAS Students so they look the same
+\definecolor{IASblue}{cmyk}{7,0.493,0,0.412}
+\definecolor{IASred}{cmyk}{0,0.705,0.75,0.137}
+\definecolor{IASgreen}{cmyk}{0.333,0,0.467,0.412}
+\definecolor{IASorange}{cmyk}{0,0.451,1,0}
+\definecolor{IASLogoBlue}{cmyk}{1,0.485,0,0.353}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% COLORS RWTH Corporate Design 
+% http://www9.rwth-aachen.de/go/id/bnxz the Link "Farben" download the PDF
+\definecolor{rwthci-blue-cmyk}{cmyk}{1,0.5,0,0}
+\definecolor{rwthci-petrol-cmyk}{cmyk}{1,0.3,0.5,0.3}
+\definecolor{rwthci-turk-cmyk}{cmyk}{1,0,0.4,0}
+\definecolor{rwthci-green-cmyk}{cmyk}{.7,0,1,0}
+\definecolor{rwthci-maygreen-cmyk}{cmyk}{.35,0,1,0}
+\definecolor{rwthci-orange-cmyk}{cmyk}{0,0.4,1,0}
+\definecolor{rwthci-red-cmyk}{cmyk}{0.15,1,1,0}
+\definecolor{rwthci-bordeaux-cmyk}{cmyk}{0.25,1,0.7,0.2}
+\definecolor{rwthci-violet-cmyk}{cmyk}{0.7,1,0.35,0.15}
+\definecolor{rwthci-purple-cmyk}{cmyk}{0.6,0.6,0,0}
+
+
+% ################################################################
+% # Graphics, Captions, Subfigures and sucaptions
+% ################################################################
+% used to include Graphics
+\usepackage[pdftex]{graphicx} 
+%TODO add ALL your graphics paths
+% all path where graphics are located have to be inserted here so latex can find them.
+% also the Satnalone files because they are included with includepdf
+\graphicspath{ {Bilder/} {Bilder/SVG/}{Standalone/} } 
+%test svn was ist da los!!
+% allows to include eps graphix with includegraphics
+\usepackage{epstopdf}  
+
+% subfig colides with caption and produces errors in the lof and lot.
+% only use supcaption instead of subfigure or subfig
+\usepackage[%
+%font={small,sf},
+%labelfont=bf,
+%format=hang,    
+%format=plain,
+%margin=0pt,
+%width=0.8\textwidth,
+tableposition=top
+]{caption}
+\usepackage[list=true,labelformat=simple]{subcaption}
+\captionsetup[table]{position=top}
+\renewcommand\thesubfigure{(\alph{subfigure})}
+\renewcommand\thesubtable{(\alph{subtable})}
+% ##########################################################################
+% # Package for nice Graphs 											   #
+% ##########################################################################
+
+\usepackage{pgfplots}% loads tikz which loads then loads xcolor and graphicx, to avoid option clash xcolor and graphicx have to be loaded prevously
+\pgfplotsset{compat=newest} % use newest PGF plots Package. can be set to depending Version.
+%compat=newest is not always the best practice since a newer version can break the functionality of %the code. Instead, using the version number that the code is created with, e.g., compat=1.8 should %make things smoother for debugging.
+
+% This document has following sizes
+% textwidth = 160mm        = 455.24945pt
+% textheight= 207.89667 mm = 591.53027pt
+\newcommand{\originalTextWidth}{455.24945pt}
+\newcommand{\originalTextHeight}{591.53027pt}
+
+% to place multiple plots side by side and stacked
+\usepackage{calc}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{calc,matrix,positioning}
+% Option that should not be change by the user, this are set here so it is obvious and makes the code more readable
+
+
+%\pgfplotsset{
+%	every axis/.append style={
+%		width=0.75*\originalTextWidth, 
+%		height=0.1*\originalTextHeight,
+%		scale only axis, % the width and height specifies only axis not the labels etc. to avoid missplacing of the different plots when Labels are used or not.
+%		xlabel style={yshift=-.0em, inner ysep=0pt} % used to properly crop off the plot so the distance between x-label and Caption is not to big.
+%	},
+%}
+%\tikzset{every picture/.style={trim axis left, trim axis right}}% used to avoid missplacing of different plots when the numbers on the x-axis stands out left or right.
+
+
+\ifbool{PrintVersion} %
+{% Print Version - Black and white
+
+	\pgfplotscreateplotcyclelist{RWTH_CI_cyclelistlist}{%
+		solid, every mark/.append style={solid, fill=gray}, mark=*\\%
+		dotted, every mark/.append style={solid, fill=gray}, mark=square*\\%
+		densely dotted, every mark/.append style={solid, fill=gray}, mark=otimes*\\%
+		loosely dotted, every mark/.append style={solid, fill=gray}, mark=triangle*\\%
+		dashed, every mark/.append style={solid, fill=gray},mark=diamond*\\%
+		loosely dashed, every mark/.append style={solid, fill=gray},mark=*\\%
+		densely dashed, every mark/.append style={solid, fill=gray},mark=square*\\%
+		dashdotted, every mark/.append style={solid, fill=gray},mark=otimes*\\%
+		dasdotdotted, every mark/.append style={solid},mark=star\\%
+		densely dashdotted,every mark/.append style={solid, fill=gray},mark=diamond*\\%
+	}% can now be used throughout the document
+
+}%
+{%  Online Version - Colors
+	% there are also predefined cyclelists
+	\pgfplotscreateplotcyclelist{RWTH_CI_cyclelistlist}{
+		{color=rwthci-blue-cmyk, solid},
+		{color=rwthci-petrol-cmyk, dashdotted},
+		{color=rwthci-turk-cmyk, solid},
+		{color=rwthci-green-cmyk, dashdotted},
+		{color=rwthci-maygreen-cmyk, solid},
+		{color=rwthci-orange-cmyk, dashdotted},
+		{color=rwthci-red-cmyk, solid},
+		{color=rwthci-bordeaux-cmyk, dashdotted},
+		{color=rwthci-violet-cmyk, solid},
+		{color=rwthci-purple-cmyk,	dashdotted}% error in older version of pgf if last comma is not set it will not work if last comma is set one line will be black !!!!!
+	} % can now be used throughout the document
+}
+
+
+% ##########################################################################
+% Some necessary Packages
+% ##########################################################################
+\usepackage{pdfpages} % To include whole PDF-Pages e.g in the appendix
+\usepackage{url} % for URLs in the Bibliography
+
+
+\usepackage{textcomp}% To avoid messing up anything else in a document, siunitx is set up to avoid loading font packages and the like. As such, it uses its 'own' version of the \textminus and \textmu, and sets up a minimal amount of support for that. However, that confuses microtype. Loading textcomp 'fixes' this as siunitx then uses the textcomp version of the symbols, and microtype knows what is going on with that. I do recommend loading textcomp with siunitx, but it's not absolutely required so it's not enforced.
+
+\usepackage[ % To include SI_unit Support
+	binary-units=true % units of bits and bytes
+	% use abbreviations \fg for femtogram is displayes fg or microgram \ug μg
+]{siunitx} 
+
+\ifbool{IsEnglish}
+{\sisetup{output-decimal-marker = {.},per-mode = symbol, detect-all}}
+{\sisetup{output-decimal-marker = {,},  per-mode = symbol,  detect-all}}
+
+%ToDO define new Units
+\DeclareSIUnit\decibelmW{dBm}
+
+% ##################################################################
+% # Configuration of Bibliography and source file for Bibliography #
+% ##################################################################
+% bibliography
+% biblatex used with biber backend
+% You have tu run Build, then Biber under Tools/Command/Biber, then again Build to genrerate the Bibliography
+%
+% There is a Profile for TexStudio in the folder which configures the user Macros in Tools/User/makeGlsAcr to build both.
+% The "Build & View" Button is defined to run userCommand0 which makes both everytime you compile.
+% The  "Build & View" Button is also configured to run biber everytime you compile.
+% You have to load the profil under Options/Load Profile.
+\usepackage[
+	backend=biber, 		% use Biber as Backend
+	%citestyle=authoryear,
+	citestyle=numeric,	% numerik, list references as number
+	%style=alphabetic,	% style = alphabetic , eg Jones 1997, [Jo97], stlye = numeric eg : [1]
+	% natbib=true,		% natbib = true or false , for compatibility with mcite comands
+	% sorting=nty,		% sorting = nyt , sorting according to name, title and year and so on.
+	sorting = none , 	% list as they apear in the document
+	bibencoding=UTF8,   % set encoding to UTF8, make sure all your files are encoded with utf8
+	url=false, 
+	doi=true,
+	eprint=false,
+	]{biblatex}
+
+% the following lines are only for this Template, make your one .bib file
+% You have to load your Bibliography file after the Biblatex packet
+% use \addbibresource{\jobname.bib} , \jobname calls the Bib which is named like the Main Tex file.
+% but you can change \jobname to every name. eg myBib.bib
+% do not change name to generic "\jobname" because it will then not be listed in the folder three at the left side
+\addbibresource{references.bib}
+
+
+
+% #############################################################################
+% # Following different packages are loaded which can be used in the Document #
+% #############################################################################
+% Tabularx for table with 
+\usepackage{tabularx, tabulary, longtable, ltxtable, booktabs}
+% solve problem with all tabular packages which read its contents twice for calculating the width but does not reset the line counter.
+\let\Tabular\tabular
+\def\tabular{\global\rownum=0\relax\Tabular}
+
+\usepackage{xfrac}
+%This will allow you to change the row spacing to your liking by invoking the ra{} command. I found that 1.3 was sufficient.
+%\newcommand{ra}[1]{renewcommand{arraystretch}{#1}}
+%\renewcommand{\arraystretch}{1.3}
+
+
+
+% For Equations
+\usepackage{amsmath}
+% needeed for equation in IEEEeqnarray
+\usepackage{IEEEtrantools}
+
+% ##########################################################################
+% # Configurationthe Standalone Packet and setting some widths and heights #
+% ##########################################################################
+% use Package standalone to exclude tikzPictures, tables, etc. in seperated files
+% and avoid to rebuild them every time.
+% all Packages which are used in the SubDucuments have to be included in this header also.
+\usepackage{standalone}
+% if you change the Setting for A4 to A5 or vice versa, set theconfiguration for the mode of standalone to "build"
+% To use the variabl tikzAxisWidth use tex for standolen mode, so you can change the width of the axis with a global variable. 
+
+\standaloneconfig{mode=buildnew}
+% tex = use sourcefile, default
+% image = use existing image file produced by the source file
+% build = build image from source, then use it
+% buildmissing= only build image if it does not exist
+% buildnew = only build image if source file is newer 
+
+
+%TODO COMMENT OUT the entire following block if SVG is not used.
+% ###################################################
+% #				SVG Image conversion				#
+% ###################################################
+\usepackage{svg}
+%TODO SVG set path to SVG Images
+\setsvg{svgpath={"Bilder/SVG/"}}
+
+%TODO SVG IF you compile an your own PC, set the Path to inkscape to the environment path or change the inkscape call in the next macros.
+% new command for extractiong pdfs out of svg without converting the Text to Latex text.
+\newcommand{\executeiffilenewer}[3]{%
+	\ifnum\pdfstrcmp{\pdffilemoddate{#1}}%
+	{\pdffilemoddate{#2}}>0%
+	{\immediate\write18{#3}}\fi%
+}
+\newcommand{\includesvgNoLatex}[2][1]{%
+	\executeiffilenewer{#2.svg}{#2.pdf}{%
+		inkscape.exe -z -C --file="#2.svg" --export-pdf="#2.pdf" %--export-latex
+	}%
+	\ifx\relax#1\relax% if empty rela=relax 
+	{\includegraphics[ page=1]{#2.pdf}}
+	\else{\includegraphics[ #1, page=1]{#2.pdf}}\fi%
+	
+}%
+
+% new command for extractiong pdfs out of svg without converting the Text to Latex text.
+\newcommand{\convertPdfToPpm}[1]{%
+	\executeiffilenewer{#1.pdf}{#1.ppm}{%
+		pdftoppm -r "600" -singlefile -aa "yes" -aaVector "yes" "#1.pdf"  "#1"%
+	}%
+}%
+\newcommand{\convertPpmToPng}[1]{%
+	\executeiffilenewer{#1.ppm}{#1.png}{%
+		magick "#1.ppm" -background white -flatten -alpha remove "#1.png"%
+	}%
+}%
+\newcommand{\includePdfToPng}[2][1]{%
+	\convertPdfToPpm{#2}%
+	\convertPpmToPng{#2}%
+	
+	\ifx\relax#1\relax% if empty rela=relax 
+	{\includegraphics[page=1]{#2.pdf}}
+	\else{\includegraphics[ #1, page=1]{#2.png}}\fi%
+}%
+%% to add subfolder and avoid errors like
+%%Package pdftex.def Error: File `arial_svg.pdf' not found. ...[width=\unitlength,page=1]{arial_svg.pdf}}
+%\usepackage{xparse}
+% ###################################################
+% #				SVG Image conversion end			#
+% ###################################################
+
+
+
+% ##########################################################################
+%Listings
+% ##########################################################################
+\usepackage{listings} % To show code in the Text
+
+\makeatletter
+\let\old@lstKV@SwitchCases\lstKV@SwitchCases
+\def\lstKV@SwitchCases#1#2#3{}
+\makeatother
+\usepackage{lstlinebgrd}
+\makeatletter
+\let\lstKV@SwitchCases\old@lstKV@SwitchCases
+
+\lst@Key{numbers}{none}{%
+    \def\lst@PlaceNumber{\lst@linebgrd}%
+    \lstKV@SwitchCases{#1}%
+    {none:\\%
+     left:\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+     right:\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+    }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
+\makeatother
+
+\input{listings/lstskill} % for SKILL Language
+\input{listings/lstvams} % Verilog-A/AMS Language
+% define colors for source code list
+\ifbool{PrintVersion} %
+{% Print Version - Use no colors
+	\definecolor{colKeys}{gray}{0}
+	\definecolor{colIdentifier}{gray}{0}
+	\definecolor{colSystem}{gray}{0}
+	\definecolor{colDirectives}{gray}{0}
+	\definecolor{colComments}{gray}{0}
+	\definecolor{colString}{gray}{0}
+	\definecolor{colNumbers}{gray}{0}
+	%Latex lisitngs
+	\definecolor{latexListBlue}{gray}{0}
+	\definecolor{latexListGreen}{gray}{0}
+	\definecolor{latexListString}{gray}{0}
+}%
+{%  Online Version - Use colors and links
+	\definecolor{colKeys}{RGB}{0,46,184}
+	\definecolor{colIdentifier}{RGB}{0,0,0}
+	\definecolor{colSystem}{RGB}{0,46,184}
+	\definecolor{colDirectives}{RGB}{0,33,133}
+	\definecolor{colComments}{RGB}{0,153,0}
+	\definecolor{colString}{RGB}{148,0,209}
+	\definecolor{colNumbers}{RGB}{0,0,0}
+	%Latex lisitngs
+	\definecolor{latexListBlue}{rgb}{0,0,1}	
+	\definecolor{latexListGreen}{rgb}{0.133,0.545,0.133}	
+	\definecolor{latexListString}{rgb}{0.627,0.126,0.941}			
+}
+
+% solve problem with linespacing in list
+\newcommand{\lstsetsinglespacing}{%
+	\setstretch{1}% no correction afterwards
+}
+
+\lstset{%
+	language={[LaTeX]TeX},
+	abovecaptionskip=\medskipamount,
+	numbers=left,
+	numberstyle=\tiny\ttfamily\color{colNumbers},
+	firstnumber=1,
+	frame=single,
+	frameround=fttt,
+	tabsize=4,
+	basicstyle={\small\ttfamily\lstsetsinglespacing},
+	numbersep=5mm, 
+	breaklines=true,
+	prebreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+	postbreak=\raisebox{0ex}[0ex][0ex]{\ensuremath{\hookrightarrow\space}}, %,
+	frame=single, framexleftmargin=8mm, xleftmargin=8mm,
+	frameround=fttt, escapeinside=??,
+	otherkeywords={includegraphics,setboolean,setbool,newglossaryentry,newacronym,includestandalone,subcaptionbox},
+	keywordstyle=\color{latexListBlue},                    % keywords
+	commentstyle=\color{latexListGreen},    % comments
+	stringstyle=\color{latexListString},  % strings
+	%columns=fullflexible   
+	extendedchars=true,  % use literates to support utf8
+	%inputencoding=utf8, % set UTF-8 as encoding, not setting this changes nothing
+}%
+% By default, listings does not support multi-byte encoding for source code. 
+% The extendedchar option only works for 8-bits encodings such as latin1.
+% To handle UTF-8, you should tell listings how to interpret the special characters by defining them
+% The below table will cover most characters in latin languages. 
+% For a more detailed explanation of the usage of the literate option check section 6.4 in the Listings Documentation.
+
+%
+
+% ################################################################
+% # Configuration of PDF creation and Data in PDF  #
+% ################################################################
+\usepackage[
+pdfpagelayout=TwoPageRight,
+bookmarks={true},
+bookmarksopen=true,
+bookmarksopenlevel=2, 
+plainpages=false, 
+pdfpagelabels,
+]{hyperref}
+
+\ifbool{PrintVersion}
+{   % disable colors and hide the links so all text is in the same color.
+	\hypersetup{bookmarksnumbered=true , linktoc=all, colorlinks=false, breaklinks=true, final=true, hidelinks = true} 
+}
+{  
+	\hypersetup{bookmarksnumbered=true , linktoc=all, colorlinks=true, linkcolor=blueLink, citecolor=lightGray, urlcolor=darkBlueLink, breaklinks=true, final=true} 
+}
+
+\ifbool{IsEnglish}
+{
+	\author{ {\IASAuthor \ on behalf of the laboratory for Integrated Analog Circuits and RF Systems of the RWTH Aachen University.} }
+	\hypersetup{
+		pdfauthor= {{{\IASAuthor} on behalf of the laboratory for Integrated Analog Circuits and RF Systems of the RWTH Aachen University.}}, 
+		pdftitle={{\ThesisTitleEnglish}}, 
+		pdfsubject={{\IASSubject}}
+	}
+	
+}
+{
+	\author{ {{\IASAuthor} im Auftrag des Lehrstuhl fuer Integrierte Analogschaltungen der RWTH Aachen.} } 
+	\hypersetup{
+		pdfauthor={{{\IASAuthor} im Auftrag des Lehrstuhl fuer Integrierte Analogschaltungen der RWTH Aachen.}},
+		pdftitle={{\ThesisTitleGerman}},
+		pdfsubject={{\IASSubject}}
+	}
+}
+
+%Package bookmark automatically disables hyperref’s bookmarks.  However the package uses some of the code of hyperref . For example, the package redefines the hook \Hy@writebookmark that hyperref inserts in \addcontentsline and other commands. Therefore hyperref’s bookmarks should not be disabled.
+%Bookmarks of Hyperref does not work properly so i included Bookmark package
+\usepackage{bookmark}
+\bookmarksetup{
+	numbered, 
+	open,
+}
+
+% ##########################################################################
+% # ACRONYMNS AND GLOSSARIES  # has to be loaded after hyperref
+% ##########################################################################
+%For the usage of Glossaries with make index put following command in the command line for the make glossaries section. found at Options/ Configure Textstudio/commands/ makeglossaries.
+%
+% makeindex -s %.ist -t %.glg -o %.gls %.glo 
+%
+% 1.) Build the Dokument with PDFLatex
+% 2.) run make Glossaries
+% 3.) run PDFLatex
+%
+% If you also want Acronyms you need to define a second makeindex call 
+%  makeindex -s %.ist -t %.alg -o %.acr %.acn 
+%
+% For that you have to define a user command at Options/ Configure Textstudio/commands/build
+% for that you have to klick show advanced options in the left bottom corner of the Configure Textstudio Window 
+%
+% For more glossaries you have to add more, look in the Manual 
+%
+% There is a Profile for TexStudio in the folder which configures the user Macros in Tools/User/makeGlsAcr to build both.
+% The "Build & View" Button is defined to run userCommand0 which makes both everytime you compile.
+% The "Build & View" Button is also configured to run biber everytime you compile.
+% You have to load the profil under Options/Load Profile.
+
+\usepackage[%
+automake,% recompile automatically glossaries and acronyms
+toc,% put to table of contents
+%section=chapter,% 
+acronym,% also make acronyms not only Glossary
+nonumberlist,% do not list the pages where it is used after the acronyms
+nogroupskip,% no gap in list when next acr word first letter changes
+nopostdot, % no dot after explanation
+style=super% automatically adjust the list in Tabular to get spacing between the first and second column to longest word
+%TODO ACRONYMS use this style to adjust the width of the Acronyms Tabular when you are finished with writing
+% style = superborder
+]{glossaries}
+% TODO ACRONYMS set the with of the second row of the tabular of the acronym list to fit you needs
+\setlength{\glsdescwidth}{0.8\textwidth}
+
+% Set acronoms font to bold 
+\renewcommand{\glsnamefont}[1]{\textbf{#1}} 
+% Add the glossaries and acronymns in the file GlossariesAndAcronyms.tex so you can use them.
+\input{GlossariesAndAcronyms}   
+\makeglossaries
+
+% #######################################
+% # Page Layout  has to be loaded after hyperref
+% #######################################
+% Geometry sets all needed values to generate the Text Area. It takes the needed values from the dokument class.
+%This package provides a flexible and easy interface to page dimensions. You can change the page layout with intuitive parameters. For instance, if you want to set a margin to 2cm from each edge of the paper, you can type just \usepackage[margin=2cm]{geometry}. The page layout can be changed in the middle of the document with \newgeometry command.
+
+\ifbool{PrintVersion} %
+{% Print Version - needs Bcor and twoside true
+	\KOMAoptions{twoside=true}
+	%TODO set binding correction depending on the page count.
+	% 1. Binding glue can take up as much as 1mm by itself
+	% 2. With a good binding the correction should be no more than half the thickness of all pages, i.e. half the height of the stack of paper you want to bind.
+	% 75 Pages are aprox 5mm with our glued binding a value of 1+2.5=3.5 cm or 4cm is a good value
+	\KOMAoptions{BCOR=4mm}
+	\usepackage[a4paper,
+	textwidth = 455.244095pt, % 16cm
+	%textheight= 625.960629pt, % 22cm
+	includehead,
+	includefoot,
+	%showframe 
+	]{geometry} % 455.24945pt=160.00000mm not cm because of accuracy
+}%
+{%  Online Version - reading pdf is nicer without bcor and twoside semi
+	\KOMAoptions{twoside=true}
+	\KOMAoptions{BCOR=0mm}
+	\usepackage[a4paper,
+	textwidth = 455.244095pt, % 16cm
+	%textheight= 625.960629pt, % 22cm
+	includehead,
+	includefoot,
+	centering,
+	%showframe 
+	]{geometry} % 455.24945pt=160.00000mm not cm because of accuracy
+	
+	%{%  Online Version - no bcor, sett text in the middle of the page
+	\setlength{\oddsidemargin}{-0.4mm} 
+	\setlength{\evensidemargin}{-0.4mm}
+}
+
+%GADGET Can be used for comments by supervisor or you
+% comment out when finisched
+% encrease page to have some space for todonotes
+%\addtolength{\marginparwidth}{3cm}
+%\addtolength{\paperwidth}{4cm}
+%%\reversemarginpar
+%\usepackage[ textwidth=\marginparwidth, prependcaption]{todonotes}
+
+
+%TODO COMMENT OUT this Packages in your document
+% ##########################################################################
+% # for this template only, remove in working document  #
+% ##########################################################################
+\usepackage{filecontents} % to set file contents in this file.
+\usepackage{lipsum} % for dummy text only
+\usepackage{printlen} % used to print textwidth and height in cm
+\uselengthunit{mm} % set the unit for printlenght
+
+
+% to debug page layout
+%\usepackage{layouts}
+% print out the penalty values to log
+%\typeout{Current Penalties:^^J
+%	\string\clubpenalty=\the\clubpenalty^^J
+%	\string\widowpenalty=\the\widowpenalty^^J
+%	\string\displaywidowpenalty=\the\displaywidowpenalty}%
+
+
+\begin{document}
+	
+% TODO comment in to get Layout information	
+% to debug page layout display page information
+%	\currentpage
+%	\pagediagram
+%	\pagevalues
+%	
+%	{\the\oddsidemargin} = {\printlength\oddsidemargin} \\
+%	{\the\evensidemargin} = {\printlength\evensidemargin}
+%	\newpage
+% End to debug page layout display page information
+
+\pagestyle{empty}
+
+\input{titel-2015}
+
+\cleardoublepage
+\pagestyle{plain}
+% Start frontmatter, with roman Numbering
+\frontmatter 
+%\pagenumbering{Roman}  % if you want CAPAITAL Roman Letters for Pagenumbering
+\include{erklaerung}
+\include{Abstract}
+\include{Acknowledgement}
+\tableofcontents
+\listoffigures
+\listoftables
+\printglossaries
+
+%flusch all floatings
+\cleardoublepage
+% save the Roman Number Page Values to Continue with them later
+\newcounter{page_tmp_roman}
+\setcounter{page_tmp_roman}{\value{page}}
+
+% Set Header and Chapter font Ecactly as in the text body (i.e., not bold)
+%\setkomafont{disposition}{ \normalfont\bfseries }
+% \KOMAoption{chapterprefix}{true}
+%\renewcommand*\raggedchapter{\centering}
+% Make uppercase makes an error \addtokomafont{chapter}{\MakeUppercase}
+%\setkomafont{chapterprefix}{\normalsize\mdseries}
+
+\pagestyle{scrheadings}
+%\lehead{\textsc{\leftmark}}  % linke aussenseite Kapitel mit numer in Header
+%\rohead{\rightmark} % Rechte Aussenseite Section mit nummer in header
+%\renewcommand\chaptermarkformat{} % entfern Kapitel nummer in header
+%\renewcommand\sectionmarkformat{} % entfernsection nummer in header
+%\ofoot{ {\pagemark} } %seitenzahlen an der Aussenseite der Fußzeile 
+
+\mainmatter 
+         
+\ifbool{IsEnglish}
+{ \confidential {\cfoot{\textbf{CONFIDENTIAL}}	}{}}
+{ \confidential {\cfoot{\textbf{VERTRAULICH} }	}{}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Here you can add your Chapters												%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TODO INCLUDE your Chapters in the file AllChapter than a update of the template can be done by just change the main file.
+\input{AllChapter}
+
+% save the arabic Number Page Values to Continue with them later
+\newcounter{page_tmp_arabic}
+\setcounter{page_tmp_arabic}{\value{page}}
+
+% here beginns the backmatter% 
+% set numbering to roman or Roman and continue with the romnan poage number
+% Start group that doesn't contain the name Chapter in their headers
+% Putting in braces the \backmatter command together with the chapters that will not include
+% the chapter name, avoids that other parts of the document omit this name, like the appendices.
+{
+\backmatter
+\pagenumbering{roman}
+\setcounter{page}{\value{page_tmp_roman}}
+\pagestyle{scrheadings}
+\printbibliography
+\cleardoublepage
+}
+
+% now we have to edit the Page layout.
+%\lehead{\textsc{Abbriviations}}  % linke aussenseite Kapitel mit numer in Header
+%\rohead{} % Rechte Aussenseite Section mit nummer in header
+%\renewcommand\chaptermarkformat{} % entfern Kapitel nummer in header
+%\renewcommand\sectionmarkformat{} % entfernsection nummer in header
+%\ofoot{ {\pagemark} } %seitenzahlen an der Aussenseite der Fu
+
+\appendix
+% Requested to be with continued latin numbers
+\pagenumbering{arabic}
+\setcounter{page}{\value{page_tmp_arabic}}
+
+% TODO REMOVE the following 3 lines in your document
+%\newbool{UseIncludeStandaloneForExamples}
+%\setbool{UseIncludeStandaloneForExamples}{false}
+%\input{checkAllStandaloneFiles.tex}
+\pagestyle{scrheadings}
+%TODO INCLUDE your presentations slides paths to the settings and remove comment of next line
+%\include{presentationslides}
+
+
+
+\end{document}

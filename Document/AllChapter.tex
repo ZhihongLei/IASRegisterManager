@@ -1,0 +1,17 @@
+% !TeX encoding = UTF-8
+% !TeX spellcheck = en_US
+%TOdo add all you chapter or Sections in a seperated file 
+% \include{filename} essentially does a \clearpage before and after \input{filename}, together with some magic to switch to another .aux file.
+% It omits the inclusion at all if you have an \includeonly without the filename in the argument. This is primarily useful when you have a big project on a slow computer; 
+% changing one of the include targets won't force you to regenerate the outputs of all the rest.
+
+%\includeonly introduction % would only build the selected section
+
+\include{Introduction}
+\include{SoftwareDevelopmentModel}
+\include{RequirementAnalysis}
+\include{Infrastructure}
+\include{Architecture}
+\include{QtSQLProgramming}
+\include{ModuleDesign}
+\include{Final}

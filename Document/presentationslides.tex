@@ -1,0 +1,283 @@
+\cleardoublepage % do NOT remove
+
+\ifbool{PrintVersion} %
+{% Print Version - has bcor and 
+		
+	% Chapter and Section Page
+	\ifdefined\firstPresentation
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+			\chapter{Presentation Slides}
+			\section{First \IASSubject \ Presentation} 
+		}{  \pagestyle{scrheadings}
+		\chapter{Vortragsfolien}
+		\section{Erste \IASSubject s-Präsentation}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x2,
+	pages={1-4},
+	width=0.48\textwidth,
+	offset= -4mm -23.8mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\firstPresentation}
+	% Only PDF  	 
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+		}{  \pagestyle{scrheadings}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={5-last},
+	width=0.48\textwidth,
+	offset= -4mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\firstPresentation}
+	\fi
+
+	\ifdefined\secondPresentation
+		%  Section Page
+		\includepdf[
+		pagecommand={
+			\ifbool{IsEnglish}{  
+				\pagestyle{scrheadings}
+				\section{Second \IASSubject \ Presentation} 
+			}{  \pagestyle{scrheadings}
+				\section{Zweite \IASSubject s-Präsentation}
+			}  
+		},
+		%link=false,
+		noautoscale,
+		fitpaper=false,
+		frame=true, 
+		nup=2x3,
+		pages={1-6},
+		width=0.48\textwidth,
+		offset= -4mm 0mm, 
+		delta= 6.4mm 6.4mm, 
+		%trim=0mm 0mm 0mm 0mm,
+		%clip,
+		]{\secondPresentation}
+		% Only PDF  	 
+		\includepdf[
+		pagecommand={
+			\ifbool{IsEnglish}{  
+				\pagestyle{scrheadings}
+			}{  \pagestyle{scrheadings}
+			}  
+		},
+		%link=false,
+		noautoscale,
+		fitpaper=false,
+		frame=true, 
+		nup=2x3,
+		pages={7-last},
+		width=0.48\textwidth,
+		offset= -4mm 0mm, 
+		delta= 6.4mm 6.4mm, 
+		%trim=0mm 0mm 0mm 0mm,
+		%clip,
+		]{\secondPresentation}
+	\fi 	
+	
+	%  Section Page
+	\ifdefined\finalPresentation
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+			\section{Final \IASSubject \ Presentation} 
+		}{  \pagestyle{scrheadings}
+		\section{Finale \IASSubject s-Präsentation}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={1-6},
+	width=0.48\textwidth,
+	offset= -4mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\finalPresentation}
+	% Only PDF  	 
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+		}{  \pagestyle{scrheadings}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={7-last},
+	width=0.48\textwidth,
+	offset= -4mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\finalPresentation}
+	\fi
+
+}%
+{%  Online Version - no bcor, sett text in the middle of the page	
+	% Chapter and Section Page
+	\ifdefined\firstPresentation
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+			\chapter{Presentation Slides}
+			\section{First \IASSubject \ Presentation} 
+		}{  \pagestyle{scrheadings}
+		\chapter{Vortragsfolien}
+		\section{Erste \IASSubject s-Präsentation}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x2,
+	pages={1-4},
+	width=0.48\textwidth,
+	offset= 0mm -23.8mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\firstPresentation}
+	% Only PDF  	 
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+		}{  \pagestyle{scrheadings}
+	}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={5-last},
+	width=0.48\textwidth,
+	offset= 0mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\firstPresentation}
+	\fi
+	
+	\ifdefined\secondPresentation
+		%  Section Page
+		\includepdf[
+		pagecommand={
+			\ifbool{IsEnglish}{  
+				\pagestyle{scrheadings}
+				\section{Second \IASSubject \ Presentation} 
+			}{  \pagestyle{scrheadings}
+			\section{Zweite \IASSubject s-Präsentation}
+		}  
+		},
+		%link=false,
+		noautoscale,
+		fitpaper=false,
+		frame=true, 
+		nup=2x3,
+		pages={1-6},
+		width=0.48\textwidth,
+		offset= 0mm 0mm, 
+		delta= 6.4mm 6.4mm, 
+		%trim=0mm 0mm 0mm 0mm,
+		%clip,
+		]{\secondPresentation}
+		% Only PDF  	 
+		\includepdf[
+		pagecommand={
+			\ifbool{IsEnglish}{  
+				\pagestyle{scrheadings}
+			}{  \pagestyle{scrheadings}
+		}  
+		},
+		%link=false,
+		noautoscale,
+		fitpaper=false,
+		frame=true, 
+		nup=2x3,
+		pages={7-last},
+		width=0.48\textwidth,
+		offset= 0mm 0mm, 
+		delta= 6.4mm 6.4mm, 
+		%trim=0mm 0mm 0mm 0mm,
+		%clip,
+		]{\secondPresentation}
+	\fi
+	
+	%  Section Page
+	\ifdefined\finalPresentation
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+			\section{Final \IASSubject \ Presentation} 
+		}{  \pagestyle{scrheadings}
+			\section{Finale \IASSubject s-Präsentation}
+		}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={1-6},
+	width=0.48\textwidth,
+	offset= 0mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\finalPresentation}
+	% Only PDF  	 
+	\includepdf[
+	pagecommand={
+		\ifbool{IsEnglish}{  
+			\pagestyle{scrheadings}
+		}{  \pagestyle{scrheadings}
+		}  
+	},
+	%link=false,
+	noautoscale,
+	fitpaper=false,
+	frame=true, 
+	nup=2x3,
+	pages={7-last},
+	width=0.48\textwidth,
+	offset= 0mm 0mm, 
+	delta= 6.4mm 6.4mm, 
+	%trim=0mm 0mm 0mm 0mm,
+	%clip,
+	]{\finalPresentation}
+	\fi
+}
+
+\cleardoublepage % do NOT remove

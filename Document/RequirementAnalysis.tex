@@ -1,0 +1,67 @@
+\chapter{Requirement Analysis}
+In this chapter, we will discuss the process of requirement analysis. Requirements have two aspects: user requirements and system requirements. User requirements reflect what kind of service the software is expected to provide to its users. They can usually be abstract descriptions of the system. System requirements are more detailed descriptions of the functionalities, services and constraints of the software system. Requirement analysis is usually the very first step of software engineering. It is so important because it will be very difficult to change the requirements in the next stages of software development. Failure in requirement analysis can lead to the consequences that requirements cannot be satisfied or the software cannot be delivered in time.
+
+There are various approaches to requirement analysis. Since the requirement for our software is comparably simple and users are well accessible, we decided to adopt the interview approach. The interviewee is the supervisor of the thesis, who will also be a user and admin of the software. The interviews were either in form of emails or face-to-face talks. We had several rounds of interviews. After each interview, we updated the requirements and raised new questions. We do this in an iterative way until we confirm the requirements are complete. We might want to add more functionalities in the later development stages. But no major modifications would be done on the requirements. We formulated the requirements with natural languages.
+
+\section{User Requirements}
+
+To make an easy-to-use software, we have to design a very friendly graphic user interface. Different UI components have to be well organized. They should be simple and intuitive, with underlying logic hidden from the user. One of our goals is to minimize users' operations on the GUI.
+
+The goal of the project is to develop a graphic user interface based software that aids in implementation of the digital configuration interface for AISC chips. It shall allow chip designers to define the system blocks, different types of registers and signals, initial values of signals, and signal-register mappings, and to write different types of documentations, including pure text, mathematic equations, tables and images, to different chip components (signals, registers etc.) using a friendly dialog. The software shall be able to display defined system blocks, registers, signals, signal-register mappings, chip designers, register pages and documentations etc in an navigable way. After definition of the chip is complete, the software shall be able to generate usable VHDL source code and LaTeX documentation. The user interface shall be carefully designed and hide as much details as possible from the chip designers. To implement the GUI, an appropriate framework should be selected.
+
+The software shall allow chip designers to work simultaneously on different system blocks of the same chip. All inputs given from different users shall be stored in the same well-designed SQL database running on an appropriate database management system.
+
+For data security, user access control and a login mechanism shall be implemented. A basic role model shall be designed, such that standard users are distinguished from the admins in both database level (or global) and project level permissions. To make the software more reliable, multiple checks shall be done before implementing any modifications on the database or generating the VHDL source code or LaTeX documentation. Any database modifications shall be logged.
+
+\section{System Requirements}
+\subsection{Main Window}
+\begin{itemize}
+\item An SQL database should be used to hold data.
+\item The central component of the GUI is a main window.
+\item The main window shall contain two components: the navigator and the working area.
+\item The navigator shall be a tree view in a chip-block-register-signal structure, It shall allow users to search for components of a given pattern and highlight the matched components. The working area contains a chip editor on the left and a document editor on the right. The two editors can be switched on or off.
+\item The chip editor view is a stacked widget containing two pages: the chip level page and the block level page. The chip level page shall display read-only information about the basics of the chip, system blocks, chip designers and register pages. The block level page of the chip editor shall contain two tabs: one for registers and the other for signals. On the signal tab there are two tables showing signals of the current system block and signal partitions of the current signal. The register tab is organized in a similar way.
+\item The document editor view shall contain a table showing the list of documentations, and a document editing area. The editing area is hidden. When users add a document or edit an existing one, the editing area shall be displayed.
+\item The working area shall respond to item changes in the navigator. When the current item changed, the chip editor shall switch to either the chip level or the block level page. If in the block level page, either the register or signal tab is set as current. Then, the corresponding information will be displayed on the chip editor. At the same time, the documentations regarding this item will be displayed, if the document editor page is switched on.
+\item Unless otherwise noted, below each table in the chip editor and the document editor, there are Add and Remove buttons. The users are allowed to add a new item, remove or edit an existing item. 
+\item At the top of the main window should be a menu bar containing actions on users, chips, views, exports and so on.
+\end{itemize}
+\subsection{Chips and Documents}
+\begin{itemize}
+\item The software shall allow users to edit chips and documents in dialogs. Each dialog is designed for a specific use case or functionality, such as adding a new system block. The dialogs must provide appropriate components for users to put in information.
+\item The software shall allow users to add new chips or edit exiting chips. It should allow users to put in the chip name, register width, address width, and select whether the chip is MSB first.
+\item The software shall allow users to add new system blocks or edit existing ones. It should allow users to put in block name, block abbreviation, start address in hexadecimal format and select the responsible designer. The input start address should fit the chip's address width.
+\item The software shall allow project admins to add new chip designers or edit existing ones. It should allow users to select a designer out of all users in the database, and select the designer's project role.
+\item The software shall allow users to add new registers to the current system block or edit existing ones. It should allow users to put in the register name and select a register type out of all register types in the database.
+\item The software shall allow users to add new signals to the current system block or edit existing ones. It should allow users to put in the signal name, width, select signal type, and check whether to add a port for this signal. If the signal is a register signal, i.e. it shall be mapped to registers, it shall allow users to select a register type. When the register type is writable, it shall also allow users to define the initial value in hexadecimal format.
+\item The software shall allow users to add new signal-register mappings to a signal. It should allow users to select available MSB and LSB of a signal partition, registers of the type to map to, and available register partitions of the selected register. A signal bit can only be mapped to one register bit, and the other way around. 
+\item The software shall allow users to add documents to the currently selected item in the navigator or editing existing ones. It shall allow users to select a document type. For a text document, it shall allow users to put in text data. For an image document, it shall allow users to select an image and edit its caption and width. For a table document, it shall allow users to edit the table contents in a table widget and put in its caption. The number of rows and columns shall be adjustable.
+\item The software shall allow users to add register pages or editing existing ones. The users can select an available control signal and specify the page name and a valid page count. It shall allow users to select available registers in a convenient way. The control signal must not be mapped to any registers in the page it controls. A signal can control at most one register page.
+\end{itemize}
+\subsection{User Access and Authentication}
+\begin{itemize}
+\item The software shall allow database admins to create users conveniently.
+\item A login mechanism shall be implemented. The main window of the software shall open only when the users provide correct username and password through the login dialog.
+\item The software shall allow users to select an existing chip to open. The chips are listed in a table containing basic information about them.
+\item Each user shall be assigned a database role. The database roles shall be defined in the database, determine whether the users can or cannot add or remove projects or users. 
+\item Each project can have at least one chip designers. Chip designer shall be assigned a project role. The project roles are defined in the database. The project role determines whether the users can add or remove system blocks, chip designers, register pages, or registers, signals, signal-register partitions, and documentations belonging to a specific signals. 
+\item The UI shall be adjustable according to the the database role and the project role. For example, some widgets might be disabled if the user is not eligible for it.
+\item When design of a certain chip is complete, the chip owner can freeze the chip. In this case, everything about the chip, except documentation, is frozen, and cannot be edited anymore. In such case, the UI shall disable relevant UI components. It shall allow the chip owner to unfreeze the frozen chip.
+\end{itemize}
+\subsection{SPI Interface and Documentation generation}
+\begin{itemize}
+\item The software shall be able to generate a VHDL SPI interface. It shall allow users to select SPI interface templates and configure the output before generation.
+\item The software shall be able to generate a LaTeX documentation. It shall allow users to configure the document and select which system blocks to generate.
+\end{itemize}
+\subsection{Reliability}
+\begin{itemize}
+\item Error handling for database operations shall be implemented.
+\item All write operations on the database shall be logged for error diagnosis purpose.
+\item The software must check if each chip editing or document editing operation, such as adding a new system block or removing a register, is legal. The software shall check e.g. names of the signals/registers/system blocks/users etc, initial value of a signal, start address of a system block and so on.
+\item Before generating VHDL source code, the software shall check whether the configuration file contains all necessary predefined variables, whether address blocks of all system blocks overlap or exceed the address width, and whether the signal-register partition mappings are valid.
+\end{itemize}
+
+\section{Conclusion}
+Requirement engineering is the very first step of software development. It is of crucial importance, since it is very costly to change the requirements in the following stages. In case of a comparatively small software project, we might be able to define all requirements before the following steps. However, when the project becomes more complex, it will be difficult to write a complete requirement list. There are cases where new requirements have to be added and existing requirements have to be modified.
+
+In our practice, we first made a draft containing the most fundamental requirements. We then made a prototype to help us determine requirements in particular regarding the UI. Other requirements regarding data security and reliability can be comparably easily determined without a prototype.

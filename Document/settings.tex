@@ -1,0 +1,48 @@
+% !TeX spellcheck = en_US
+% !TeX encoding = UTF-8
+%% Change the settings of the Template in this file
+
+% \setboolean{DraftMode}{false} % no Effect
+% To set Packages to draft mode go to A_Template_BA_MA.tex 
+% and set document options to draft. Makes Compiling much faster. 
+
+% change Links and IAS Logo to Black and white Printable output.
+% also set binding correction 
+%TODO when printing change this
+\setbool{PrintVersion}{false} 
+% adds CONFIDANTIAL Print to Bottom line
+\setbool{ConfidentialVersion}{false}
+% Changes TOC, ABR, LOF and most parts of the document to english
+\setbool{IsEnglish}{true} 
+
+% Changes First Page to use No Logo
+\setbool{NoLogo}{false}
+
+\newcommand{\Qualifikation}{Qualifikation}
+\newcommand{\IASAuthor}{Josua Arndt}
+\newcommand{\AuthorAus}{Worms}
+\newcommand{\ThesisTitleGerman}{{Deutscher Titel, kann auch lang sein um zu testen ob die nächste Zeile gut aussieht! Auch wenn es mehr als zwei Zeilen sind. Oder Drei, möglicherweise auch Vier oder sogar Fünf. Sollten SI Einheiten notweindig sein nutze textopdfstring sonst gibt es ein Fehler \texorpdfstring{\SI{455}{\kilo\hertz}}{455kHz} $\mathbf{\Sigma}$  \boldmath$\Sigma$  }}
+\newcommand{\ThesisTitleEnglish}{English Title, could also be very long to test if the next line looks good! Also if there are more then two lines. If you need SI units in in your Title use texorpdfstring else you get an error \texorpdfstring{\SI{455}{\kilo\hertz}}{455kHz} }
+
+\newcommand{\IASSubject}{Subject of Work} % Bachelorarbeit, Studienarbeit, Master Thesis and so on.
+
+\newcommand{\IASMatNr}{123456} % Matrikel Number
+\newcommand{\IASSupervisor}{BetreuerVorname BetreuerNachname, M.Sc.} % Supervisor " Family Name, First Name Qualifikation][M.Sc.]"
+\setbool{secondSupervisor}{true} 
+\newcommand{\IASSupervisortwo}{BetreuerVorname BetreuerNachname, M.Sc.}
+\newcommand{\IASNumber}{D123} % Number of the Work, given by your Supervisor and the secretary.
+
+\newcommand{\FirstPrufer}{First Prufer}
+\newcommand{\SecondPrufer}{Second Prufer}
+\newcommand{\IASSubmissionDate}{dd.mm.yyyy}
+
+% Path to your presentations will be added to the Presentation slides appendix
+% TODO change to your ppt presentations
+\newcommand{\firstPresentation} {./PowerPoint/IAS_HowToMakeNicePlots_Latex&PowerPoint} 
+% TODO remove comment for master thesis second presentation
+%\newcommand{\secondPresentation} {./PowerPoint/IAS_HowToMakeNicePlots_Latex&PowerPoint} 
+\newcommand{\finalPresentation} {./PowerPoint/IAS_HowToMakeNicePlots_Latex&PowerPoint} 
+
+% You have to load your Bibliography file after the Biblatex packet
+
+

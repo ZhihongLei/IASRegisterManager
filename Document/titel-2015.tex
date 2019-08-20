@@ -1,0 +1,105 @@
+% !TeX spellcheck = en_US
+% !TeX encoding = UTF-8
+% remove page anker so warning: "pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored" does not occur.
+\hypersetup{pageanchor=false}
+
+\begin{titlepage}
+
+\pagestyle{myheadings}
+% set linespacing to single line.
+{\setstretch{1}%
+	
+
+\ifbool{IsEnglish}
+{
+\pdfbookmark[0]{Front Page}{Front Page} %Titelseite in die pdf-Bookmarks aufnehmen        
+}
+{
+\pdfbookmark[0]{Titelseite}{Titelseite} %Titelseite in die pdf-Bookmarks aufnehmen    
+}
+
+% set textheight so the date also fits when Tittles get bigger
+\enlargethispage{2.3in}
+% set topmargin so picture fits in Page
+\setlength{\voffset}{-1in}
+
+\ifbool{NoLogo}
+{
+	
+	
+\vspace*{1.85cm}
+}
+{% else logo
+	\ifbool{PrintVersion}
+	{   
+		\begin{flushright}
+		 	\includegraphics[trim= 14pt 20pt 15pt 20pt , clip ]{{Logos_2015/rwth_ias_bild_schwarz_grau_cmyk.eps}}
+		\end{flushright}
+	}
+	{
+	  \begin{flushright}
+	  \includegraphics[trim= 14pt 20pt 15pt 20pt , clip ]{{Logos_2015/rwth_ias_bild_rgb.eps}}
+	  \end{flushright}
+	}%end
+}%end else logo
+\setcounter{subfigure}{0}
+\ifbool{IsEnglish}
+{
+	{\small This work was submitted at the Laboratory of Integrated Analog Circuit and RF Systems of the institute for semiconductor technology of the RWTH Aachen University}        
+}
+{
+	{\small Diese Arbeit wurde vorgelegt am Lehrstuhl für Integrierte Analogschaltungen
+		der RWTH Aachen.}   
+}
+\bigskip \\ \bigskip
+
+{\Large \bfseries \ThesisTitleGerman\\} \bigskip 
+
+{\Large \bfseries \ThesisTitleEnglish\\} \bigskip
+ 
+% bring the next text down to the bottom so variation of title lenght don´t change the position of this text
+\par\vspace*{\fill}
+
+{\Large \IASSubject\\}\bigskip
+
+{\Large \ifbool{IsEnglish}{by}{von} \\}~{\Large \IASAuthor\\}
+{\Large Matr.-Nr. \IASMatNr\\} \bigskip \bigskip
+
+\begin{tabbing}
+\ifbool{IsEnglish}
+{ \Large Supervised by:}
+{ \Large Betreut von:} \= \Large \IASSupervisor \\
+\ifbool{secondSupervisor}
+{ 	\> \Large \IASSupervisortwo \\   
+}{ \> \\ }
+ \> \\
+ \> \\
+\Large 1.~\ifbool{IsEnglish}{Examiner}{Prüfer}: \> \Large Prof.~Dr.~-Ing.~Stefan Heinen \\
+\Large 2.~\ifbool{IsEnglish}{Examiner}{Prüfer}: \> \Large Prof.~Dr.~sc.~techn.~Renato Negra \\
+\end{tabbing}
+
+\confidential{
+\ifbool{IsEnglish}
+  { \centering \textbf{CONFIDENTIAL}}
+  { \centering \textbf{VERTRAULICH}}
+  }{ \smallskip \medskip \bigskip  }
+
+\centering{ \Large \IASNumber}
+\begin{flushright}
+	 {\Large Aachen, \IASSubmissionDate} \\~\\
+\end{flushright}
+\newpage
+
+% reset the voffset so the following pages have the Normal Layout
+\setlength{\voffset}{0in}
+
+\thispagestyle{empty}
+\rule{0pt}{0pt}
+\cleardoublepage
+
+}%END set linespacing to single line.
+\end{titlepage}
+
+% set page anker so hyperlinks work
+\hypersetup{pageanchor=true}
+\cleardoublepage

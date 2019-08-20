@@ -1,0 +1,14 @@
+\chapter{Integration, Testing and Deployment}
+So far we have completed the design and implementation process. During implementation, we adopted an incremental strategy. We tested each module right after it is implemented. Now, we want to integrate the modules and test the software as a whole.
+
+Therefore, we made a beta version and delivered it to the users, which allows them to participate in the testing phase by using the software solution on real-world projects. During this process, some errors are reported and we were able to solve them. Users also gave suggestions on the software and we were able to improve it so as to better satisfy users' requirements. 
+
+To test the software, users have to install a MySQL C++ connector and the whole Qt framework on their machines. Then, configure the linked library and compile the software locally. This is fine with testing. We still have to make a deployable software so that users don't have to install the dependencies.
+
+The theory is that the external dependencies including the Qt Modules and MySQL connector are not incorporated in our source code. Instead, they are used in form of shared libraries. During compilation, the executable knows where to find the shared libraries it depends on. During execution, the executable finds the libraries and load them into the computer memory. This is called dynamic linking. If the executable cannot find the libraries it needs, it will crash.
+
+Thus, we need to manually collect all Qt frameworks and the MySQL connector the software depends on. We package the libraries with the executable under the same directory, and make the executable find the libraries under this directory during runtime. We can either specify an rpath for the linker during compilation, or relink the executable after it is compiled.
+
+It is not an easy thing to do. Fortunately, there are tools helping us with deployment. The Mac version of Qt itself provides a tool called macdeployqt. It is very simple to use. We just compile the software as usual. Then, we use macdeployqt to deploy the software. We only need to specify the path to the executable. The tool will do everything for us: make a software directory, find the dependency libraries, copy and paste those libraries under the directory, and relink the executable.
+
+To deploy the software on a Linux system, although Qt does not provide a tool like macdeployqt, the community developed a tool named linuxdeployqt which basically follows macdeployqt. With the help of linuxdeployqt, we successfully deployed the software to the Chair of IAS.
