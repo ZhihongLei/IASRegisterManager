@@ -48,19 +48,26 @@ public:
                                            const QString& block_name,
                                            const QString& block_abbr,
                                            const QString& block_start_addr,
-                                           const QHash<QString, QVector<QString> >& reg_id2page);
+                                           const QHash<QString, QVector<QString> >& reg_id2page,
+                                           const QSet<QString>& rw_types);
     QString generate_block_level_tex_document(const QString& block_id,
                                            const QString& block_name,
                                            const QString& block_abbr,
                                            const QString& block_start_addr,
-                                           const QHash<QString, QVector<QString> >& reg_id2page);
+                                           const QHash<QString, QVector<QString> >& reg_id2page,
+                                           const QSet<QString>& rw_types);
 
-    QString generate_register_level_html_document(const QString& reg_id, const QString& reg_name, const QString& address, const NamingTemplate& signal_naming, const QHash<QString, QVector<QString> >& reg_id2page);
-    QString generate_register_level_tex_document(const QString& reg_id, const QString& reg_name, const QString& address, const NamingTemplate& signal_naming, const QHash<QString, QVector<QString> >& reg_id2page);
+    QString generate_register_level_html_document(const QString& reg_id, const QString& reg_name, const QString& address,
+                                                  const NamingTemplate& signal_naming, const QHash<QString, QVector<QString> >& reg_id2page,
+                                                  bool readonly);
+    QString generate_register_level_tex_document(const QString& reg_id, const QString& reg_name, const QString& address,
+                                                 const NamingTemplate& signal_naming, const QHash<QString, QVector<QString> >& reg_id2page,
+                                                 bool readonly);
     QString generate_register_bit_table_html(const QVector<QVector<QString> >& signal_items, const NamingTemplate& signal_naming);
     QString generate_register_bit_table_tex(const QVector<QVector<QString> >& signal_items, const NamingTemplate& signal_naming);
     QString generate_register_signal_bullets_html(const QVector<QString>& signal_ids, const QVector<QString>& signal_names);
     QString generate_register_signal_bullets_tex(const QVector<QString>& signal_ids, const QVector<QString>& signal_names);
+    QPair<QSet<QString>, QSet<QString> > get_register_rw_types() const;
     QHash<QString, QVector<QString> > get_register_id2page() const;
 
 private:

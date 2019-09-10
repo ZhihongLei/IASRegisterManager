@@ -1,21 +1,21 @@
-\chapter{Selection of Infrastructure}
+\chapter{Selection of Infrastructure\label{ch:Selection of Infrastructure}}
 In the software engineering practice, it is a common case that we depend on external tools and infrastructure, because we cannot build everything from scratch. To develop a software with a graphical user interface, we have to use a GUI framework. In our project, we also have to use a SQL database management system. They are the infrastructure of our software solution. Before implementation, we have to decide what infrastructure we want to use. To select the best infrastructure a few aspects must be taken into account. 
 
-We should consider the license, which stipulate the conditions on which we could use the software. There are many open source GUI frameworks and database systems. Their license could be tricky, however. Some open source licenses requires that the users shall open source their software if the source code of the toolkit is used. This practice is referred to by the community as "copyleft" , since it is against copyright. We want to preserve copyright of our software as much as possible, so we would prefer those toolkits bearing a looser license. 
+We should consider the license, which stipulates the conditions on which we could use the software. There are many open source GUI frameworks and database systems. Their license could be tricky, however. Some open source licenses require that the users shall open source their software if the source code of the toolkit is used. This practice is referred to by the community as \textit{copyleft} \cite{copyleft}, since it is against copyright. We want to preserve copyright of our software as much as possible, so we would prefer those toolkits bearing a looser license. 
 
-Another aspect is supported operation systems, or platforms. When we select the infrastructure, we would prefer those cross-platform toolkits.
+Another aspect is supported operation systems or platforms. When we select the infrastructure, we would prefer those cross-platform toolkits.
 
-Resources such as learning materials and documentations are also a major consideration. Some toolkits have really good official documentations on use cases, sample code and descriptions of the APIs, but others not. These documentations can greatly help us learn the toolkit and use it in our software. Apart from the official resources, the community also plays an important role. It is much easier to get a solution from a larger community when we run into problems.
+Resources such as learning materials and documentations are also of major importance. Some toolkits have really good official documentations on use cases, sample code and descriptions of the APIs, but others not. These documentations can greatly help us learn the toolkit and use it in our software. Apart from the official resources, the community also plays an important role. It is much easier to get a solution from a larger community when we run into problems.
 
-For the GUI framework, we should consider the supported programming languages. Although programming language is not a high priority, we would prefer to user a modern, friendly language. Some GUI framework might offer a specialized designer which makes UI design much easier. The API should also be taken into account. We would definitely prefer friendly and concise API.
+For the GUI framework, we should consider the supported programming languages. Although programming language is not a high priority, we would prefer to user a modern, friendly language. Some GUI frameworks might offer a specialized designer which makes UI design much easier. The API should also be taken into account. We would definitely prefer a friendly and concise API.
 
 \section{GUI Framework}
-There are many GUI frameworks. We investigated and selected the most popular listed in the table below.
+Many GUI frameworks are developed and used to build software applications. We investigated and selected the most popular listed Table \ref{tab:Popular GUI Frameworks}.
 
-\begin{table}[htbp]
+\begin{table}[htb]
 \centering
-\caption {Popular GUI Frameworks} \label{tab:Popular GUI Frameworks}
-\begin{tabular}{lllll}
+\caption {Popular GUI Frameworks\label{tab:Popular GUI Frameworks}} 
+\begin{tabular}{p{0.15\textwidth}p{0.125\textwidth}p{0.15\textwidth}p{0.125\textwidth}p{0.25\textwidth}}
 \hline
 Toolkit Name & Cross-platform & Programming Language & Specialized IDE &  License\\
 \hline
@@ -29,47 +29,47 @@ wxWidgets & Yes & Multiple & No & WxWindows license \\
 \end{tabular}
 \end{table}
 
-The first framework we will discuss is Qt. It is also the one we finally chose. It is one of the most popular open source GUI frameworks. It is written in C++, so that is its programming language. However, the Qt company and community developed wrappers for various programming languages including the popular Python. Qt is distributed under the LGPL license. It is a fairly loose license under which we can use Qt for free and we do not have to open source our software. Because of this, it is possible to commercialize our software. The Qt company developed a highly customized IDE, the Qt Creator, for developing Qt applications. With Qt Creator, we can design GUI in a what-you-see-is-what-you-get manner.
+The first framework we will discuss is Qt. It is also the one we finally chose. It is one of the most popular open source GUI frameworks. The Qt framework is written in C++. However, the Qt company and community developed wrappers for various programming languages including the popular Python. Qt is distributed under the LGPL license. It is a fairly loose license under which we can use Qt for free and do not have to open source our software. Because of this, it is possible to commercialize our software. The Qt company developed a highly customized IDE, the Qt Creator, for developing Qt applications. With Qt Creator, we can design GUI in a what-you-see-is-what-you-get (WYSIWYG) manner.
 
-MFC, or Microsoft Foundation Class, is a C++ library for developing desktop applications on Windows operating system. It is essentially an object-oriented wrapper for the Windows API. Due to this fact, it only supports Windows operating system and C++. Microsoft offers a community version of Visual Studio, which is recognized by many software engineers as the best IDE for general C++ programming, and it supports MFC very well. Users can design the GUI in a WYSIWYG manner. But the MFC is proprietary. Also, MFC is a little bit out of date. In these considerations, MFC is not a good choice for us.
+GTK, Tk and wxWidgets are also very popular cross-platform GUI frameworks. They are all written in C or C++. However, like Qt, they also provide wrappers for other languages. Despite of some differences, their licenses are all pretty loose. However, one shortcoming compared to Qt is they do not have a specialized IDE, although we might use a third-party one. Another shortcoming is they have less documentation. Also, unlike Qt, which is supported by the Qt company and is partially commercial, they are totally maintained by the community. The developer community is also smaller than Qt's.
 
-GTK, Tk and wxWidgets are also some very popular cross-platform GUI frameworks. They are all written in C or C++. However, they do provide wrappers for other languages. Despite of some differences, their licenses are all pretty loose. However, one shortcoming compared to Qt is they do not have a specialized IDE, although we might use a third-party one. Another shortcoming is they have less documentation. Also, unlike Qt, which is supported by the Qt company and is partially commercial, they are totally maintained by the community. The developer community also smaller than Qt.
+Microsoft Foundation Class (MFC) is a C++ library for developing desktop applications on Windows operating system. It is essentially an object-oriented wrapper for the Windows API. Due to this fact, it only supports Windows operating system and is not cross-platform. Microsoft offers a community version of Visual Studio, which is recognized by many software engineers as the best IDE for general C++ programming, and it supports MFC very well. Users can design the GUI in a WYSIWYG manner. But MFC is proprietary. Also, it is a little bit out of date. In these considerations, MFC is not a good choice for us.
 
-In this end, we decided to select Qt as our GUI framework. Although PyQt, the Python wrapper, is being very popular nowadays, we still decided to use the C++ API for several reasons. First, Qt Creator does not support PyQt very well. Second, we can build a standalone application in Qt C++. If we use PyQt, however, we have to either depend on Python, or compile it into an executable, which requires additional effort and might bring us more uncertainty or unreliability. Finally, C++ can be hundreds times of faster than Python. This is beneficial for a GUI application. In fact, the Qt C++ API is very concise and elegant, so we could still develop the software pretty fast. Also, most documentations of Qt are about the original C++ API. Considering all these points, we chose C++ as our programming language.
+In the end, we decided to select Qt as our GUI framework. Although PyQt \cite{pyqt}, the Python wrapper, is being very popular nowadays, we still decided to use the C++ API for several reasons. First, Qt Creator does not support PyQt very well. Second, we can build a standalone application in Qt C++. If we use PyQt, however, we have to either depend on Python, or compile it into an executable, which requires additional effort and might bring us more uncertainty or unreliability. Finally, C++ can be much faster than Python, which is beneficial for a GUI application. In fact, the Qt C++ API is very concise and elegant, so we could still develop the software pretty fast. Also, most documentations of Qt are about the original C++ API. Considering all these points, we chose C++ as our programming language.
 
 \section{Database Management System}
-The database is crucial to our software. A shared database ensures data consistency and makes cooperation on the same chip easier. The database we use shall fulfill the following requirements:
+The database is crucial for our software. A shared database ensures data consistency and makes cooperation on the same chip project easier. The database we use shall fulfill the following requirements:
 \begin{itemize}
-\item Accessible to all users
-\item Can be concurrently read or written by multiple users
-\item Data must be reliably stored
-\item Data should be well organized
-\item Data access should be efficient
+\item Accessible to all users.
+\item Can be concurrently read or written by multiple users.
+\item Data must be reliably stored.
+\item Data should be well organized.
+\item Data access should be efficient.
 \end{itemize}
 
-A relational database is comprised of tables with a certain number of columns. Each column is a data field. It is called relational because a table column can refer to a column in another table. This is one of the core ideas of the relational database. With a relational database, relationship between data can be easily and efficiently handled. The database held on a relational database system is managed with SQL, the Structured Query Language. Sometimes people call such a relational database SQL database, or simply database. 
+A relational database is comprised of tables with a certain number of columns. Each column is a data field. It is called relational because a table column can refer to a column in another table. This is one of the core ideas of the relational database. With a relational database, relationship between data can be easily and efficiently handled. The database held on a relational database system is managed with SQL, the Structured Query Language. Thus, such a relational database is often referred to as an SQL database.
 
-The SQL database has many benefits. First of all, it supports highly efficient query. Usually each table has at least one index field. With the index, the performance of queries can be greatly sped up. Another benefit is concurrency. The database management system is designed for concurrent queries from the very beginning. It can also take care of concurrent writing operations. The database system usually implement an account mechanism, and the data is not directly exposed to users. In this way, data can be securely and reliably stored on the host machine. Besides that, many database management system adopts the client/server model. The database can be held remotely and users can access it from their local machines. Our software requires a shared database. Although we can put the database on a shared file system, a database server would provide much more flexibility.
+The SQL database has many benefits. First of all, it supports highly efficient queries. Usually each table has at least one index field. With the index, the performance of queries can be greatly sped up. Another benefit is concurrency. The database management system is designed for concurrent queries from the very beginning. It can also take care of concurrent writing operations. The database system usually implements an account mechanism, and the data is not directly exposed to users. In this way, data can be securely and reliably stored. Besides that, many database management systems adopt the client/server model. The database can be held remotely on a host machine and users can access it from their local machines. Our software requires a shared database. Although we can put the database on a shared file system, a database server would provide much more flexibility.
 
-\begin{table}[htbp]
+\begin{table}[htb]
 \centering
-\caption {Popular Database Systems} \label{tab:Popular Database Systems}
-\begin{tabular}{lllll}
+\caption {Popular Database Systems\label{tab:Popular Database Systems}} 
+\begin{tabular}{p{0.15\textwidth}p{0.125\textwidth}p{0.15\textwidth}p{0.125\textwidth}p{0.3\textwidth}}
 \hline
-Toolkit Name & Cross-platform & Programming Language & Specialized IDE &  License\\
+Toolkit Name & Cross-platform & License & Specialized IDE &  Comment\\
 \hline
-MySQL & Yes & GPL & Yes & Most widely used open-source database system \\
-Microsoft Access & No & Proprietary & No & Expensive \\
-SQLite & Yes & Public domain & No & Limited functionalities \\
-Microsoft SQL Server & No & Proprietary & Yes & Expensive \\
+MySQL & Yes & GPL & Yes & Most widely used open \newline source database system \\
+Microsoft \newline Access & No & Proprietary & No & Expensive \\
+SQLite & Yes & Public \newline domain & No & Limited functionalities \\
+Microsoft \newline SQL Server & No & Proprietary & Yes & Expensive \\
 Oracle & Yes & Proprietary & Yes & Expensive \\
 MariaDB & Yes & GPL & Yes & Compatible to MySQL \\
 \hline
 \end{tabular}
 \end{table}
 
-Among the database systems listed in the table, Microsoft Access and Microsoft SQL Server are famous systems on Windows operating system. They are both proprietary software. Microsoft SQL Server is of the client/server model while Microsoft Access is not. Oracle is one of the most reputable commercial database management systems. It is proprietary and quite expensive. SQLite, as the name indicates, is a lightweight SQL database system. It provides limited functionalities and is designed for holding small-scale data locally. In fact, Qt itself includes the SQLite database system. 
+Among the database systems listed in Table \ref{tab:Popular Database Systems}, Microsoft Access and Microsoft SQL Server are famous systems on Windows operating system. They are both proprietary software. Microsoft SQL Server is of the client/server model while Microsoft Access is not. Oracle is one of the most reputable commercial database management systems. It is proprietary and quite expensive. SQLite, as the name indicates, is a lightweight SQL database system. It provides limited functionalities and is designed for holding small-scale data locally. In fact, Qt itself includes the SQLite database system. 
 
-We are especially interested in MySQL. It is the most popular open source database in the world. It is released under the GNU General Public License version 2, in short GPL,v2, and the proprietary license. MySQL is used my many popular websites including Facebook, Twitter and Youtube. It is a component of the famous LAMP (Linux, Apache, MySQL, PHP) web application software stack. After MySQL’s acquisition by the Oracle company, the original developers forked MariaDB from MySQL. It is basically completely compatible to MySQL.
+We are especially interested in MySQL \cite{mysql}. It is the most popular open source database in the world. It is released under the GNU General Public License (GPL) version 2, or the proprietary license. MySQL is used many popular websites including Facebook, Twitter and Youtube. It is a component of the famous LAMP (Linux, Apache, MySQL, PHP) web application software stack. After MySQL's acquisition by the Oracle company, the original developers forked MariaDB \cite{mariadb} from MySQL. It is basically completely compatible to MySQL.
 
-Besides the differences mentioned above, these SQL database systems also have some discrepancy in the SQL language. It is not a problem though. In the end, we chose MySQL or MariaDB in our project. For the software to access the database, we need a MySQL connector which can be downloaded from the official website. It is to be noted that MySQL and MariaDB use the GPL license where copyleft is present. However, the database connector does not require copyleft. In our software we only need to incorporate the connector, and the database management system is standalone, so we do not have to open source our software.
+Besides the differences mentioned above, these SQL database systems also have some discrepancy in the SQL language. It is not a problem though. In the end, we chose MySQL or MariaDB in our project. For the software to access the database, we need a MySQL connector which can be downloaded from the official website. It is to be noted that MySQL and MariaDB use the GPL license where copyleft is present. However, the database connector is released under the LGPL license and does not require copyleft. In our software we only need to incorporate the connector, and the database management system is standalone, so we do not have to open source our software.

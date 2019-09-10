@@ -1,5 +1,15 @@
 \ifbool{IsEnglish}
 { \chapter{Abstract} 		}
 { \chapter{Inhaltsangabe}	}
-In this exquisite work we will show you how to use the \LaTeX \,Template for your thesis at the Institute for Integrated Analog Circuits and RF Systems. Please refer to the chapters which explain the loaded packages and their functions. We tried to give as many examples as possible so you can find anything you need for writing a great thesis.
+The different chips developed at the Chair of Integrated Analog Circuits comprise the possibility to configure the different functional blocks of the respective circuit individually. The required control signals are stored in registers, which are accessible for read and write by use of a digital interface like SPI. Due to the growing complexity of the circuits the effort as well as the error-proneness increase with regard to:
+\begin{itemize}[noitemsep]
+\setlength\itemsep{0.1cm}
+\item the definition of the registers in VHDL
+\item the documentation of the registers in LaTeX
+\item the usage of the register definitions in different programming languages and environments (C, Matlab, etc.)
+\item the synchronization of all these data sets
+\end{itemize}
 
+In this thesis, we propose a database centered software that automates the implementation of the digital configuration interface for ASIC chips. Based on an existing database design, we developed a suitable data structure. An intuitive operation of the software was achieved by a well designed graphical user interface implemented with Qt, which hides the underlying complexity from users. We paid special attention to data security by establishing a role model that reflects the responsibilities and access permissions within the design team. Besides the data input and management, generation of the VHDL code as well as the register documentation was developed. At the end of the development process, we integrated and tested the software before its delivery to users.
+
+In development of the software we applied software engineering techniques by conducting requirements analysis, software architecture design prior to implementation and testing. A scientific software development process ensured that the software we developed was satisfactory, high quality, and delivered on time. 

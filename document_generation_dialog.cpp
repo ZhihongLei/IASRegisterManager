@@ -208,15 +208,16 @@ bool DocumentGenerationDialog::generate_document()
                                                                 generator.generate_chip_level_html_document();
 
     auto reg_id2page = generator.get_register_id2page();
+    auto rw_types = generator.get_register_rw_types().second;
     for (int i = 1; i < ui->listWidgetToExport->count(); i++)
     {
         if (ui->listWidgetToExport->item(i)->checkState() != Qt::CheckState::Checked) continue;
         if (ui->comboBoxDocType->currentIndex() == 0)
             doc += generator.generate_block_level_tex_document(block_ids_[i-1], block_names_[i-1], block_abbrs_[i-1],
-                                                                        block_start_addrs_[i-1], reg_id2page);
+                                                                        block_start_addrs_[i-1], reg_id2page, rw_types);
         else {
             QString block_content = generator.generate_block_level_html_document(block_ids_[i-1], block_names_[i-1], block_abbrs_[i-1],
-                                                                                    block_start_addrs_[i-1], reg_id2page);
+                                                                                    block_start_addrs_[i-1], reg_id2page, rw_types);
             QString reg_bullets = block_content.split(DOC_DELIMITER)[0];
             block_content = block_content.right(block_content.size() - reg_bullets.size() - DOC_DELIMITER.size());
             doc += block_content;

@@ -29,7 +29,6 @@
 %	}
 % nag check if you use some deprecated packages
 \RequirePackage[l2tabu, orthodox]{nag}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUPPRESSED WARNINGS %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -56,7 +55,7 @@ usegeometry, % use package geometry to change page layout
 ]{scrbook}
 % change linespacing 
 \usepackage[onehalfspacing]{setspace}
-
+\usepackage{enumitem}
 \setcounter{secnumdepth}{3} % Number subsubsection depth
 
 % ##################################################################################
@@ -426,6 +425,8 @@ tableposition=top
 %Listings
 % ##########################################################################
 \usepackage{listings} % To show code in the Text
+\renewcommand\lstlistingname{Code}
+\renewcommand{\lstlistlistingname}{List of Source \lstlistingname}
 
 \makeatletter
 \let\old@lstKV@SwitchCases\lstKV@SwitchCases
@@ -512,7 +513,24 @@ tableposition=top
 % To handle UTF-8, you should tell listings how to interpret the special characters by defining them
 % The below table will cover most characters in latin languages. 
 % For a more detailed explanation of the usage of the literate option check section 6.4 in the Listings Documentation.
-
+\lstset{literate=%
+	{á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1%
+	{Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1%
+	{à}{{\`a}}1 {è}{{\`e}}1 {ì}{{\`i}}1 {ò}{{\`o}}1 {ù}{{\`u}}1%
+	{À}{{\`A}}1 {È}{{\'E}}1 {Ì}{{\`I}}1 {Ò}{{\`O}}1 {Ù}{{\`U}}1%
+	{ä}{{\"a}}1 {ë}{{\"e}}1 {ï}{{\"i}}1 {ö}{{\"o}}1 {ü}{{\"u}}1%
+	{Ä}{{\"A}}1 {Ë}{{\"E}}1 {Ï}{{\"I}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1%
+	{â}{{\^a}}1 {ê}{{\^e}}1 {î}{{\^i}}1 {ô}{{\^o}}1 {û}{{\^u}}1%
+	{Â}{{\^A}}1 {Ê}{{\^E}}1 {Î}{{\^I}}1 {Ô}{{\^O}}1 {Û}{{\^U}}1%
+	{œ}{{\oe}}1 {Œ}{{\OE}}1 {æ}{{\ae}}1 {Æ}{{\AE}}1 {ß}{{\ss}}1%
+	{ű}{{\H{u}}}1 {Ű}{{\H{U}}}1 {ő}{{\H{o}}}1 {Ő}{{\H{O}}}1%
+	{ç}{{\c c}}1 {Ç}{{\c C}}1 {ø}{{\o}}1 {å}{{\r a}}1 {Å}{{\r A}}1%
+	{€}{{\EUR}}1 {£}{{\pounds}}1%
+	%TODO LISTING add if quotation in Lisitngs does not work when option upquote=true, is used in listing. To use the right quote signs
+	%{"}{{"{}}}1 {'}{{'{}}}1 
+	%To add if ? or other chars in listings are used.	
+	{?}{{?}}1%
+}%
 %
 
 % ################################################################
@@ -702,6 +720,7 @@ style=super% automatically adjust the list in Tabular to get spacing between the
 \tableofcontents
 \listoffigures
 \listoftables
+\lstlistoflistings
 \printglossaries
 
 %flusch all floatings
@@ -772,7 +791,7 @@ style=super% automatically adjust the list in Tabular to get spacing between the
 %\input{checkAllStandaloneFiles.tex}
 \pagestyle{scrheadings}
 %TODO INCLUDE your presentations slides paths to the settings and remove comment of next line
-%\include{presentationslides}
+\include{presentationslides}
 
 
 

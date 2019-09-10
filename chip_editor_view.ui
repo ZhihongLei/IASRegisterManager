@@ -35,7 +35,7 @@
       <enum>QFrame::Raised</enum>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="pageChip">
       <layout class="QVBoxLayout" name="verticalLayout_12">
@@ -730,6 +730,9 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
+             <property name="childrenCollapsible">
+              <bool>false</bool>
+             </property>
              <widget class="QFrame" name="frameSignal">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
@@ -752,6 +755,12 @@
                </property>
                <item>
                 <widget class="QTableWidget" name="tableSignal">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>100</height>
+                  </size>
+                 </property>
                  <property name="contextMenuPolicy">
                   <enum>Qt::CustomContextMenu</enum>
                  </property>
@@ -912,6 +921,12 @@
                </property>
                <item>
                 <widget class="QTableWidget" name="tableSigPart">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>100</height>
+                  </size>
+                 </property>
                  <property name="contextMenuPolicy">
                   <enum>Qt::CustomContextMenu</enum>
                  </property>
@@ -1046,6 +1061,9 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
+             <property name="childrenCollapsible">
+              <bool>false</bool>
+             </property>
              <widget class="QFrame" name="frameRegister">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
@@ -1068,6 +1086,12 @@
                </property>
                <item>
                 <widget class="QTableWidget" name="tableRegister">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>100</height>
+                  </size>
+                 </property>
                  <property name="contextMenuPolicy">
                   <enum>Qt::CustomContextMenu</enum>
                  </property>
@@ -1203,6 +1227,12 @@
                </property>
                <item>
                 <widget class="QTableWidget" name="tableRegPart">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>100</height>
+                  </size>
+                 </property>
                  <property name="contextMenuPolicy">
                   <enum>Qt::CustomContextMenu</enum>
                  </property>

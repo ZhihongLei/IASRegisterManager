@@ -40,6 +40,7 @@ DocumentEditorView::DocumentEditorView(QWidget *parent) :
 
     ui->tableDoc->setColumnHidden(0, true);
     ui->tableDoc->setColumnHidden(1, true);
+    ui->tableDoc->verticalHeader()->setVisible(true);
     ui->documentEditor->setVisible(false);
     ui->stackedWidgetDoc->setCurrentIndex(0);
     ui->splitterDoc->setCollapsible(0, false);

@@ -244,6 +244,7 @@ QString DocumentGenerator::generate_image_tex(const QString &caption, const QStr
 QString DocumentGenerator::generate_html_document()
 {
     reset_success_flag();
+    auto rw_types = get_register_rw_types().second;
     QString chip_content = generate_chip_level_html_document();
     QString html_content, table_of_content;
     QVector<QVector<QString> > items;
@@ -266,7 +267,7 @@ QString DocumentGenerator::generate_html_document()
         QString block_content = generate_block_level_html_document(item[0],
                                                            item[1],
                                                            item[2],
-                                                           item[3], reg_id2page);
+                                                           item[3], reg_id2page, rw_types);
         QString reg_bullets = block_content.split(DOC_DELIMITER)[0];
         block_content = block_content.right(block_content.size() - reg_bullets.size() - DOC_DELIMITER.size());
         html_content += block_content;
@@ -283,6 +284,7 @@ QString DocumentGenerator::generate_html_document()
 QString DocumentGenerator::generate_tex_document()
 {
     reset_success_flag();
+    auto rw_types = get_register_rw_types().second;
     QString chip_content = generate_chip_level_tex_document();
     QString tex_content;
     QVector<QVector<QString> > items;
@@ -305,7 +307,7 @@ QString DocumentGenerator::generate_tex_document()
         QString block_content = generate_block_level_tex_document(item[0],
                                                            item[1],
                                                            item[2],
-                                                           item[3], reg_id2page);
+                                                           item[3], reg_id2page, rw_types);
         tex_content += block_content;
     }
     return chip_content + tex_content;
@@ -351,7 +353,8 @@ QString DocumentGenerator::generate_block_level_html_document(const QString &blo
                                                               const QString &block_name,
                                                               const QString &block_abbr,
                                                               const QString &block_start_addr,
-                                                              const QHash<QString, QVector<QString> >& reg_id2page)
+                                                              const QHash<QString, QVector<QString> >& reg_id2page,
+                                                              const QSet<QString>& rw_types)
 {
     quint64 block_start_address_decimal = block_start_addr.toULongLong(nullptr, 16);
     NamingTemplate register_naming = GLOBAL_REGISTER_NAMING,
@@ -373,16 +376,18 @@ QString DocumentGenerator::generate_block_level_html_document(const QString &blo
         block_content = block_content + generate_html(item[1], item[2], image_cap_pos_, table_cap_pos_) + '\n';
 
     QVector<QVector<QString> > registers;
-    success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id, registers);
+    success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "reg_type_id", "prev", "next"}, "block_id", block_id, registers);
     registers = sort_doubly_linked_list(registers);
 
     QString reg_bullets;
     for (int i = 0; i < registers.size(); i++)
     {
         const auto& reg = registers[i];
-        QString reg_id = reg[0], reg_name = register_naming.get_extended_name(reg[1]);
+        QString reg_id = reg[0],
+                reg_name = register_naming.get_extended_name(reg[1]),
+                reg_type_id = reg[2];
         QString address = decimal2hex(block_start_address_decimal + static_cast<quint64>(i), address_width_);
-        block_content += generate_register_level_html_document(reg_id, reg_name, address, signal_naming, reg_id2page);
+        block_content += generate_register_level_html_document(reg_id, reg_name, address, signal_naming, reg_id2page, !rw_types.contains(reg_type_id));
         reg_bullets += QString("<li><a href=#${REG_NAME}>${REG_NAME}</a>\n</li>\n").replace("${REG_NAME}", reg_name);
     }
     reg_bullets = "<ul>\n" + reg_bullets + "</ul>\n";
@@ -393,7 +398,8 @@ QString DocumentGenerator::generate_block_level_tex_document(const QString &bloc
                                                              const QString &block_name,
                                                              const QString &block_abbr,
                                                              const QString &block_start_addr,
-                                                             const QHash<QString, QVector<QString> >& reg_id2page)
+                                                             const QHash<QString, QVector<QString> >& reg_id2page,
+                                                             const QSet<QString>& rw_types)
 {
     quint64 block_start_address_decimal = block_start_addr.toULongLong(nullptr, 16);
 
@@ -421,15 +427,17 @@ QString DocumentGenerator::generate_block_level_tex_document(const QString &bloc
     }
 
     QVector<QVector<QString> > registers;
-    success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "prev", "next"}, "block_id", block_id, registers);
+    success_ = success_ && DataBaseHandler::show_items("block_register", {"reg_id", "reg_name", "reg_type_id", "prev", "next"}, "block_id", block_id, registers);
     registers = sort_doubly_linked_list(registers);
 
     for (int i = 0; i < registers.size(); i++)
     {
         const auto& reg = registers[i];
-        QString reg_id = reg[0], reg_name = register_naming.get_extended_name(reg[1]);
+        QString reg_id = reg[0],
+                reg_name = register_naming.get_extended_name(reg[1]),
+                reg_type_id = reg[2];
         QString address = decimal2hex(block_start_address_decimal + static_cast<quint64>(i), address_width_);
-        block_content += generate_register_level_tex_document(reg_id, reg_name, address, signal_naming, reg_id2page);
+        block_content += generate_register_level_tex_document(reg_id, reg_name, address, signal_naming, reg_id2page, !rw_types.contains(reg_type_id));
     }
     return title + block_content;
 }
@@ -438,10 +446,12 @@ QString DocumentGenerator::generate_register_level_html_document(const QString &
                                                                  const QString &reg_name,
                                                                  const QString& address,
                                                                  const NamingTemplate& signal_naming,
-                                                                 const QHash<QString, QVector<QString> >& reg_id2page)
+                                                                 const QHash<QString, QVector<QString> >& reg_id2page,
+                                                                 bool readonly)
 {
 
     QString register_content = "<h4 id=" + reg_name + ">" + reg_name +" - " + address;
+    if (readonly) register_content += " - RO";
     if (reg_id2page.contains(reg_id))
     {
         if (show_paged_register_ == "page_name") register_content += " - " + reg_id2page[reg_id][0];
@@ -450,12 +460,12 @@ QString DocumentGenerator::generate_register_level_html_document(const QString &
     register_content += "</h4>\n";
     QVector<QVector<QString> > items;
     QVector<QString> extended_fields = {"block_sig_reg_partition_mapping.sig_reg_part_mapping_id",
-                                       "block_sig_reg_partition_mapping.reg_lsb",
-                                       "block_sig_reg_partition_mapping.reg_msb",
+                                        "block_sig_reg_partition_mapping.reg_lsb",
+                                        "block_sig_reg_partition_mapping.reg_msb",
                                         "signal_signal.sig_name",
-                                       "signal_signal.sig_id",
-                                       "block_sig_reg_partition_mapping.sig_lsb",
-                                       "block_sig_reg_partition_mapping.sig_msb",
+                                        "signal_signal.sig_id",
+                                        "block_sig_reg_partition_mapping.sig_lsb",
+                                        "block_sig_reg_partition_mapping.sig_msb",
                                         "signal_reg_signal.init_value",
                                         "signal_signal.width",
                                         "signal_signal.add_port"};
@@ -497,9 +507,11 @@ QString DocumentGenerator::generate_register_level_tex_document(const QString &r
                                                                 const QString &reg_name,
                                                                 const QString& address,
                                                                 const NamingTemplate& signal_naming,
-                                                                const QHash<QString, QVector<QString> >& reg_id2page)
+                                                                const QHash<QString, QVector<QString> >& reg_id2page,
+                                                                bool readonly)
 {
     QString register_content = QString("${REG_NAME} - ${ADDR}").replace("${REG_NAME}", pure_text_to_tex(reg_name)).replace("${ADDR}", address);
+    if (readonly) register_content += " - RO";
     if (reg_id2page.contains(reg_id))
     {
         if (show_paged_register_ == "page_name") register_content += " - " + pure_text_to_tex(reg_id2page[reg_id][0]);
@@ -847,6 +859,19 @@ QString DocumentGenerator::generate_doc(const QString &doc_type, const QString &
         return f_tab(caption, cells, tab_pos);
     }
     return "";
+}
+
+QPair<QSet<QString>, QSet<QString> > DocumentGenerator::get_register_rw_types() const
+{
+    QVector<QVector<QString> > items;
+    success_ = success_ && DataBaseHandler::show_items("def_register_type", {"reg_type_id", "readable", "writable"}, items);
+    QSet<QString> readable_reg_types, writable_reg_types;
+    for (const auto& item: items)
+    {
+        if (item[1] == "1") readable_reg_types.insert(item[0]);
+        if (item[2] == "1") writable_reg_types.insert(item[0]);
+    }
+    return {readable_reg_types, writable_reg_types};
 }
 
 QHash<QString, QVector<QString> > DocumentGenerator::get_register_id2page() const

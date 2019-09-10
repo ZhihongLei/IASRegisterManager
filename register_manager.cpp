@@ -108,7 +108,7 @@ RegisterManager::~RegisterManager()
 
 bool RegisterManager::initialize()
 {
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "RegisterManager", "global_settings");
+    QSettings settings("global_settings.ini", QSettings::IniFormat);
     settings.beginGroup("database");
     QString host = settings.value("host").toString(),
             port = settings.value("port").toString(),
@@ -211,12 +211,12 @@ void RegisterManager::on_loggedin(QString username)
     settings.endGroup();
 
     settings.beginGroup("ui");
-    int navigator_width = settings.value("navigator_width").toInt(),
-        chip_editor_width = settings.value("chip_editor_width").toInt(),
-        doc_editor_width = settings.value("doc_editor_width").toInt();
-    int width = settings.value("mainwindow_width").toInt();
-    int height = settings.value("mainwindow_height").toInt();
-    resize(width, height);
+    QVariant navigator_width = settings.value("navigator_width"),
+        chip_editor_width = settings.value("chip_editor_width"),
+        doc_editor_width = settings.value("doc_editor_width");
+    QVariant width = settings.value("mainwindow_width");
+    QVariant height = settings.value("mainwindow_height");
+    if (!width.isNull() && !height.isNull()) resize(width.toInt(), height.toInt());
     show();
 
     if (settings.value("chip_editor_view").toBool() != ui->actionChipEditorView->isChecked())
@@ -234,8 +234,16 @@ void RegisterManager::on_loggedin(QString username)
         ui->actionDocPreview->setChecked(settings.value("document_preview").toBool());
         on_actionDocPreview_triggered();
     }
-    ui->splitterMain->setSizes({navigator_width, chip_editor_width + doc_editor_width});
-    ui->splitterWorking->setSizes({chip_editor_width, doc_editor_width});
+    if (!ui->actionChipEditorView->isChecked() && !ui->actionDocEditor->isChecked() && !ui->actionDocPreview->isChecked())
+    {
+        ui->actionChipEditorView->setChecked(true);
+        on_actionChipEditorView_triggered();
+    }
+
+    if (!navigator_width.isNull() && !chip_editor_width.isNull() && !doc_editor_width.isNull())
+        ui->splitterMain->setSizes({navigator_width.toInt(), chip_editor_width.toInt() + doc_editor_width.toInt()});
+    if (!chip_editor_width.isNull() && !doc_editor_width.isNull())
+        ui->splitterWorking->setSizes({chip_editor_width.toInt(), doc_editor_width.toInt()});
 
     on_actionOpenChip_triggered();
     if (settings.value("fullscreen").toBool()) showFullScreen();
